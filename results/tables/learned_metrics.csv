@@ -1,0 +1,2 @@
+property_accuracy,random_property_accuracy,transition_mse,constant_transition_mse,reward_correlation,n_train_slots,n_test_slots
+0.9958333333333333,0.75,0.00027582489851947376,0.03922277193173474,0.953061460933608,1040,480

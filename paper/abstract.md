@@ -1,0 +1,5 @@
+# Abstract
+
+Best-of-N inference is often treated as a generic way to improve model-based control: sample more imagined futures and select the best-scoring one. We study a narrower object-centric failure mode. In controlled 2D manipulation scenes, imagined futures contain slots, identities, hidden properties, and object trajectories. When the score rewards plausible object-level predictions but real utility depends on the true target object, increasing N can amplify binding errors: selected object score rises while selected real utility stagnates or falls.
+
+We give an exact finite tie-aware law for selected utility under score-based Best-of-N selection, validate it by Monte Carlo, and instantiate it with object-centric candidates. We then test identity consistency, hidden-property calibration, targeted diagnostic probing, and a combined repair stack. A small CPU NumPy semi-learned object-centric model supplies learned synthetic evidence without claiming real-robot or broad benchmark validation.

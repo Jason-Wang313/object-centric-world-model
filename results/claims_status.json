@@ -1,0 +1,42 @@
+{
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations.",
+      "status": "supported",
+      "evidence": "theory tests and exact_law_validation.csv"
+    },
+    {
+      "id": "C2",
+      "claim": "In controlled object-centric scenes, high-N selection can increase object score while real utility stagnates or falls due to binding failures.",
+      "status": "supported",
+      "evidence": "figure1 and main_metrics.csv for the raw scenario"
+    },
+    {
+      "id": "C3",
+      "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
+      "status": "supported",
+      "evidence": "figure2, figure4, and repair_metrics.csv"
+    },
+    {
+      "id": "C4",
+      "claim": "A CPU NumPy semi-learned object-centric model improves property and transition prediction over simple baselines on generated trajectories.",
+      "status": "supported",
+      "evidence": "learned_object_model_summary.json and learned_metrics.csv"
+    },
+    {
+      "id": "C5",
+      "claim": "The method is validated on real robot systems.",
+      "status": "unsupported",
+      "evidence": "no real-robot experiments are present"
+    },
+    {
+      "id": "C6",
+      "claim": "The method establishes broad benchmark superiority over graph physics, latent, or diffusion world models.",
+      "status": "unsupported",
+      "evidence": "no broad benchmark suite is present"
+    }
+  ],
+  "forbidden_supported_overclaims": [],
+  "passes_claim_audit": true
+}

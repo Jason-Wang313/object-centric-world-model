@@ -1,0 +1,60 @@
+import json
+from pathlib import Path
+
+from object_centric_best_of_n.audit import claim_inventory, scan_forbidden_overclaims
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_required_docs_paper_and_readme_exist():
+    required = [
+        "README.md",
+        "docs/theory.md",
+        "docs/claims.md",
+        "docs/differentiation_from_best_of_n_wam.md",
+        "docs/differentiation_from_prior_projects.md",
+        "docs/reviewer_attacks.md",
+        "docs/final_audit.md",
+        "paper/abstract.md",
+        "paper/intro.md",
+        "paper/method.md",
+        "paper/theory.md",
+        "paper/experiments.md",
+        "paper/related_work.md",
+        "paper/limitations.md",
+        "paper/checklist.md",
+    ]
+    missing = [rel for rel in required if not (ROOT / rel).exists()]
+    assert not missing
+
+
+def test_generated_artifacts_exist_after_smoke_or_full_run():
+    required = [
+        "results/tables/main_metrics.csv",
+        "results/tables/seed_metrics.csv",
+        "results/tables/learned_metrics.csv",
+        "results/tables/repair_metrics.csv",
+        "results/tables/exact_law_validation.csv",
+        "results/run_summary.json",
+        "results/learned_object_model_summary.json",
+        "results/claims_status.md",
+        "results/claims_status.json",
+        "figures/figure1_selected_tail_binding_failure.png",
+        "figures/figure2_repair_comparison.png",
+        "figures/figure3_tail_diagnostics.png",
+        "figures/figure4_targeted_probe_before_after.png",
+        "figures/figure5_exact_law_validation.png",
+    ]
+    missing = [rel for rel in required if not (ROOT / rel).exists()]
+    assert not missing
+
+
+def test_claim_audit_keeps_forbidden_claims_unsupported():
+    assert scan_forbidden_overclaims(claim_inventory()) == []
+    status_path = ROOT / "results" / "claims_status.json"
+    if status_path.exists():
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
+        unsupported = {claim["claim"]: claim["status"] for claim in payload["claims"] if "real robot" in claim["claim"].lower() or "benchmark" in claim["claim"].lower()}
+        assert unsupported
+        assert all(status == "unsupported" for status in unsupported.values())

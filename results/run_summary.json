@@ -1,0 +1,37 @@
+{
+  "mode": "full",
+  "ns": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    64
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "n_seed_rows": 2352,
+  "n_main_rows": 294,
+  "deployment_gate": "block_high_n",
+  "exact_law_mean_absolute_error": 0.001756089358424244,
+  "learned_metrics": {
+    "property_accuracy": 0.9958333333333333,
+    "random_property_accuracy": 0.75,
+    "transition_mse": 0.00027582489851947376,
+    "constant_transition_mse": 0.03922277193173474,
+    "reward_correlation": 0.953061460933608,
+    "n_train_slots": 1040,
+    "n_test_slots": 480
+  },
+  "passes_claim_audit": true,
+  "runtime_seconds": 66.563
+}
