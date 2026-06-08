@@ -27,6 +27,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
 - Negative controls for the non-corrupted setting and learned feature ablations.
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.
+- A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
 
 ## What This Is Not
 
@@ -54,6 +55,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_ablation.csv`
 - `results/tables/ood_seed_metrics.csv`
 - `results/tables/ood_metrics.csv`
+- `results/tables/model_family_proxy_seed_metrics.csv`
+- `results/tables/model_family_proxy_metrics.csv`
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
@@ -74,9 +77,10 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure12_negative_control.png`
 - `figures/figure13_learned_ablation.png`
 - `figures/figure14_ood_object_count_stress.png`
+- `figures/figure15_model_family_proxies.png`
 
 ## Claim Boundaries
 
-Supported claims are limited to exact finite laws, controlled synthetic failure evidence, controlled repair evidence, and one CPU NumPy semi-learned object-centric artifact. The claim audit marks core claims as `strongly_supported` only when generated artifacts clear numeric thresholds, required artifacts verify, and paper text avoids supported overclaims. Unsupported claims include real-robot validation, broad benchmark superiority, and universal object learning.
+Supported claims are limited to exact finite laws, controlled synthetic failure evidence, controlled repair evidence, toy proxy diagnostics, and one CPU NumPy semi-learned object-centric artifact. The claim audit marks core claims as `strongly_supported` only when generated artifacts clear numeric thresholds, required artifacts verify, and paper text avoids supported overclaims. Unsupported claims include real-robot validation, broad benchmark superiority, and universal object learning.
 
 See `results/claims_status.md` and `docs/final_audit.md` after running the scripts.

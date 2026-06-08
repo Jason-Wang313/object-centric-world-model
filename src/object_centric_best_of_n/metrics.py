@@ -12,6 +12,9 @@ from .object_model import Candidate
 from .repair import GATE_ACTIONS, conservative_selected_tail_stop_rule
 
 
+MODEL_FAMILY_PROXY_SELECTORS = ("raw", "latent_global_proxy", "relational_slot_proxy", "diffusion_score_proxy")
+
+
 def mean_ci(values: Iterable[float], z: float = 1.96) -> tuple[float, float, float]:
     arr = np.asarray(list(values), dtype=float)
     if arr.size == 0:
@@ -382,6 +385,41 @@ def ood_summary(ood_seed_df: pd.DataFrame) -> pd.DataFrame:
         }
     )
     return main.merge(combined, on=["experiment", "scenario", "N"], how="left")
+
+
+def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate toy model-family proxy selectors against combined repair.
+
+    These rows are deliberately scoped to controlled synthetic proxy selectors.
+    They are not evidence for broad benchmark superiority over model families.
+    """
+
+    if family_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(family_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        proxy_group = group[group["selector"].isin(MODEL_FAMILY_PROXY_SELECTORS)]
+        combined = group[group["selector"] == "combined_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        best_proxy = float(proxy_group["selected_real_utility_mean"].max()) if not proxy_group.empty else float("nan")
+        best_proxy_selector = (
+            str(proxy_group.sort_values("selected_real_utility_mean", ascending=False)["selector"].iloc[0])
+            if not proxy_group.empty
+            else ""
+        )
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["best_proxy_selector"] = best_proxy_selector
+            out["best_proxy_utility_mean"] = best_proxy
+            out["combined_vs_best_proxy_gain_mean"] = combined_utility - best_proxy
+            out["combined_oracle_gap_mean"] = oracle_utility - combined_utility
+            rows.append(out)
+    return pd.DataFrame(rows)
 
 
 def exact_law_prediction_error(df: pd.DataFrame) -> float:

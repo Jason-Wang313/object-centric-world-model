@@ -39,6 +39,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_ablation.csv": ("ablation", "property_accuracy", "identity_alignment_accuracy"),
     "results/tables/ood_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
     "results/tables/ood_metrics.csv": ("scenario", "selector", "selected_real_utility_mean"),
+    "results/tables/model_family_proxy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
+    "results/tables/model_family_proxy_metrics.csv": ("scenario", "selector", "best_proxy_utility_mean", "combined_vs_best_proxy_gain_mean"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
 
@@ -57,6 +59,7 @@ REQUIRED_FIGURES = (
     "figures/figure12_negative_control.png",
     "figures/figure13_learned_ablation.png",
     "figures/figure14_ood_object_count_stress.png",
+    "figures/figure15_model_family_proxies.png",
 )
 
 REQUIRED_JSON = (
@@ -99,6 +102,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     negative_control = _read_csv(tables / "negative_control.csv")
     learned_ablation = _read_csv(tables / "learned_ablation.csv")
     ood = _read_csv(tables / "ood_metrics.csv")
+    family = _read_csv(tables / "model_family_proxy_metrics.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
 
     strengths: dict[str, dict[str, object]] = {}
@@ -230,9 +234,23 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(ood_combined["selected_real_utility_mean"].min()) >= 0.82
             and float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) >= 0.70
         )
+        family_combined = (
+            family[
+                (family["selector"] == "combined_repair")
+                & (family["scenario"].isin(["raw", "occlusion", "hidden_property", "swap", "merge_split"]))
+            ]
+            if not family.empty
+            else pd.DataFrame()
+        )
+        family_pass = (
+            not family_combined.empty
+            and float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) >= 0.20
+            and float(family_combined["combined_vs_best_proxy_gain_mean"].min()) >= 0.05
+            and float(family_combined["combined_oracle_gap_mean"].max()) <= 0.12
+        )
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass and ood_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, and dense OOD repair succeeds",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass and ood_pass and family_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, and controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -248,6 +266,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "ood_combined_mean_utility": float(ood_combined["selected_real_utility_mean"].mean()) if not ood_combined.empty else None,
                 "ood_combined_min_utility": float(ood_combined["selected_real_utility_mean"].min()) if not ood_combined.empty else None,
                 "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,
+                "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
+                "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
+                "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,
             },
         }
     learned_metrics = learned.get("metrics", {})
@@ -504,6 +525,7 @@ def write_results_digest(root: str | Path) -> None:
         f"- Learned full-minus-kinematic-pair identity accuracy: {summary.get('learned_full_minus_kinematic_pair_identity_accuracy', 'unknown')}",
         f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
         f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
+        f"- Toy proxy combined-vs-best-proxy gain: {summary.get('model_family_combined_vs_best_proxy_gain', 'unknown')}",
         "",
         "## Learned Model",
     ]
@@ -666,10 +688,12 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Full-minus-no-mass property gain {summary_payload.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}.",
             "- OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. "
             f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
+            "- Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. "
+            f"Combined-vs-best-proxy gain {summary_payload.get('model_family_combined_vs_best_proxy_gain', 'unknown')}.",
             "",
             "## Differentiation",
             "The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",
-            "It is not a graph-physics benchmark, a latent dynamics benchmark, a diffusion world-model benchmark, or a real-robot evaluation.",
+            "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",
             f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds and {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds.",

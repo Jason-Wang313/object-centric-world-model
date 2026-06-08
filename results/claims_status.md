@@ -47,7 +47,7 @@ Evidence: figure2, figure4, paired_effects.csv, and stress_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, and dense OOD repair succeeds",
+  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, and controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12",
   "observed": {
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
@@ -62,7 +62,10 @@ Strength: {
     "combined_vs_raw_low_noise_margin": 0.8534731753001509,
     "ood_combined_mean_utility": 0.876852645124664,
     "ood_combined_min_utility": 0.8643270511948262,
-    "ood_combined_vs_raw_gain": 0.8411636120707556
+    "ood_combined_vs_raw_gain": 0.8411636120707556,
+    "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
+    "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
+    "model_family_max_combined_oracle_gap": 0.1058960383796072
   }
 }
 
@@ -99,6 +102,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 37 required artifacts.
+Artifact verification checked 40 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

@@ -2,6 +2,7 @@ import pandas as pd
 
 from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
+    model_family_proxy_summary,
     negative_control_summary,
     ood_summary,
     paired_selector_effects,
@@ -78,3 +79,16 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "corrupted_mean" in set(negative["contrast"])
     ood = ood_summary(df)
     assert "combined_vs_raw_gain_mean" in ood.columns
+    family = model_family_proxy_summary(
+        pd.DataFrame(
+            rows
+            + [
+                {**rows[0], "selector": "latent_global_proxy", "selected_real_utility": 0.35},
+                {**rows[0], "selector": "relational_slot_proxy", "selected_real_utility": 0.45},
+                {**rows[0], "selector": "diffusion_score_proxy", "selected_real_utility": 0.25},
+            ]
+        )
+    )
+    combined = family[family["selector"] == "combined_repair"]
+    assert "combined_vs_best_proxy_gain_mean" in family.columns
+    assert combined["combined_vs_best_proxy_gain_mean"].iloc[0] > 0.0

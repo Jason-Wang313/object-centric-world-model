@@ -65,6 +65,7 @@
   "n_main_rows": 294,
   "n_stress_rows": 960,
   "n_ood_rows": 256,
+  "n_model_family_proxy_rows": 480,
   "deployment_gate": "block_high_n",
   "exact_law_mean_absolute_error": 0.0004629118998613018,
   "raw_tail_score_gain": 0.5759192453426587,
@@ -88,6 +89,9 @@
   "ood_raw_mean_selected_utility": 0.03568903305390835,
   "ood_combined_vs_raw_gain": 0.8411636120707556,
   "ood_good_control_raw_utility": 0.7549937089444607,
+  "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
+  "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
+  "model_family_max_combined_oracle_gap": 0.10589603837960726,
   "learned_metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
@@ -100,5 +104,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 123.57
+  "runtime_seconds": 104.183
 }

@@ -19,6 +19,7 @@ This digest is generated from the current result artifacts.
 - Learned full-minus-kinematic-pair identity accuracy: 0.0760416666666666
 - OOD combined mean selected utility: 0.876852645124664
 - OOD combined-vs-raw gain: 0.8411636120707556
+- Toy proxy combined-vs-best-proxy gain: 0.5504614056934154
 
 ## Learned Model
 - Property accuracy: 0.9958333333333333 versus baseline 0.75

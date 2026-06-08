@@ -20,6 +20,7 @@ from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     deployment_gate_from_metrics,
     exact_law_prediction_error,
+    model_family_proxy_summary,
     negative_control_summary,
     ood_summary,
     paired_selector_effects,
@@ -49,6 +50,15 @@ OOD_VARIANTS = [
     ("dense8_hidden", 8, False, True, False, "hidden_property"),
 ]
 OOD_SELECTORS = ["raw", "combined_repair", "random", "oracle"]
+MODEL_FAMILY_SCENARIOS = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
+MODEL_FAMILY_SELECTORS = [
+    "raw",
+    "latent_global_proxy",
+    "relational_slot_proxy",
+    "diffusion_score_proxy",
+    "combined_repair",
+    "oracle",
+]
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -92,6 +102,33 @@ def _choose_by_scores(candidates, scores: np.ndarray, seed: int):
     tied = np.flatnonzero(np.isclose(scores, max_score))
     rng = np.random.default_rng(seed)
     return candidates[int(rng.choice(tied))]
+
+
+def _diagnostic(candidate, name: str, default: float = 0.0) -> float:
+    return float(candidate.diagnostics.get(name, default))
+
+
+def _model_family_proxy_score(candidate, selector_name: str) -> float:
+    """Toy proxy scores for reviewer diagnostics, not external benchmarks."""
+
+    ambition = _diagnostic(candidate, "ambition")
+    identity_instability = _diagnostic(candidate, "identity_instability")
+    slot_support = _diagnostic(candidate, "slot_support", 1.0)
+    merge_evidence = _diagnostic(candidate, "merge_evidence")
+    property_surprise = _diagnostic(candidate, "property_surprise")
+    if selector_name == "latent_global_proxy":
+        return float(candidate.score + 0.05 * ambition - 0.08 * candidate.property_entropy)
+    if selector_name == "relational_slot_proxy":
+        return float(candidate.score - 0.35 * identity_instability - 0.45 * merge_evidence + 0.16 * slot_support)
+    if selector_name == "diffusion_score_proxy":
+        return float(candidate.score + 0.12 * ambition + 0.05 * property_surprise)
+    raise ValueError(f"unknown proxy selector: {selector_name}")
+
+
+def _select_model_family_proxy(candidates, selector_name: str, seed: int):
+    scores = np.asarray([_model_family_proxy_score(candidate, selector_name) for candidate in candidates], dtype=float)
+    selected = _choose_by_scores(candidates, scores, seed=seed)
+    return selected.with_score(float(np.max(scores)), selector_name)
 
 
 def _run_sensitivity_panel(
@@ -179,6 +216,40 @@ def _run_ood_panel(
     return pd.DataFrame(rows)
 
 
+def _run_model_family_panel(
+    generator: ObjectCentricFutureGenerator,
+    family_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in family_seeds:
+        for scenario in MODEL_FAMILY_SCENARIOS:
+            scene = _scene_for_scenario(160_000 + seed, scenario)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=scenario,
+                seed=141_421 + seed * 911 + len(scenario),
+            )
+            for selector_name in MODEL_FAMILY_SELECTORS:
+                if selector_name in SELECTORS:
+                    selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                else:
+                    selected = _select_model_family_proxy(candidates, selector_name, seed=seed + n)
+                rows.append(
+                    selection_record(
+                        "L_model_family_proxies",
+                        scenario,
+                        selector_name,
+                        n,
+                        seed,
+                        selected,
+                        candidates,
+                    )
+                )
+    return pd.DataFrame(rows)
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -234,6 +305,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     ood_seeds = list(range(4)) if mode == "smoke" else list(range(16))
     ood_seed_df = _run_ood_panel(generator, ood_seeds, n=max(ns))
     ood_metrics = ood_summary(ood_seed_df)
+    family_seeds = list(range(4)) if mode == "smoke" else list(range(16))
+    family_seed_df = _run_model_family_panel(generator, family_seeds, n=max(ns))
+    family_metrics = model_family_proxy_summary(family_seed_df)
     ablation_metrics = repair_ablation_summary(main, paired_effects)
     robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
     negative_control = negative_control_summary(main)
@@ -254,6 +328,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     calibration_metrics.to_csv(tables / "score_calibration.csv", index=False)
     ood_seed_df.to_csv(tables / "ood_seed_metrics.csv", index=False)
     ood_metrics.to_csv(tables / "ood_metrics.csv", index=False)
+    family_seed_df.to_csv(tables / "model_family_proxy_seed_metrics.csv", index=False)
+    family_metrics.to_csv(tables / "model_family_proxy_metrics.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
     learned_row = learned_metrics.as_dict()
@@ -275,6 +351,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         negative_df=negative_control,
         learned_ablation_df=learned_ablation,
         ood_df=ood_metrics,
+        family_df=family_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -313,6 +390,10 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
     ]
     ood_good = ood_metrics[(ood_metrics["selector"] == "raw") & (ood_metrics["scenario"] == "dense6_good")]
+    family_combined = family_metrics[
+        (family_metrics["selector"] == "combined_repair")
+        & (family_metrics["scenario"].isin(MODEL_FAMILY_SCENARIOS))
+    ]
     sensitivity_low_noise = sensitivity_metrics[sensitivity_metrics["score_noise"] <= 0.10]
     combined_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "combined_repair_noisy"]
     raw_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "raw_noisy"]
@@ -331,6 +412,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_main_rows": int(main.shape[0]),
         "n_stress_rows": int(stress_seed_df.shape[0]),
         "n_ood_rows": int(ood_seed_df.shape[0]),
+        "n_model_family_proxy_rows": int(family_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -354,6 +436,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "ood_raw_mean_selected_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
         "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,
         "ood_good_control_raw_utility": float(ood_good["selected_real_utility_mean"].iloc[0]) if not ood_good.empty else None,
+        "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
+        "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
+        "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,
         "learned_metrics": learned_row,
         "passes_claim_audit": False,
         "runtime_seconds": round(time.time() - start, 3),

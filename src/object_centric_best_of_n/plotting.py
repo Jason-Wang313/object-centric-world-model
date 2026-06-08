@@ -256,6 +256,34 @@ def figure14_ood_stress(ood: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure14_ood_object_count_stress.png")
 
 
+def figure15_model_family_proxies(family: pd.DataFrame, out: Path) -> None:
+    if family.empty:
+        return
+    selectors = [
+        "raw",
+        "latent_global_proxy",
+        "relational_slot_proxy",
+        "diffusion_score_proxy",
+        "combined_repair",
+        "oracle",
+    ]
+    df = family[(family["selector"].isin(selectors)) & (family["N"] == family["N"].max())]
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.2, 4.6))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#8a6fba", "#d1963a", "#707070", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("controlled synthetic scenario")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Toy model-family proxy selectors")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure15_model_family_proxies.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -270,6 +298,7 @@ def write_all_figures(
     negative_df: pd.DataFrame | None = None,
     learned_ablation_df: pd.DataFrame | None = None,
     ood_df: pd.DataFrame | None = None,
+    family_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -295,3 +324,5 @@ def write_all_figures(
         figure13_learned_ablation(learned_ablation_df, out)
     if ood_df is not None:
         figure14_ood_stress(ood_df, out)
+    if family_df is not None:
+        figure15_model_family_proxies(family_df, out)
