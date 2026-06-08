@@ -270,6 +270,54 @@ def seed_block_robustness(seed_df: pd.DataFrame, block_size: int = 4) -> pd.Data
     return pd.DataFrame(rows)
 
 
+def score_calibration_table(candidate_df: pd.DataFrame, bins: int = 6) -> pd.DataFrame:
+    """Bin raw candidate object scores and compare them with real utility."""
+
+    if candidate_df.empty:
+        return pd.DataFrame()
+    df = candidate_df.copy()
+    df["score_bin"] = pd.qcut(df["raw_object_score"].rank(method="first"), q=bins, labels=False)
+    rows: list[dict[str, float | int]] = []
+    for score_bin, group in df.groupby("score_bin", sort=True):
+        rows.append(
+            {
+                "score_bin": int(score_bin),
+                "count": int(group.shape[0]),
+                "mean_raw_object_score": float(group["raw_object_score"].mean()),
+                "mean_real_utility": float(group["real_utility"].mean()),
+                "object_real_gap": float(group["raw_object_score"].mean() - group["real_utility"].mean()),
+                "identity_error_rate": float(group["identity_error"].mean()),
+                "merge_split_rate": float(group["merge_split"].mean()),
+                "property_error_rate": float(group["property_error"].mean()),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def sensitivity_summary(sensitivity_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate score-noise sensitivity rows."""
+
+    if sensitivity_seed_df.empty:
+        return pd.DataFrame()
+    rows: list[dict[str, float | int | str]] = []
+    for keys, group in sensitivity_seed_df.groupby(["selector", "score_noise"], sort=True):
+        selector, score_noise = keys
+        utility_mean, utility_low, utility_high = mean_ci(group["selected_real_utility"])
+        identity_mean, _, _ = mean_ci(group["identity_error"])
+        rows.append(
+            {
+                "selector": str(selector),
+                "score_noise": float(score_noise),
+                "n_rows": int(group.shape[0]),
+                "selected_real_utility_mean": utility_mean,
+                "selected_real_utility_ci_low": utility_low,
+                "selected_real_utility_ci_high": utility_high,
+                "identity_error_mean": identity_mean,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def exact_law_prediction_error(df: pd.DataFrame) -> float:
     if df.empty:
         return float("nan")

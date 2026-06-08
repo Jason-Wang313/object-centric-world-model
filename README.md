@@ -24,6 +24,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
+- Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
 
 ## What This Is Not
 
@@ -43,10 +44,15 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/stress_seed_metrics.csv`
 - `results/tables/stress_metrics.csv`
 - `results/tables/seed_block_robustness.csv`
+- `results/tables/score_calibration_candidates.csv`
+- `results/tables/score_calibration.csv`
+- `results/tables/sensitivity_seed_metrics.csv`
+- `results/tables/sensitivity_metrics.csv`
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
 - `results/verification_log.json`
+- `results/artifact_manifest.json`
 - `docs/results_digest.md`
 - `figures/figure1_selected_tail_binding_failure.png`
 - `figures/figure2_repair_comparison.png`
@@ -57,6 +63,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure7_learned_object_model.png`
 - `figures/figure8_repair_ablation.png`
 - `figures/figure9_seed_block_robustness.png`
+- `figures/figure10_score_calibration.png`
+- `figures/figure11_score_noise_sensitivity.png`
 
 ## Claim Boundaries
 

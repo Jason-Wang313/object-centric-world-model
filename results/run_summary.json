@@ -73,6 +73,10 @@
   "combined_repair_raw_ablation_dominance": 0.27709535654229556,
   "stress_combined_mean_selected_utility": 0.8494153088926296,
   "seed_block_robustness_pass_rate": 1.0,
+  "raw_score_top_bin_object_real_gap": 1.095467459764002,
+  "raw_score_top_bin_identity_error": 0.94140625,
+  "combined_repair_min_low_noise_utility": 0.8374916544433992,
+  "combined_vs_raw_low_noise_sensitivity_margin": 0.8534731753001509,
   "learned_metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
@@ -85,5 +89,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 109.389
+  "runtime_seconds": 110.536
 }

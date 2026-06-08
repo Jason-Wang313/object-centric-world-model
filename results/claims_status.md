@@ -21,14 +21,16 @@ Evidence: figure1 and main_metrics.csv for the raw scenario
 
 Strength: {
   "passes": true,
-  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, and all seed blocks pass reduced thresholds",
+  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, and top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55",
   "observed": {
     "raw_tail_score_gain": 0.5759192453426587,
     "raw_tail_utility_drop": 0.3639708878079679,
     "raw_tail_identity_error": 1.0,
     "min_block_score_gain": 0.418084184937237,
     "min_block_utility_drop": 0.252396546523533,
-    "min_block_identity_error": 1.0
+    "min_block_identity_error": 1.0,
+    "top_calibration_object_real_gap": 1.095467459764002,
+    "top_calibration_identity_error": 0.94140625
   }
 }
 
@@ -39,7 +41,7 @@ Evidence: figure2, figure4, paired_effects.csv, and stress_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, and all seed blocks repair",
+  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, and combined repair remains strong under score noise <= 0.10",
   "observed": {
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
@@ -49,7 +51,9 @@ Strength: {
     "raw_ablation_combined_vs_best_single_gain": 0.2770953565422955,
     "raw_ablation_combined_oracle_gap": 0.0244701492605839,
     "min_block_combined_raw_gain": 0.8602071898170613,
-    "min_block_combined_win_rate": 1.0
+    "min_block_combined_win_rate": 1.0,
+    "combined_min_low_noise_utility": 0.8374916544433992,
+    "combined_vs_raw_low_noise_margin": 0.8534731753001509
   }
 }
 
@@ -84,6 +88,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 23 required artifacts.
+Artifact verification checked 30 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

@@ -171,6 +171,37 @@ def figure9_seed_block_robustness(robustness: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure9_seed_block_robustness.png")
 
 
+def figure10_score_calibration(calibration: pd.DataFrame, out: Path) -> None:
+    if calibration.empty:
+        return
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
+    x = calibration["score_bin"].astype(str)
+    ax.plot(x, calibration["mean_raw_object_score"], marker="o", label="mean object score")
+    ax.plot(x, calibration["mean_real_utility"], marker="s", label="mean real utility")
+    ax.bar(x, calibration["object_real_gap"], alpha=0.25, label="object-real gap")
+    ax.set_xlabel("raw-score quantile bin")
+    ax.set_ylabel("mean value")
+    ax.set_title("Raw object-score calibration")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8)
+    _save(fig, out / "figure10_score_calibration.png")
+
+
+def figure11_sensitivity(sensitivity: pd.DataFrame, out: Path) -> None:
+    if sensitivity.empty:
+        return
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
+    for selector, group in sensitivity.groupby("selector", sort=True):
+        group = group.sort_values("score_noise")
+        ax.plot(group["score_noise"], group["selected_real_utility_mean"], marker="o", linewidth=2, label=str(selector))
+    ax.set_xlabel("score noise std")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Score-noise sensitivity")
+    ax.grid(alpha=0.25)
+    ax.legend(frameon=False)
+    _save(fig, out / "figure11_score_noise_sensitivity.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -180,6 +211,8 @@ def write_all_figures(
     learned_curve: pd.DataFrame | None = None,
     ablation_df: pd.DataFrame | None = None,
     robustness_df: pd.DataFrame | None = None,
+    calibration_df: pd.DataFrame | None = None,
+    sensitivity_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -195,3 +228,7 @@ def write_all_figures(
         figure8_repair_ablation(ablation_df, out)
     if robustness_df is not None:
         figure9_seed_block_robustness(robustness_df, out)
+    if calibration_df is not None:
+        figure10_score_calibration(calibration_df, out)
+    if sensitivity_df is not None:
+        figure11_sensitivity(sensitivity_df, out)

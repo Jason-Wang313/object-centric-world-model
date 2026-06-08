@@ -10,6 +10,9 @@ This digest is generated from the current result artifacts.
 - Combined repair raw ablation dominance: 0.27709535654229556
 - Stress combined mean selected utility: 0.8494153088926296
 - Seed-block robustness pass rate: 1.0
+- Top raw-score calibration gap: 1.095467459764002
+- Combined repair low-noise minimum utility: 0.8374916544433992
+- Combined-vs-raw low-noise sensitivity margin: 0.8534731753001509
 
 ## Learned Model
 - Property accuracy: 0.9958333333333333 versus baseline 0.75

@@ -16,9 +16,13 @@ Response: Correct. The repair stack uses controlled diagnostic signals such as i
 
 Response: The upgraded run reports paired per-seed gains in `paired_effects.csv`, repair ablations in `repair_ablation.csv`, seed-block robustness in `seed_block_robustness.csv`, and a separate high-N stress panel in `stress_metrics.csv`. The claim audit requires positive paired raw-to-repair gain, high win rate, targeted hidden-property gain, ablation dominance, seed-block robustness, and stress utility before marking the repair claim strongly supported.
 
+## Attack: The raw score might only be miscalibrated under one exact scoring setup.
+
+Response: `score_calibration.csv` bins raw candidate object scores and measures real utility, object-real gap, and identity-error rate. `sensitivity_metrics.csv` perturbs raw and repaired scores with score noise and requires the combined repair to remain strong under low-noise perturbations.
+
 ## Attack: The paper text might drift beyond the artifact evidence.
 
-Response: `run_claim_audit.sh` scans README, docs, and paper text for supported forbidden overclaims and verifies required tables, figures, and JSON artifacts. The generated `docs/results_digest.md` records the current evidence boundaries.
+Response: `run_claim_audit.sh` scans README, docs, and paper text for supported forbidden overclaims, verifies required tables, figures, and JSON artifacts, and writes `results/artifact_manifest.json` with deterministic hashes. The generated `docs/results_digest.md` records the current evidence boundaries.
 
 ## Attack: The learned model is too simple.
 

@@ -22,12 +22,15 @@ from object_centric_best_of_n.metrics import (
     exact_law_prediction_error,
     paired_selector_effects,
     repair_ablation_summary,
+    score_calibration_table,
     selection_record,
     seed_block_robustness,
+    sensitivity_summary,
     stress_summary,
 )
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
 from object_centric_best_of_n.plotting import write_all_figures
+from object_centric_best_of_n.repair import combined_repair_score
 from object_centric_best_of_n.selection import SELECTORS
 from object_centric_best_of_n.theory import law_validation_row
 
@@ -36,6 +39,7 @@ SCENARIOS = ["good", "swap", "merge_split", "occlusion", "hidden_property", "raw
 SELECTOR_ORDER = ["raw", "identity_consistent", "property_calibrated", "targeted_probe", "combined_repair", "random", "oracle"]
 STRESS_SCENARIOS = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
 STRESS_SELECTORS = ["raw", "identity_consistent", "targeted_probe", "combined_repair", "random", "oracle"]
+SENSITIVITY_NOISE = [0.0, 0.02, 0.05, 0.10, 0.20, 0.35]
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -72,6 +76,71 @@ def _run_stress_panel(
                 selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
                 rows.append(selection_record("F_high_n_stress", scenario, selector_name, n, seed, selected, candidates))
     return pd.DataFrame(rows)
+
+
+def _choose_by_scores(candidates, scores: np.ndarray, seed: int):
+    max_score = float(np.max(scores))
+    tied = np.flatnonzero(np.isclose(scores, max_score))
+    rng = np.random.default_rng(seed)
+    return candidates[int(rng.choice(tied))]
+
+
+def _run_sensitivity_panel(
+    generator: ObjectCentricFutureGenerator,
+    sensitivity_seeds: list[int],
+    n: int,
+    mode: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    rows: list[dict[str, float | int | str]] = []
+    candidate_rows: list[dict[str, float | int]] = []
+    reps = 3 if mode == "smoke" else 12
+    for seed in sensitivity_seeds:
+        scene = _scene_for_scenario(80_000 + seed, "raw")
+        candidates = generator.generate_candidates(
+            scene,
+            n=n,
+            scenario="raw",
+            seed=123_457 + seed * 313,
+        )
+        raw_scores = np.asarray([candidate.score for candidate in candidates], dtype=float)
+        repair_scores = np.asarray([combined_repair_score(candidate, scene, seed=seed) for candidate in candidates], dtype=float)
+        for candidate in candidates:
+            candidate_rows.append(
+                {
+                    "seed": int(seed),
+                    "candidate_id": int(candidate.candidate_id),
+                    "raw_object_score": float(candidate.score),
+                    "real_utility": float(candidate.real_utility),
+                    "identity_error": float(candidate.identity_error),
+                    "merge_split": float(candidate.merge_split),
+                    "property_error": float(candidate.property_error),
+                    "object_real_gap": float(candidate.object_real_gap),
+                }
+            )
+        for noise in SENSITIVITY_NOISE:
+            for rep in range(reps):
+                rng = np.random.default_rng(900_000 + seed * 1009 + rep * 137 + int(noise * 1000))
+                raw_selected = _choose_by_scores(candidates, raw_scores + rng.normal(0.0, noise, size=len(candidates)), seed + rep)
+                repair_selected = _choose_by_scores(
+                    candidates,
+                    repair_scores + rng.normal(0.0, noise, size=len(candidates)),
+                    seed + rep + 17,
+                )
+                for selector, selected in [("raw_noisy", raw_selected), ("combined_repair_noisy", repair_selected)]:
+                    rows.append(
+                        {
+                            "seed": int(seed),
+                            "rep": int(rep),
+                            "selector": selector,
+                            "score_noise": float(noise),
+                            "selected_candidate_id": int(selected.candidate_id),
+                            "selected_real_utility": float(selected.real_utility),
+                            "identity_error": float(selected.identity_error),
+                            "merge_split": float(selected.merge_split),
+                            "property_error": float(selected.property_error),
+                        }
+                    )
+    return pd.DataFrame(rows), pd.DataFrame(candidate_rows)
 
 
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
@@ -122,6 +191,10 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     stress_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     stress_seed_df = _run_stress_panel(generator, stress_seeds=stress_seeds, n=max(ns))
     stress_metrics = stress_summary(stress_seed_df)
+    sensitivity_seeds = list(range(4)) if mode == "smoke" else list(range(24))
+    sensitivity_seed_df, calibration_candidate_df = _run_sensitivity_panel(generator, sensitivity_seeds, n=max(ns), mode=mode)
+    sensitivity_metrics = sensitivity_summary(sensitivity_seed_df)
+    calibration_metrics = score_calibration_table(calibration_candidate_df)
     ablation_metrics = repair_ablation_summary(main, paired_effects)
     robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
 
@@ -134,6 +207,10 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     law_df.to_csv(tables / "exact_law_validation.csv", index=False)
     stress_seed_df.to_csv(tables / "stress_seed_metrics.csv", index=False)
     stress_metrics.to_csv(tables / "stress_metrics.csv", index=False)
+    sensitivity_seed_df.to_csv(tables / "sensitivity_seed_metrics.csv", index=False)
+    sensitivity_metrics.to_csv(tables / "sensitivity_metrics.csv", index=False)
+    calibration_candidate_df.to_csv(tables / "score_calibration_candidates.csv", index=False)
+    calibration_metrics.to_csv(tables / "score_calibration.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
     learned_row = learned_metrics.as_dict()
@@ -149,8 +226,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         learned_curve=learned_curve,
         ablation_df=ablation_metrics,
         robustness_df=robustness_metrics,
+        calibration_df=calibration_metrics,
+        sensitivity_df=sensitivity_metrics,
     )
-    claims = write_claim_status(root)
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
     raw_tail_score_gain = float(raw_tail["selected_object_score_mean"].iloc[-1] - raw_tail["selected_object_score_mean"].iloc[0])
@@ -173,6 +251,16 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
             & (robustness_metrics["combined_raw_nmax_win_rate"] >= 0.75)
         )
     ) if not robustness_metrics.empty else None
+    top_calibration = calibration_metrics.sort_values("score_bin").iloc[-1] if not calibration_metrics.empty else None
+    sensitivity_low_noise = sensitivity_metrics[sensitivity_metrics["score_noise"] <= 0.10]
+    combined_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "combined_repair_noisy"]
+    raw_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "raw_noisy"]
+    sensitivity_margin = None
+    if not combined_sensitivity.empty and not raw_sensitivity.empty:
+        sensitivity_margin = float(
+            combined_sensitivity["selected_real_utility_mean"].mean()
+            - raw_sensitivity["selected_real_utility_mean"].mean()
+        )
     summary = {
         "mode": mode,
         "ns": ns,
@@ -190,11 +278,20 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "combined_repair_raw_ablation_dominance": float(raw_ablation["combined_vs_best_single_gain"].iloc[0]) if not raw_ablation.empty else None,
         "stress_combined_mean_selected_utility": float(stress_combined["selected_real_utility_mean"].mean()) if not stress_combined.empty else None,
         "seed_block_robustness_pass_rate": robustness_pass_rate,
+        "raw_score_top_bin_object_real_gap": float(top_calibration["object_real_gap"]) if top_calibration is not None else None,
+        "raw_score_top_bin_identity_error": float(top_calibration["identity_error_rate"]) if top_calibration is not None else None,
+        "combined_repair_min_low_noise_utility": float(combined_sensitivity["selected_real_utility_mean"].min()) if not combined_sensitivity.empty else None,
+        "combined_vs_raw_low_noise_sensitivity_margin": sensitivity_margin,
         "learned_metrics": learned_row,
-        "passes_claim_audit": claims["passes_claim_audit"],
+        "passes_claim_audit": False,
         "runtime_seconds": round(time.time() - start, 3),
     }
     (results / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    claims = write_claim_status(root)
+    summary["passes_claim_audit"] = claims["passes_claim_audit"]
+    summary["runtime_seconds"] = round(time.time() - start, 3)
+    (results / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    write_claim_status(root)
     write_final_audit(root, command_results={f"experiments --mode {mode}": "pass"})
     return summary
 

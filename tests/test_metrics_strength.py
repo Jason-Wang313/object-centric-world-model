@@ -4,7 +4,9 @@ from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     paired_selector_effects,
     repair_ablation_summary,
+    score_calibration_table,
     seed_block_robustness,
+    sensitivity_summary,
     stress_summary,
 )
 
@@ -46,3 +48,27 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "combined_vs_best_single_gain" in ablation.columns
     robustness = seed_block_robustness(df, block_size=2)
     assert robustness["combined_raw_nmax_gain"].min() == 0.7
+    calibration = score_calibration_table(
+        pd.DataFrame(
+            {
+                "raw_object_score": [0.1, 0.2, 0.9, 1.0],
+                "real_utility": [0.8, 0.7, 0.1, 0.0],
+                "identity_error": [0, 0, 1, 1],
+                "merge_split": [0, 0, 1, 1],
+                "property_error": [0, 0, 1, 1],
+            }
+        ),
+        bins=2,
+    )
+    assert calibration.iloc[-1]["object_real_gap"] > 0.0
+    sensitivity = sensitivity_summary(
+        pd.DataFrame(
+            {
+                "selector": ["raw_noisy", "raw_noisy", "combined_repair_noisy", "combined_repair_noisy"],
+                "score_noise": [0.0, 0.1, 0.0, 0.1],
+                "selected_real_utility": [0.1, 0.2, 0.9, 0.85],
+                "identity_error": [1, 1, 0, 0],
+            }
+        )
+    )
+    assert set(sensitivity["selector"]) == {"raw_noisy", "combined_repair_noisy"}

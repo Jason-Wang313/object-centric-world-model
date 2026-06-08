@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Iterable
@@ -30,6 +31,10 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/stress_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
     "results/tables/stress_metrics.csv": ("scenario", "selector", "selected_real_utility_mean"),
     "results/tables/seed_block_robustness.csv": ("block_id", "raw_tail_score_gain", "combined_raw_nmax_gain"),
+    "results/tables/score_calibration_candidates.csv": ("raw_object_score", "real_utility", "identity_error"),
+    "results/tables/score_calibration.csv": ("score_bin", "mean_raw_object_score", "mean_real_utility", "object_real_gap"),
+    "results/tables/sensitivity_seed_metrics.csv": ("selector", "score_noise", "selected_real_utility", "identity_error"),
+    "results/tables/sensitivity_metrics.csv": ("selector", "score_noise", "selected_real_utility_mean"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
 
@@ -43,12 +48,15 @@ REQUIRED_FIGURES = (
     "figures/figure7_learned_object_model.png",
     "figures/figure8_repair_ablation.png",
     "figures/figure9_seed_block_robustness.png",
+    "figures/figure10_score_calibration.png",
+    "figures/figure11_score_noise_sensitivity.png",
 )
 
 REQUIRED_JSON = (
     "results/run_summary.json",
     "results/learned_object_model_summary.json",
     "results/verification_log.json",
+    "results/artifact_manifest.json",
 )
 
 
@@ -79,6 +87,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     stress = _read_csv(tables / "stress_metrics.csv")
     ablation = _read_csv(tables / "repair_ablation.csv")
     robustness = _read_csv(tables / "seed_block_robustness.csv")
+    calibration = _read_csv(tables / "score_calibration.csv")
+    sensitivity = _read_csv(tables / "sensitivity_metrics.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
 
     strengths: dict[str, dict[str, object]] = {}
@@ -97,6 +107,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             score_gain = float(raw["selected_object_score_mean"].iloc[-1] - raw["selected_object_score_mean"].iloc[0])
             utility_drop = float(raw["selected_real_utility_mean"].iloc[0] - raw["selected_real_utility_mean"].iloc[-1])
             identity_tail = float(raw["identity_error_mean"].iloc[-1])
+            top_calibration = calibration.sort_values("score_bin").iloc[-1] if not calibration.empty else None
             strengths["C2"] = {
                 "passes": bool(
                     score_gain >= 0.35
@@ -106,8 +117,11 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     and float(robustness["raw_tail_score_gain"].min()) >= 0.30
                     and float(robustness["raw_tail_utility_drop"].min()) >= 0.10
                     and float(robustness["raw_tail_identity_error"].min()) >= 0.75
+                    and top_calibration is not None
+                    and float(top_calibration["object_real_gap"]) >= 0.45
+                    and float(top_calibration["identity_error_rate"]) >= 0.55
                 ),
-                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, and all seed blocks pass reduced thresholds",
+                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, and top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55",
                 "observed": {
                     "raw_tail_score_gain": score_gain,
                     "raw_tail_utility_drop": utility_drop,
@@ -115,9 +129,11 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     "min_block_score_gain": float(robustness["raw_tail_score_gain"].min()) if not robustness.empty else None,
                     "min_block_utility_drop": float(robustness["raw_tail_utility_drop"].min()) if not robustness.empty else None,
                     "min_block_identity_error": float(robustness["raw_tail_identity_error"].min()) if not robustness.empty else None,
+                    "top_calibration_object_real_gap": float(top_calibration["object_real_gap"]) if top_calibration is not None else None,
+                    "top_calibration_identity_error": float(top_calibration["identity_error_rate"]) if top_calibration is not None else None,
                 },
             }
-    if not paired.empty and not stress.empty and not ablation.empty and not robustness.empty:
+    if not paired.empty and not stress.empty and not ablation.empty and not robustness.empty and not sensitivity.empty:
         raw_gain = paired[
             (paired["scenario"] == "raw")
             & (paired["selector"] == "combined_repair")
@@ -150,9 +166,25 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             float(robustness["combined_raw_nmax_gain"].min()) >= 0.55
             and float(robustness["combined_raw_nmax_win_rate"].min()) >= 0.75
         )
+        sensitivity_low_noise = sensitivity[sensitivity["score_noise"] <= 0.10]
+        combined_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "combined_repair_noisy"]
+        raw_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "raw_noisy"]
+        sensitivity_margin = None
+        if not combined_sensitivity.empty and not raw_sensitivity.empty:
+            sensitivity_margin = float(
+                combined_sensitivity["selected_real_utility_mean"].mean()
+                - raw_sensitivity["selected_real_utility_mean"].mean()
+            )
+        sensitivity_pass = (
+            not combined_sensitivity.empty
+            and not raw_sensitivity.empty
+            and float(combined_sensitivity["selected_real_utility_mean"].min()) >= 0.75
+            and sensitivity_margin is not None
+            and sensitivity_margin >= 0.55
+        )
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, and all seed blocks repair",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, and combined repair remains strong under score noise <= 0.10",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -163,6 +195,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "raw_ablation_combined_oracle_gap": float(raw_ablation["combined_oracle_gap"].iloc[0]) if not raw_ablation.empty else None,
                 "min_block_combined_raw_gain": float(robustness["combined_raw_nmax_gain"].min()) if not robustness.empty else None,
                 "min_block_combined_win_rate": float(robustness["combined_raw_nmax_win_rate"].min()) if not robustness.empty else None,
+                "combined_min_low_noise_utility": float(combined_sensitivity["selected_real_utility_mean"].min()) if not combined_sensitivity.empty else None,
+                "combined_vs_raw_low_noise_margin": sensitivity_margin,
             },
         }
     learned_metrics = learned.get("metrics", {})
@@ -299,6 +333,40 @@ def verify_artifacts(root: str | Path) -> dict[str, object]:
     return {"checked_count": len(checked), "problems": problems, "passes": not problems}
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def write_artifact_manifest(root: str | Path) -> dict[str, object]:
+    root = Path(root)
+    manifest_paths = sorted(
+        set(REQUIRED_TABLES)
+        | set(REQUIRED_FIGURES)
+        | {
+            "results/run_summary.json",
+            "results/learned_object_model_summary.json",
+            "results/verification_log.json",
+            "docs/results_digest.md",
+        }
+    )
+    files = []
+    for rel in manifest_paths:
+        path = root / rel
+        if path.exists():
+            files.append({"path": rel, "bytes": int(path.stat().st_size), "sha256": _sha256(path)})
+        else:
+            files.append({"path": rel, "missing": True})
+    payload = {"artifact_count": len(files), "files": files}
+    out = root / "results" / "artifact_manifest.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return payload
+
+
 def scan_text_overclaims(root: str | Path) -> list[str]:
     root = Path(root)
     support_terms = (
@@ -364,6 +432,9 @@ def write_results_digest(root: str | Path) -> None:
         f"- Combined repair raw ablation dominance: {summary.get('combined_repair_raw_ablation_dominance', 'unknown')}",
         f"- Stress combined mean selected utility: {summary.get('stress_combined_mean_selected_utility', 'unknown')}",
         f"- Seed-block robustness pass rate: {summary.get('seed_block_robustness_pass_rate', 'unknown')}",
+        f"- Top raw-score calibration gap: {summary.get('raw_score_top_bin_object_real_gap', 'unknown')}",
+        f"- Combined repair low-noise minimum utility: {summary.get('combined_repair_min_low_noise_utility', 'unknown')}",
+        f"- Combined-vs-raw low-noise sensitivity margin: {summary.get('combined_vs_raw_low_noise_sensitivity_margin', 'unknown')}",
         "",
         "## Learned Model",
     ]
@@ -415,6 +486,7 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
     root = Path(root)
     results = root / "results"
     results.mkdir(parents=True, exist_ok=True)
+    write_artifact_manifest(root)
     claims = claim_inventory(root)
     problems = scan_forbidden_overclaims(claims)
     text_overclaims = scan_text_overclaims(root)
@@ -515,6 +587,10 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Seed-block robustness pass rate {summary_payload.get('seed_block_robustness_pass_rate', 'unknown')}.",
             "- Stress artifact: figure6_stress_robustness.png. "
             f"Combined repair mean selected stress utility {summary_payload.get('stress_combined_mean_selected_utility', 'unknown')}.",
+            "- Calibration artifact: figure10_score_calibration.png and score_calibration.csv. "
+            f"Top raw-score bin object-real gap {summary_payload.get('raw_score_top_bin_object_real_gap', 'unknown')}.",
+            "- Sensitivity artifact: figure11_score_noise_sensitivity.png and sensitivity_metrics.csv. "
+            f"Combined repair low-noise minimum utility {summary_payload.get('combined_repair_min_low_noise_utility', 'unknown')}.",
             "",
             "## Differentiation",
             "The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",
