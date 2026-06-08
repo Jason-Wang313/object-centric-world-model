@@ -4,6 +4,7 @@ from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     model_family_proxy_summary,
     negative_control_summary,
+    observable_repair_summary,
     ood_summary,
     paired_selector_effects,
     repair_ablation_summary,
@@ -41,6 +42,7 @@ def test_paired_effects_and_stress_summary_are_computed():
         )
         rows.append({**rows[-1], "selector": "identity_consistent", "selected_real_utility": 0.6, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "combined_repair", "selected_real_utility": 0.9, "identity_error": 0.0})
+        rows.append({**rows[-1], "selector": "observable_repair", "selected_real_utility": 0.85, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "oracle", "selected_real_utility": 0.95, "identity_error": 0.0})
     df = pd.DataFrame(rows)
     paired = paired_selector_effects(df)
@@ -50,6 +52,8 @@ def test_paired_effects_and_stress_summary_are_computed():
     main = aggregate_seed_metrics(df)
     ablation = repair_ablation_summary(main, paired)
     assert "combined_vs_best_single_gain" in ablation.columns
+    observable = observable_repair_summary(main, paired)
+    assert observable["observable_vs_raw_gain"].iloc[0] > 0.0
     robustness = seed_block_robustness(df, block_size=2)
     assert robustness["combined_raw_nmax_gain"].min() == 0.7
     calibration = score_calibration_table(

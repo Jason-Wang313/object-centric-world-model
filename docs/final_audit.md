@@ -3,15 +3,16 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 26.271s; strict claim audit passed)
-- bash scripts/run_all.sh: pass (full experiment runtime 107.936s; 16 main seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, bootstrap statistical audit, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, toy proxy checks, and bootstrap checks passed)
-- pytest: pass (13 passed in 11.72s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 30.734s; strict claim audit passed)
+- bash scripts/run_all.sh: pass (full experiment runtime 139.048s; 16 main seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, bootstrap statistical audit, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
+- pytest: pass (13 passed in 7.82s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
 - Learned artifact: learned_object_model_summary.json with CPU NumPy slot-level transition, hidden-property, identity-alignment, and reward predictors.
 - Repair artifact: figure2_repair_comparison.png, paired_effects.csv, and stress_metrics.csv. Raw Nmax combined-repair gain 0.8803086375224858 with win rate 1.0.
+- Observable-repair artifact: figure17_observable_repair.png and observable_repair_metrics.csv. Raw Nmax observable-repair gain 0.8803086375224858.
 - Ablation artifact: figure8_repair_ablation.png and repair_ablation.csv. Raw Nmax combined-repair dominance over the best single repair 0.27709535654229556.
 - Robustness artifact: figure9_seed_block_robustness.png and seed_block_robustness.csv. Seed-block robustness pass rate 1.0.
 - Stress artifact: figure6_stress_robustness.png. Combined repair mean selected stress utility 0.8494153088926296.
@@ -29,7 +30,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 
 ## Remaining Weaknesses
 - Synthetic scenes remain controlled, though the default run now uses 16 main seeds and 32 stress seeds.
-- Repairs use diagnostic signals available in the toy generator.
+- Observable-only repair reduces direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.
 - No real-robot or broad benchmark evidence is claimed.
 
 ## Artifact Inventory
@@ -42,6 +43,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\model_family_proxy_metrics.csv
 - results\tables\model_family_proxy_seed_metrics.csv
 - results\tables\negative_control.csv
+- results\tables\observable_repair_metrics.csv
 - results\tables\ood_metrics.csv
 - results\tables\ood_seed_metrics.csv
 - results\tables\paired_effects.csv
@@ -64,6 +66,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure14_ood_object_count_stress.png
 - figures\figure15_model_family_proxies.png
 - figures\figure16_statistical_audit.png
+- figures\figure17_observable_repair.png
 - figures\figure1_selected_tail_binding_failure.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png

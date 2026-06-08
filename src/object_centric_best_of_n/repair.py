@@ -168,6 +168,33 @@ def combined_repair_score(candidate: Candidate, scene: ObjectScene, seed: int = 
     )
 
 
+def observable_repair_score(candidate: Candidate, scene: ObjectScene, seed: int = 0) -> float:
+    """Repair score using observable slot diagnostics and probe posterior only.
+
+    The scene is used to simulate the diagnostic probe observation, but this
+    score does not compare the posterior with the scene's true hidden property.
+    """
+
+    probed = targeted_diagnostic_probe(candidate, scene=scene, seed=seed, action="lift")
+    consistency = temporal_identity_consistency(candidate)
+    merge = float(candidate.diagnostics.get("merge_evidence", 0.0))
+    slot_support = float(candidate.diagnostics.get("slot_support", 0.5))
+    instability = float(candidate.diagnostics.get("identity_instability", 0.5))
+    property_surprise = float(candidate.diagnostics.get("property_surprise", candidate.property_entropy))
+    posterior = float(probed.diagnostics["property_posterior_heavy"])
+    posterior_confidence = max(posterior, 1.0 - posterior)
+    return float(
+        0.22 * candidate.score
+        + 0.76 * consistency
+        + 0.32 * slot_support
+        + 0.18 * posterior_confidence
+        + 0.12 * (1.0 - candidate.property_entropy)
+        - 0.78 * merge
+        - 0.38 * instability
+        - 0.20 * property_surprise
+    )
+
+
 def conservative_selected_tail_stop_rule(summary: dict[str, float | int | str]) -> str:
     """Emit exactly one allowed deployment-gate action."""
 

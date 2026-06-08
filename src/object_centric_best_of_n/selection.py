@@ -12,6 +12,7 @@ from .object_model import Candidate
 from .repair import (
     combined_repair_score,
     identity_repaired_score,
+    observable_repair_score,
     property_calibrated_score,
     targeted_diagnostic_probe,
 )
@@ -89,12 +90,26 @@ def select_combined_repair(
     )
 
 
+def select_observable_repair(
+    candidates: list[Candidate], scene: ObjectScene | None = None, seed: int = 0
+) -> Candidate:
+    if scene is None:
+        raise ValueError("scene is required for observable repair")
+    return _select_max(
+        candidates,
+        lambda candidate: observable_repair_score(candidate, scene, seed=seed),
+        seed=seed,
+        label="observable_repair",
+    )
+
+
 SELECTORS: dict[str, Callable[[list[Candidate], ObjectScene | None, int], Candidate]] = {
     "raw": select_raw,
     "identity_consistent": select_identity_consistent,
     "property_calibrated": select_property_calibrated,
     "targeted_probe": select_targeted_probe,
     "combined_repair": select_combined_repair,
+    "observable_repair": select_observable_repair,
     "random": select_random,
     "oracle": select_oracle,
 }

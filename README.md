@@ -2,7 +2,7 @@
 
 This repository is a CPU-first research scaffold for studying how Best-of-N inference behaves when the scored futures are object-centric: slots, identities, occlusion, hidden properties, binding failures, and object-specific repair all matter.
 
-The core thesis is narrow: in controlled object-centric scenes, selecting the highest-scoring imagined future can amplify object binding errors, so selected object score can rise while selected real utility stagnates or falls. The repo also tests simple repairs: temporal identity consistency, hidden-property calibration, targeted probing, and a combined repair stack.
+The core thesis is narrow: in controlled object-centric scenes, selecting the highest-scoring imagined future can amplify object binding errors, so selected object score can rise while selected real utility stagnates or falls. The repo also tests simple repairs: temporal identity consistency, hidden-property calibration, targeted probing, an observable-only repair score, and a combined repair stack.
 
 ## Quickstart
 
@@ -21,7 +21,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A synthetic 2D object manipulation environment with visually similar target/distractor objects.
 - An object-centric future generator with slots, identities, hidden properties, trajectories, and failure diagnostics.
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
-- A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, combined repair, random selection, and oracle selection.
+- A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
@@ -44,6 +44,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/repair_metrics.csv`
 - `results/tables/paired_effects.csv`
 - `results/tables/repair_ablation.csv`
+- `results/tables/observable_repair_metrics.csv`
 - `results/tables/exact_law_validation.csv`
 - `results/tables/stress_seed_metrics.csv`
 - `results/tables/stress_metrics.csv`
@@ -81,6 +82,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure14_ood_object_count_stress.png`
 - `figures/figure15_model_family_proxies.png`
 - `figures/figure16_statistical_audit.png`
+- `figures/figure17_observable_repair.png`
 
 ## Claim Boundaries
 

@@ -8,6 +8,6 @@ Second, we generate controlled object-centric candidates. Each candidate contain
 
 Third, we train a small NumPy object-centric model on generated slot trajectories. It learns linear transition, hidden-property, identity-alignment, and reward predictors from slot and slot-pair features. This is a semi-learned artifact, not a broad benchmark model.
 
-Fourth, we compare selectors: raw score, identity-consistent score, property-calibrated score, targeted-probe repair, combined repair, random selection, and oracle selection.
+Fourth, we compare selectors: raw score, identity-consistent score, property-calibrated score, targeted-probe repair, observable-only repair, combined repair, random selection, and oracle selection.
 
 Fifth, we aggregate paired seed gains and high-N stress rows. The claim audit requires numeric margins before marking core claims strongly supported.

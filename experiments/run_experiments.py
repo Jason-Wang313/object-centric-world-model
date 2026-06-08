@@ -22,6 +22,7 @@ from object_centric_best_of_n.metrics import (
     exact_law_prediction_error,
     model_family_proxy_summary,
     negative_control_summary,
+    observable_repair_summary,
     ood_summary,
     paired_selector_effects,
     repair_ablation_summary,
@@ -40,9 +41,18 @@ from object_centric_best_of_n.theory import law_validation_row
 
 
 SCENARIOS = ["good", "swap", "merge_split", "occlusion", "hidden_property", "raw"]
-SELECTOR_ORDER = ["raw", "identity_consistent", "property_calibrated", "targeted_probe", "combined_repair", "random", "oracle"]
+SELECTOR_ORDER = [
+    "raw",
+    "identity_consistent",
+    "property_calibrated",
+    "targeted_probe",
+    "combined_repair",
+    "observable_repair",
+    "random",
+    "oracle",
+]
 STRESS_SCENARIOS = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
-STRESS_SELECTORS = ["raw", "identity_consistent", "targeted_probe", "combined_repair", "random", "oracle"]
+STRESS_SELECTORS = ["raw", "identity_consistent", "targeted_probe", "combined_repair", "observable_repair", "random", "oracle"]
 SENSITIVITY_NOISE = [0.0, 0.02, 0.05, 0.10, 0.20, 0.35]
 OOD_VARIANTS = [
     ("dense6_good", 6, False, False, False, "good"),
@@ -50,7 +60,7 @@ OOD_VARIANTS = [
     ("dense8_occlusion", 8, True, True, True, "occlusion"),
     ("dense8_hidden", 8, False, True, False, "hidden_property"),
 ]
-OOD_SELECTORS = ["raw", "combined_repair", "random", "oracle"]
+OOD_SELECTORS = ["raw", "combined_repair", "observable_repair", "random", "oracle"]
 MODEL_FAMILY_SCENARIOS = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
 MODEL_FAMILY_SELECTORS = [
     "raw",
@@ -293,7 +303,20 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
 
     seed_df = pd.DataFrame(seed_rows)
     main = aggregate_seed_metrics(seed_df)
-    repair_metrics = main[main["selector"].isin(["raw", "identity_consistent", "property_calibrated", "targeted_probe", "combined_repair", "random", "oracle"])].copy()
+    repair_metrics = main[
+        main["selector"].isin(
+            [
+                "raw",
+                "identity_consistent",
+                "property_calibrated",
+                "targeted_probe",
+                "combined_repair",
+                "observable_repair",
+                "random",
+                "oracle",
+            ]
+        )
+    ].copy()
     paired_effects = paired_selector_effects(seed_df)
     law_df = pd.DataFrame(law_rows)
     stress_seeds = list(range(4)) if mode == "smoke" else list(range(32))
@@ -318,6 +341,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         seed=240_001,
     )
     ablation_metrics = repair_ablation_summary(main, paired_effects)
+    observable_metrics = observable_repair_summary(main, paired_effects)
     robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
     negative_control = negative_control_summary(main)
 
@@ -326,6 +350,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     repair_metrics.to_csv(tables / "repair_metrics.csv", index=False)
     paired_effects.to_csv(tables / "paired_effects.csv", index=False)
     ablation_metrics.to_csv(tables / "repair_ablation.csv", index=False)
+    observable_metrics.to_csv(tables / "observable_repair_metrics.csv", index=False)
     robustness_metrics.to_csv(tables / "seed_block_robustness.csv", index=False)
     negative_control.to_csv(tables / "negative_control.csv", index=False)
     law_df.to_csv(tables / "exact_law_validation.csv", index=False)
@@ -363,6 +388,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         ood_df=ood_metrics,
         family_df=family_metrics,
         statistical_df=statistical_metrics,
+        observable_df=observable_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -377,6 +403,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         (stress_metrics["selector"] == "combined_repair") & (stress_metrics["scenario"].isin(STRESS_SCENARIOS))
     ]
     raw_ablation = ablation_metrics[ablation_metrics["scenario"] == "raw"]
+    raw_observable = observable_metrics[observable_metrics["scenario"] == "raw"]
     robustness_pass_rate = float(
         np.mean(
             (robustness_metrics["raw_tail_score_gain"] >= 0.30)
@@ -394,6 +421,10 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     kinematic_pair_ablation = learned_ablation[learned_ablation["ablation"] == "kinematic_pair_identity"]
     ood_combined = ood_metrics[
         (ood_metrics["selector"] == "combined_repair")
+        & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
+    ]
+    ood_observable = ood_metrics[
+        (ood_metrics["selector"] == "observable_repair")
         & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
     ]
     ood_raw = ood_metrics[
@@ -436,6 +467,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "combined_repair_raw_nmax_mean_gain": float(raw_combined_nmax["mean_gain"].iloc[0]) if not raw_combined_nmax.empty else None,
         "combined_repair_raw_nmax_win_rate": float(raw_combined_nmax["win_rate"].iloc[0]) if not raw_combined_nmax.empty else None,
         "combined_repair_raw_ablation_dominance": float(raw_ablation["combined_vs_best_single_gain"].iloc[0]) if not raw_ablation.empty else None,
+        "observable_repair_raw_nmax_utility": float(raw_observable["observable_repair_utility"].iloc[0]) if not raw_observable.empty else None,
+        "observable_repair_raw_nmax_gain": float(raw_observable["observable_vs_raw_gain"].iloc[0]) if not raw_observable.empty else None,
+        "observable_repair_combined_gap": float(raw_observable["combined_minus_observable_gap"].iloc[0]) if not raw_observable.empty else None,
         "stress_combined_mean_selected_utility": float(stress_combined["selected_real_utility_mean"].mean()) if not stress_combined.empty else None,
         "seed_block_robustness_pass_rate": robustness_pass_rate,
         "raw_score_top_bin_object_real_gap": float(top_calibration["object_real_gap"]) if top_calibration is not None else None,
@@ -452,6 +486,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "ood_raw_mean_selected_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
         "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,
         "ood_good_control_raw_utility": float(ood_good["selected_real_utility_mean"].iloc[0]) if not ood_good.empty else None,
+        "ood_observable_mean_selected_utility": float(ood_observable["selected_real_utility_mean"].mean()) if not ood_observable.empty else None,
+        "ood_observable_vs_raw_gain": float(ood_observable["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_observable.empty and not ood_raw.empty else None,
         "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
         "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
         "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,

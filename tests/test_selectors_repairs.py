@@ -21,9 +21,11 @@ def test_selectors_return_candidates_and_repairs_are_available():
     raw = SELECTORS["raw"](candidates, scene, seed=0)
     oracle = SELECTORS["oracle"](candidates, scene, seed=0)
     combined = SELECTORS["combined_repair"](candidates, scene, seed=0)
+    observable = SELECTORS["observable_repair"](candidates, scene, seed=0)
     assert raw.candidate_id in range(len(candidates))
     assert oracle.real_utility >= min(c.real_utility for c in candidates)
     assert combined.diagnostics["selector_score_label"] == "combined_repair"
+    assert observable.diagnostics["selector_score_label"] == "observable_repair"
 
 
 def test_property_probe_update_and_slot_alignment():

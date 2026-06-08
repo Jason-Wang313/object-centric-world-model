@@ -7,6 +7,7 @@ This digest is generated from the current result artifacts.
 - Raw selected-tail score gain: 0.5759192453426587
 - Raw selected-tail utility drop: 0.36397088780796794
 - Combined repair raw Nmax gain: 0.8803086375224858
+- Observable repair raw Nmax gain: 0.8803086375224858
 - Combined repair raw ablation dominance: 0.27709535654229556
 - Stress combined mean selected utility: 0.8494153088926296
 - Seed-block robustness pass rate: 1.0

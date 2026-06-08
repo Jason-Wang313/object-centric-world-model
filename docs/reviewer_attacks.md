@@ -10,7 +10,7 @@ Response: Correct. Claims are limited to controlled synthetic and semi-learned C
 
 ## Attack: Repairs may use generator diagnostics.
 
-Response: Correct. The repair stack uses controlled diagnostic signals such as identity instability, merge evidence, property entropy, and targeted probe observations. This is appropriate for a v1 mechanism study, not a deployment claim.
+Response: Correct for the strongest controlled stack: it uses diagnostic signals such as identity instability, merge evidence, property entropy, and targeted probe observations. The upgraded run also reports `observable_repair_metrics.csv`, where an observable-only repair score uses slot diagnostics and probe posterior information without comparing to the scene's true hidden property. This is still a synthetic mechanism study, not a deployment claim.
 
 ## Attack: The repair result could be a seed fluke.
 

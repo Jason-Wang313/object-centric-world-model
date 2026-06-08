@@ -28,6 +28,7 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/repair_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean"),
     "results/tables/paired_effects.csv": ("scenario", "selector", "N", "mean_gain", "win_rate"),
     "results/tables/repair_ablation.csv": ("scenario", "combined_vs_raw_gain", "combined_vs_best_single_gain"),
+    "results/tables/observable_repair_metrics.csv": ("scenario", "observable_repair_utility", "observable_vs_raw_gain", "combined_minus_observable_gap"),
     "results/tables/stress_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
     "results/tables/stress_metrics.csv": ("scenario", "selector", "selected_real_utility_mean"),
     "results/tables/seed_block_robustness.csv": ("block_id", "raw_tail_score_gain", "combined_raw_nmax_gain"),
@@ -62,6 +63,7 @@ REQUIRED_FIGURES = (
     "figures/figure14_ood_object_count_stress.png",
     "figures/figure15_model_family_proxies.png",
     "figures/figure16_statistical_audit.png",
+    "figures/figure17_observable_repair.png",
 )
 
 REQUIRED_JSON = (
@@ -98,6 +100,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     paired = _read_csv(tables / "paired_effects.csv")
     stress = _read_csv(tables / "stress_metrics.csv")
     ablation = _read_csv(tables / "repair_ablation.csv")
+    observable = _read_csv(tables / "observable_repair_metrics.csv")
     robustness = _read_csv(tables / "seed_block_robustness.csv")
     calibration = _read_csv(tables / "score_calibration.csv")
     sensitivity = _read_csv(tables / "sensitivity_metrics.csv")
@@ -181,7 +184,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     "bootstrap_raw_tail_min_ci_margin": float((c2_stats["bootstrap_ci_low"] - c2_stats["threshold"]).min()) if not c2_stats.empty else None,
                 },
             }
-    if not paired.empty and not stress.empty and not ablation.empty and not robustness.empty and not sensitivity.empty:
+    if not paired.empty and not stress.empty and not ablation.empty and not observable.empty and not robustness.empty and not sensitivity.empty:
         raw_gain = paired[
             (paired["scenario"] == "raw")
             & (paired["selector"] == "combined_repair")
@@ -209,6 +212,16 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             not raw_ablation.empty
             and float(raw_ablation["combined_vs_best_single_gain"].iloc[0]) >= 0.20
             and float(raw_ablation["combined_oracle_gap"].iloc[0]) <= 0.08
+        )
+        raw_observable = observable[observable["scenario"] == "raw"]
+        observable_corrupted = observable[observable["scenario"].isin(["raw", "occlusion", "hidden_property", "swap", "merge_split"])]
+        observable_pass = (
+            not raw_observable.empty
+            and not observable_corrupted.empty
+            and float(raw_observable["observable_vs_raw_gain"].iloc[0]) >= 0.55
+            and float(raw_observable["observable_repair_utility"].iloc[0]) >= 0.72
+            and float(observable_corrupted["observable_repair_utility"].mean()) >= 0.70
+            and float(observable_corrupted["combined_minus_observable_gap"].max()) <= 0.20
         )
         robustness_pass = bool(
             float(robustness["combined_raw_nmax_gain"].min()) >= 0.55
@@ -264,8 +277,10 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 statistical["effect_id"].isin(
                     [
                         "combined_repair_raw_gain",
+                        "observable_repair_raw_gain",
                         "targeted_probe_hidden_gain",
                         "ood_combined_repair_gain",
+                        "ood_observable_repair_gain",
                         "model_family_proxy_gain",
                     ]
                 )
@@ -275,8 +290,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass and ood_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -285,6 +300,10 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "stress_combined_min_utility": float(stress_combined["selected_real_utility_mean"].min()) if not stress_combined.empty else None,
                 "raw_ablation_combined_vs_best_single_gain": float(raw_ablation["combined_vs_best_single_gain"].iloc[0]) if not raw_ablation.empty else None,
                 "raw_ablation_combined_oracle_gap": float(raw_ablation["combined_oracle_gap"].iloc[0]) if not raw_ablation.empty else None,
+                "observable_raw_gain": float(raw_observable["observable_vs_raw_gain"].iloc[0]) if not raw_observable.empty else None,
+                "observable_raw_utility": float(raw_observable["observable_repair_utility"].iloc[0]) if not raw_observable.empty else None,
+                "observable_mean_corrupted_utility": float(observable_corrupted["observable_repair_utility"].mean()) if not observable_corrupted.empty else None,
+                "observable_max_combined_gap": float(observable_corrupted["combined_minus_observable_gap"].max()) if not observable_corrupted.empty else None,
                 "min_block_combined_raw_gain": float(robustness["combined_raw_nmax_gain"].min()) if not robustness.empty else None,
                 "min_block_combined_win_rate": float(robustness["combined_raw_nmax_win_rate"].min()) if not robustness.empty else None,
                 "combined_min_low_noise_utility": float(combined_sensitivity["selected_real_utility_mean"].min()) if not combined_sensitivity.empty else None,
@@ -540,6 +559,7 @@ def write_results_digest(root: str | Path) -> None:
         f"- Raw selected-tail score gain: {summary.get('raw_tail_score_gain', 'unknown')}",
         f"- Raw selected-tail utility drop: {summary.get('raw_tail_utility_drop', 'unknown')}",
         f"- Combined repair raw Nmax gain: {summary.get('combined_repair_raw_nmax_mean_gain', 'unknown')}",
+        f"- Observable repair raw Nmax gain: {summary.get('observable_repair_raw_nmax_gain', 'unknown')}",
         f"- Combined repair raw ablation dominance: {summary.get('combined_repair_raw_ablation_dominance', 'unknown')}",
         f"- Stress combined mean selected utility: {summary.get('stress_combined_mean_selected_utility', 'unknown')}",
         f"- Seed-block robustness pass rate: {summary.get('seed_block_robustness_pass_rate', 'unknown')}",
@@ -700,6 +720,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "- Learned artifact: learned_object_model_summary.json with CPU NumPy slot-level transition, hidden-property, identity-alignment, and reward predictors.",
             "- Repair artifact: figure2_repair_comparison.png, paired_effects.csv, and stress_metrics.csv. "
             f"Raw Nmax combined-repair gain {summary_payload.get('combined_repair_raw_nmax_mean_gain', 'unknown')} with win rate {summary_payload.get('combined_repair_raw_nmax_win_rate', 'unknown')}.",
+            "- Observable-repair artifact: figure17_observable_repair.png and observable_repair_metrics.csv. "
+            f"Raw Nmax observable-repair gain {summary_payload.get('observable_repair_raw_nmax_gain', 'unknown')}.",
             "- Ablation artifact: figure8_repair_ablation.png and repair_ablation.csv. "
             f"Raw Nmax combined-repair dominance over the best single repair {summary_payload.get('combined_repair_raw_ablation_dominance', 'unknown')}.",
             "- Robustness artifact: figure9_seed_block_robustness.png and seed_block_robustness.csv. "
@@ -727,7 +749,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "",
             "## Remaining Weaknesses",
             f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds and {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds.",
-            "- Repairs use diagnostic signals available in the toy generator.",
+            "- Observable-only repair reduces direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",
             "## Artifact Inventory",

@@ -270,6 +270,54 @@ def repair_ablation_summary(main_metrics: pd.DataFrame, paired_effects: pd.DataF
     return pd.DataFrame(rows)
 
 
+def observable_repair_summary(main_metrics: pd.DataFrame, paired_effects: pd.DataFrame) -> pd.DataFrame:
+    """Summarize observable-only repair against raw, controlled repair, and oracle."""
+
+    if main_metrics.empty:
+        return pd.DataFrame()
+    nmax = int(main_metrics["N"].max())
+    scenarios = ["raw", "hidden_property", "occlusion", "swap", "merge_split"]
+    selectors = ["raw", "observable_repair", "combined_repair", "oracle"]
+    df = main_metrics[
+        (main_metrics["N"] == nmax)
+        & (main_metrics["scenario"].isin(scenarios))
+        & (main_metrics["selector"].isin(selectors))
+    ].copy()
+    if df.empty:
+        return pd.DataFrame()
+    rows: list[dict[str, float | int | str]] = []
+    for scenario, group in df.groupby("scenario", sort=True):
+        if not set(selectors).issubset(set(group["selector"])):
+            continue
+        raw_value = float(group.loc[group["selector"] == "raw", "selected_real_utility_mean"].iloc[0])
+        observable_value = float(
+            group.loc[group["selector"] == "observable_repair", "selected_real_utility_mean"].iloc[0]
+        )
+        combined_value = float(group.loc[group["selector"] == "combined_repair", "selected_real_utility_mean"].iloc[0])
+        oracle_value = float(group.loc[group["selector"] == "oracle", "selected_real_utility_mean"].iloc[0])
+        pair = paired_effects[
+            (paired_effects["scenario"] == scenario)
+            & (paired_effects["selector"] == "observable_repair")
+            & (paired_effects["N"] == nmax)
+        ]
+        rows.append(
+            {
+                "scenario": scenario,
+                "N": nmax,
+                "raw_selected_real_utility": raw_value,
+                "observable_repair_utility": observable_value,
+                "combined_repair_utility": combined_value,
+                "oracle_utility": oracle_value,
+                "observable_vs_raw_gain": observable_value - raw_value,
+                "combined_minus_observable_gap": combined_value - observable_value,
+                "observable_oracle_gap": oracle_value - observable_value,
+                "observable_win_rate_vs_raw": float(pair["win_rate"].iloc[0]) if not pair.empty else float("nan"),
+                "observable_sign_test_p": float(pair["sign_test_p"].iloc[0]) if not pair.empty else float("nan"),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def seed_block_robustness(seed_df: pd.DataFrame, block_size: int = 4) -> pd.DataFrame:
     """Check whether key effects survive contiguous seed blocks."""
 
@@ -535,6 +583,12 @@ def statistical_audit(
             threshold=0.50,
         )
         add_row(
+            "observable_repair_raw_gain",
+            "Observable-only repair selected-utility gain over raw at high N.",
+            _paired_gain_units(seed_df, "raw", "observable_repair"),
+            threshold=0.45,
+        )
+        add_row(
             "targeted_probe_hidden_gain",
             "Targeted probe selected-utility gain over raw for hidden-property scenes at high N.",
             _paired_gain_units(seed_df, "hidden_property", "targeted_probe"),
@@ -556,6 +610,16 @@ def statistical_audit(
             "Dense OOD corrupted-scene combined repair selected-utility gain over raw.",
             merged["treatment"] - merged["baseline"],
             threshold=0.60,
+        )
+        observable = corrupted[(corrupted["selector"] == "observable_repair") & (corrupted["N"] == n_max)][
+            ["scenario", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "observable"})
+        observable_merged = observable.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "ood_observable_repair_gain",
+            "Dense OOD corrupted-scene observable-only repair selected-utility gain over raw.",
+            observable_merged["observable"] - observable_merged["baseline"],
+            threshold=0.50,
         )
 
     if family_seed_df is not None and not family_seed_df.empty:

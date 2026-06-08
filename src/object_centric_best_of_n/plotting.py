@@ -306,6 +306,22 @@ def figure16_statistical_audit(statistical: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure16_statistical_audit.png")
 
 
+def figure17_observable_repair(observable: pd.DataFrame, out: Path) -> None:
+    if observable.empty:
+        return
+    df = observable.set_index("scenario")[
+        ["raw_selected_real_utility", "observable_repair_utility", "combined_repair_utility", "oracle_utility"]
+    ]
+    fig, ax = plt.subplots(figsize=(8.8, 4.5))
+    df.plot(kind="bar", ax=ax, color=["#b23b3b", "#6f8f3c", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("controlled synthetic scenario")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Observable-only repair stress test")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(["raw", "observable repair", "controlled combined", "oracle"], frameon=False, fontsize=8)
+    _save(fig, out / "figure17_observable_repair.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -322,6 +338,7 @@ def write_all_figures(
     ood_df: pd.DataFrame | None = None,
     family_df: pd.DataFrame | None = None,
     statistical_df: pd.DataFrame | None = None,
+    observable_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -351,3 +368,5 @@ def write_all_figures(
         figure15_model_family_proxies(family_df, out)
     if statistical_df is not None:
         figure16_statistical_audit(statistical_df, out)
+    if observable_df is not None:
+        figure17_observable_repair(observable_df, out)
