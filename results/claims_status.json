@@ -21,11 +21,14 @@
       "evidence": "figure1 and main_metrics.csv for the raw scenario",
       "strength": {
         "passes": true,
-        "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75",
+        "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, and all seed blocks pass reduced thresholds",
         "observed": {
           "raw_tail_score_gain": 0.5759192453426587,
           "raw_tail_utility_drop": 0.3639708878079679,
-          "raw_tail_identity_error": 1.0
+          "raw_tail_identity_error": 1.0,
+          "min_block_score_gain": 0.418084184937237,
+          "min_block_utility_drop": 0.252396546523533,
+          "min_block_identity_error": 1.0
         }
       }
     },
@@ -36,12 +39,17 @@
       "evidence": "figure2, figure4, paired_effects.csv, and stress_metrics.csv",
       "strength": {
         "passes": true,
-        "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean utility >= 0.75",
+        "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, and all seed blocks repair",
         "observed": {
           "combined_raw_nmax_gain": 0.8803086375224858,
           "combined_raw_nmax_win_rate": 1.0,
           "targeted_hidden_property_nmax_gain": 0.7747901941902325,
-          "stress_combined_mean_utility": 0.8494153088926296
+          "stress_combined_mean_utility": 0.8494153088926296,
+          "stress_combined_min_utility": 0.8252742847310228,
+          "raw_ablation_combined_vs_best_single_gain": 0.2770953565422955,
+          "raw_ablation_combined_oracle_gap": 0.0244701492605839,
+          "min_block_combined_raw_gain": 0.8602071898170613,
+          "min_block_combined_win_rate": 1.0
         }
       }
     },
@@ -75,6 +83,12 @@
     }
   ],
   "forbidden_supported_overclaims": [],
+  "paper_text_overclaims": [],
+  "artifact_verification": {
+    "checked_count": 23,
+    "problems": [],
+    "passes": true
+  },
   "weak_or_missing_core_claims": [],
   "passes_claim_audit": true
 }

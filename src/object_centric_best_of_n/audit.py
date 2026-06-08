@@ -19,6 +19,38 @@ FORBIDDEN_SUPPORTED_PATTERNS = (
     "benchmark superiority",
 )
 
+REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
+    "results/tables/main_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean"),
+    "results/tables/seed_metrics.csv": ("scenario", "selector", "N", "seed", "selected_real_utility"),
+    "results/tables/learned_metrics.csv": ("property_accuracy", "identity_alignment_accuracy", "transition_mse"),
+    "results/tables/learned_learning_curve.csv": ("train_scenes", "property_accuracy", "identity_alignment_accuracy"),
+    "results/tables/repair_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean"),
+    "results/tables/paired_effects.csv": ("scenario", "selector", "N", "mean_gain", "win_rate"),
+    "results/tables/repair_ablation.csv": ("scenario", "combined_vs_raw_gain", "combined_vs_best_single_gain"),
+    "results/tables/stress_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
+    "results/tables/stress_metrics.csv": ("scenario", "selector", "selected_real_utility_mean"),
+    "results/tables/seed_block_robustness.csv": ("block_id", "raw_tail_score_gain", "combined_raw_nmax_gain"),
+    "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
+}
+
+REQUIRED_FIGURES = (
+    "figures/figure1_selected_tail_binding_failure.png",
+    "figures/figure2_repair_comparison.png",
+    "figures/figure3_tail_diagnostics.png",
+    "figures/figure4_targeted_probe_before_after.png",
+    "figures/figure5_exact_law_validation.png",
+    "figures/figure6_stress_robustness.png",
+    "figures/figure7_learned_object_model.png",
+    "figures/figure8_repair_ablation.png",
+    "figures/figure9_seed_block_robustness.png",
+)
+
+REQUIRED_JSON = (
+    "results/run_summary.json",
+    "results/learned_object_model_summary.json",
+    "results/verification_log.json",
+)
+
 
 def _status(passes: bool | None) -> str:
     if passes is None:
@@ -45,6 +77,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     law = _read_csv(tables / "exact_law_validation.csv")
     paired = _read_csv(tables / "paired_effects.csv")
     stress = _read_csv(tables / "stress_metrics.csv")
+    ablation = _read_csv(tables / "repair_ablation.csv")
+    robustness = _read_csv(tables / "seed_block_robustness.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
 
     strengths: dict[str, dict[str, object]] = {}
@@ -64,15 +98,26 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             utility_drop = float(raw["selected_real_utility_mean"].iloc[0] - raw["selected_real_utility_mean"].iloc[-1])
             identity_tail = float(raw["identity_error_mean"].iloc[-1])
             strengths["C2"] = {
-                "passes": bool(score_gain >= 0.35 and utility_drop >= 0.15 and identity_tail >= 0.75),
-                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75",
+                "passes": bool(
+                    score_gain >= 0.35
+                    and utility_drop >= 0.15
+                    and identity_tail >= 0.75
+                    and not robustness.empty
+                    and float(robustness["raw_tail_score_gain"].min()) >= 0.30
+                    and float(robustness["raw_tail_utility_drop"].min()) >= 0.10
+                    and float(robustness["raw_tail_identity_error"].min()) >= 0.75
+                ),
+                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, and all seed blocks pass reduced thresholds",
                 "observed": {
                     "raw_tail_score_gain": score_gain,
                     "raw_tail_utility_drop": utility_drop,
                     "raw_tail_identity_error": identity_tail,
+                    "min_block_score_gain": float(robustness["raw_tail_score_gain"].min()) if not robustness.empty else None,
+                    "min_block_utility_drop": float(robustness["raw_tail_utility_drop"].min()) if not robustness.empty else None,
+                    "min_block_identity_error": float(robustness["raw_tail_identity_error"].min()) if not robustness.empty else None,
                 },
             }
-    if not paired.empty and not stress.empty:
+    if not paired.empty and not stress.empty and not ablation.empty and not robustness.empty:
         raw_gain = paired[
             (paired["scenario"] == "raw")
             & (paired["selector"] == "combined_repair")
@@ -84,21 +129,40 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             & (paired["N"] == paired["N"].max())
         ]
         stress_combined = stress[stress["selector"] == "combined_repair"]
+        raw_ablation = ablation[ablation["scenario"] == "raw"]
         raw_pass = (
             not raw_gain.empty
             and float(raw_gain["mean_gain"].iloc[0]) >= 0.55
             and float(raw_gain["win_rate"].iloc[0]) >= 0.75
         )
         probe_pass = not hidden_probe.empty and float(hidden_probe["mean_gain"].iloc[0]) >= 0.12
-        stress_pass = not stress_combined.empty and float(stress_combined["selected_real_utility_mean"].mean()) >= 0.75
+        stress_pass = (
+            not stress_combined.empty
+            and float(stress_combined["selected_real_utility_mean"].mean()) >= 0.75
+            and float(stress_combined["selected_real_utility_mean"].min()) >= 0.80
+        )
+        ablation_pass = (
+            not raw_ablation.empty
+            and float(raw_ablation["combined_vs_best_single_gain"].iloc[0]) >= 0.20
+            and float(raw_ablation["combined_oracle_gap"].iloc[0]) <= 0.08
+        )
+        robustness_pass = bool(
+            float(robustness["combined_raw_nmax_gain"].min()) >= 0.55
+            and float(robustness["combined_raw_nmax_win_rate"].min()) >= 0.75
+        )
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean utility >= 0.75",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, and all seed blocks repair",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
                 "targeted_hidden_property_nmax_gain": float(hidden_probe["mean_gain"].iloc[0]) if not hidden_probe.empty else None,
                 "stress_combined_mean_utility": float(stress_combined["selected_real_utility_mean"].mean()) if not stress_combined.empty else None,
+                "stress_combined_min_utility": float(stress_combined["selected_real_utility_mean"].min()) if not stress_combined.empty else None,
+                "raw_ablation_combined_vs_best_single_gain": float(raw_ablation["combined_vs_best_single_gain"].iloc[0]) if not raw_ablation.empty else None,
+                "raw_ablation_combined_oracle_gap": float(raw_ablation["combined_oracle_gap"].iloc[0]) if not raw_ablation.empty else None,
+                "min_block_combined_raw_gain": float(robustness["combined_raw_nmax_gain"].min()) if not robustness.empty else None,
+                "min_block_combined_win_rate": float(robustness["combined_raw_nmax_win_rate"].min()) if not robustness.empty else None,
             },
         }
     learned_metrics = learned.get("metrics", {})
@@ -185,6 +249,147 @@ def scan_forbidden_overclaims(claims: Iterable[dict[str, object]]) -> list[str]:
     return problems
 
 
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()
+    if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n":
+        return 0, 0
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    return width, height
+
+
+def verify_artifacts(root: str | Path) -> dict[str, object]:
+    root = Path(root)
+    problems: list[str] = []
+    checked: list[str] = []
+    for rel, columns in REQUIRED_TABLES.items():
+        path = root / rel
+        checked.append(rel)
+        if not path.exists():
+            problems.append(f"missing table: {rel}")
+            continue
+        if path.stat().st_size <= 0:
+            problems.append(f"empty table file: {rel}")
+            continue
+        df = pd.read_csv(path)
+        if df.empty:
+            problems.append(f"table has no rows: {rel}")
+        missing_columns = [col for col in columns if col not in df.columns]
+        if missing_columns:
+            problems.append(f"table {rel} missing columns: {missing_columns}")
+    for rel in REQUIRED_FIGURES:
+        path = root / rel
+        checked.append(rel)
+        if not path.exists():
+            problems.append(f"missing figure: {rel}")
+            continue
+        width, height = _png_dimensions(path)
+        if width < 400 or height < 300:
+            problems.append(f"figure {rel} has suspicious dimensions: {width}x{height}")
+    for rel in REQUIRED_JSON:
+        path = root / rel
+        checked.append(rel)
+        if not path.exists():
+            problems.append(f"missing json artifact: {rel}")
+            continue
+        try:
+            json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            problems.append(f"invalid json {rel}: {exc}")
+    return {"checked_count": len(checked), "problems": problems, "passes": not problems}
+
+
+def scan_text_overclaims(root: str | Path) -> list[str]:
+    root = Path(root)
+    support_terms = (
+        "validated",
+        "validation",
+        "superiority",
+        "outperform",
+        "outperforms",
+        "beats",
+        "state of the art",
+        "sota",
+        "real-robot evidence",
+        "real robot evidence",
+    )
+    negators = (
+        "not",
+        "no ",
+        "unsupported",
+        "without",
+        "does not",
+        "do not",
+        "needs",
+        "requires",
+        "not a",
+    )
+    problems: list[str] = []
+    files = [root / "README.md"]
+    files.extend(sorted((root / "docs").glob("*.md")))
+    files.extend(sorted((root / "paper").glob("*.md")))
+    for path in files:
+        if not path.exists():
+            continue
+        in_unsupported_section = False
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            text = line.lower()
+            if text.startswith("##"):
+                in_unsupported_section = "unsupported" in text or "boundaries" in text or "what this is not" in text
+            if in_unsupported_section:
+                continue
+            has_forbidden = any(pattern in text for pattern in FORBIDDEN_SUPPORTED_PATTERNS)
+            has_support = any(term in text for term in support_terms)
+            has_negator = any(term in text for term in negators)
+            if has_forbidden and has_support and not has_negator:
+                problems.append(f"{path.relative_to(root)}:{lineno}: {line.strip()}")
+    return problems
+
+
+def write_results_digest(root: str | Path) -> None:
+    root = Path(root)
+    summary = _read_json(root / "results" / "run_summary.json")
+    claims = _read_json(root / "results" / "claims_status.json")
+    learned = _read_json(root / "results" / "learned_object_model_summary.json")
+    lines = [
+        "# Results Digest",
+        "",
+        "This digest is generated from the current result artifacts.",
+        "",
+        "## Headline Numbers",
+        f"- Exact-law mean absolute error: {summary.get('exact_law_mean_absolute_error', 'unknown')}",
+        f"- Raw selected-tail score gain: {summary.get('raw_tail_score_gain', 'unknown')}",
+        f"- Raw selected-tail utility drop: {summary.get('raw_tail_utility_drop', 'unknown')}",
+        f"- Combined repair raw Nmax gain: {summary.get('combined_repair_raw_nmax_mean_gain', 'unknown')}",
+        f"- Combined repair raw ablation dominance: {summary.get('combined_repair_raw_ablation_dominance', 'unknown')}",
+        f"- Stress combined mean selected utility: {summary.get('stress_combined_mean_selected_utility', 'unknown')}",
+        f"- Seed-block robustness pass rate: {summary.get('seed_block_robustness_pass_rate', 'unknown')}",
+        "",
+        "## Learned Model",
+    ]
+    metrics = learned.get("metrics", {})
+    if metrics:
+        lines.extend(
+            [
+                f"- Property accuracy: {metrics.get('property_accuracy')} versus baseline {metrics.get('random_property_accuracy')}",
+                f"- Identity alignment accuracy: {metrics.get('identity_alignment_accuracy')} versus baseline {metrics.get('random_identity_alignment_accuracy')}",
+                f"- Transition MSE ratio: {metrics.get('transition_mse') / metrics.get('constant_transition_mse') if metrics.get('constant_transition_mse') else 'unknown'}",
+                f"- Reward correlation: {metrics.get('reward_correlation')}",
+            ]
+        )
+    lines.extend(["", "## Claim Status"])
+    for claim in claims.get("claims", []):
+        lines.append(f"- {claim.get('id')}: {claim.get('status')} - {claim.get('claim')}")
+    lines.extend(
+        [
+            "",
+            "## Boundaries",
+            "Real-robot validation and broad benchmark superiority remain unsupported and are not claimed as supported paper results.",
+        ]
+    )
+    (root / "docs" / "results_digest.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def artifact_inventory(root: str | Path) -> dict[str, list[str]]:
     root = Path(root)
     groups = {
@@ -212,6 +417,8 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
     results.mkdir(parents=True, exist_ok=True)
     claims = claim_inventory(root)
     problems = scan_forbidden_overclaims(claims)
+    text_overclaims = scan_text_overclaims(root)
+    artifact_verification = verify_artifacts(root)
     weak_supported = [
         f"{claim['id']}: {claim['status']}"
         for claim in claims
@@ -220,8 +427,10 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
     payload = {
         "claims": claims,
         "forbidden_supported_overclaims": problems,
+        "paper_text_overclaims": text_overclaims,
+        "artifact_verification": artifact_verification,
         "weak_or_missing_core_claims": weak_supported,
-        "passes_claim_audit": not problems and not weak_supported,
+        "passes_claim_audit": not problems and not weak_supported and not text_overclaims and artifact_verification["passes"],
     }
     (results / "claims_status.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -245,8 +454,17 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
     if problems:
         lines.append("## Forbidden supported overclaims")
         lines.extend(f"- {problem}" for problem in problems)
-    else:
-        lines.append("No forbidden supported overclaims detected.")
+    if text_overclaims:
+        lines.append("## Paper text overclaims")
+        lines.extend(f"- {problem}" for problem in text_overclaims)
+    if not artifact_verification["passes"]:
+        lines.append("## Artifact verification problems")
+        lines.extend(f"- {problem}" for problem in artifact_verification["problems"])
+    lines.append("")
+    lines.append(f"Artifact verification checked {artifact_verification['checked_count']} required artifacts.")
+    if not problems and not text_overclaims and artifact_verification["passes"]:
+        lines.append("")
+        lines.append("No paper-text or artifact overclaim problems detected.")
     (results / "claims_status.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return payload
 
@@ -291,6 +509,10 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "- Learned artifact: learned_object_model_summary.json with CPU NumPy slot-level transition, hidden-property, identity-alignment, and reward predictors.",
             "- Repair artifact: figure2_repair_comparison.png, paired_effects.csv, and stress_metrics.csv. "
             f"Raw Nmax combined-repair gain {summary_payload.get('combined_repair_raw_nmax_mean_gain', 'unknown')} with win rate {summary_payload.get('combined_repair_raw_nmax_win_rate', 'unknown')}.",
+            "- Ablation artifact: figure8_repair_ablation.png and repair_ablation.csv. "
+            f"Raw Nmax combined-repair dominance over the best single repair {summary_payload.get('combined_repair_raw_ablation_dominance', 'unknown')}.",
+            "- Robustness artifact: figure9_seed_block_robustness.png and seed_block_robustness.csv. "
+            f"Seed-block robustness pass rate {summary_payload.get('seed_block_robustness_pass_rate', 'unknown')}.",
             "- Stress artifact: figure6_stress_robustness.png. "
             f"Combined repair mean selected stress utility {summary_payload.get('stress_combined_mean_selected_utility', 'unknown')}.",
             "",
@@ -321,7 +543,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=Path.cwd())
     args = parser.parse_args()
+    write_results_digest(args.root)
     payload = write_claim_status(args.root)
+    write_results_digest(args.root)
     write_final_audit(args.root)
     if not payload["passes_claim_audit"]:
         return 1

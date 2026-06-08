@@ -170,6 +170,106 @@ def stress_summary(stress_seed_df: pd.DataFrame) -> pd.DataFrame:
     return main.merge(combined, on=["experiment", "scenario", "N"], how="left")
 
 
+def repair_ablation_summary(main_metrics: pd.DataFrame, paired_effects: pd.DataFrame) -> pd.DataFrame:
+    """Summarize high-N repair components against raw and oracle."""
+
+    if main_metrics.empty:
+        return pd.DataFrame()
+    nmax = int(main_metrics["N"].max())
+    selectors = [
+        "raw",
+        "identity_consistent",
+        "property_calibrated",
+        "targeted_probe",
+        "combined_repair",
+        "random",
+        "oracle",
+    ]
+    scenarios = ["raw", "hidden_property", "occlusion", "swap", "merge_split"]
+    df = main_metrics[
+        (main_metrics["N"] == nmax)
+        & (main_metrics["scenario"].isin(scenarios))
+        & (main_metrics["selector"].isin(selectors))
+    ].copy()
+    if df.empty:
+        return df
+    pair_cols = ["scenario", "selector", "N", "mean_gain", "win_rate", "sign_test_p"]
+    available_pair_cols = [col for col in pair_cols if col in paired_effects.columns]
+    if not paired_effects.empty and set(["scenario", "selector", "N"]).issubset(paired_effects.columns):
+        df = df.merge(
+            paired_effects[available_pair_cols],
+            on=["scenario", "selector", "N"],
+            how="left",
+        )
+    rows: list[dict[str, float | int | str]] = []
+    for scenario, group in df.groupby("scenario", sort=True):
+        raw_value = float(group.loc[group["selector"] == "raw", "selected_real_utility_mean"].iloc[0])
+        oracle_value = float(group.loc[group["selector"] == "oracle", "selected_real_utility_mean"].iloc[0])
+        component_group = group[group["selector"].isin(["identity_consistent", "property_calibrated", "targeted_probe"])]
+        best_component = float(component_group["selected_real_utility_mean"].max()) if not component_group.empty else float("nan")
+        combined_value = float(group.loc[group["selector"] == "combined_repair", "selected_real_utility_mean"].iloc[0])
+        combined_row = group[group["selector"] == "combined_repair"].iloc[0]
+        rows.append(
+            {
+                "scenario": scenario,
+                "N": nmax,
+                "raw_selected_real_utility": raw_value,
+                "best_single_repair_utility": best_component,
+                "combined_repair_utility": combined_value,
+                "oracle_utility": oracle_value,
+                "combined_vs_raw_gain": combined_value - raw_value,
+                "combined_vs_best_single_gain": combined_value - best_component,
+                "combined_oracle_gap": oracle_value - combined_value,
+                "combined_win_rate_vs_raw": float(combined_row.get("win_rate", np.nan)),
+                "combined_sign_test_p": float(combined_row.get("sign_test_p", np.nan)),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def seed_block_robustness(seed_df: pd.DataFrame, block_size: int = 4) -> pd.DataFrame:
+    """Check whether key effects survive contiguous seed blocks."""
+
+    if seed_df.empty:
+        return pd.DataFrame()
+    seeds = sorted(int(seed) for seed in seed_df["seed"].unique())
+    rows: list[dict[str, float | int | str]] = []
+    for block_id, start in enumerate(range(0, len(seeds), block_size)):
+        block_seeds = seeds[start : start + block_size]
+        if not block_seeds:
+            continue
+        block = seed_df[seed_df["seed"].isin(block_seeds)]
+        raw = block[(block["scenario"] == "raw") & (block["selector"] == "raw")]
+        if raw.empty:
+            continue
+        raw_by_n = raw.groupby("N", sort=True)[["selected_object_score", "selected_real_utility", "identity_error"]].mean()
+        raw_by_n = raw_by_n.sort_index()
+        raw64 = block[(block["scenario"] == "raw") & (block["selector"] == "raw") & (block["N"] == raw_by_n.index.max())]
+        combined64 = block[
+            (block["scenario"] == "raw") & (block["selector"] == "combined_repair") & (block["N"] == raw_by_n.index.max())
+        ]
+        pair = raw64[["seed", "selected_real_utility"]].merge(
+            combined64[["seed", "selected_real_utility"]],
+            on="seed",
+            suffixes=("_raw", "_combined"),
+        )
+        gains = pair["selected_real_utility_combined"] - pair["selected_real_utility_raw"]
+        rows.append(
+            {
+                "block_id": int(block_id),
+                "seed_min": int(min(block_seeds)),
+                "seed_max": int(max(block_seeds)),
+                "n_seeds": int(len(block_seeds)),
+                "raw_tail_score_gain": float(raw_by_n["selected_object_score"].iloc[-1] - raw_by_n["selected_object_score"].iloc[0]),
+                "raw_tail_utility_drop": float(raw_by_n["selected_real_utility"].iloc[0] - raw_by_n["selected_real_utility"].iloc[-1]),
+                "raw_tail_identity_error": float(raw_by_n["identity_error"].iloc[-1]),
+                "combined_raw_nmax_gain": float(np.mean(gains)) if len(gains) else float("nan"),
+                "combined_raw_nmax_win_rate": float(np.mean(gains > 1e-12)) if len(gains) else float("nan"),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def exact_law_prediction_error(df: pd.DataFrame) -> float:
     if df.empty:
         return float("nan")

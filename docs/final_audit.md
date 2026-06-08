@@ -3,15 +3,17 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 20.641s; strict claim audit passed)
-- bash scripts/run_all.sh: pass (full experiment runtime 139.351s; 16 main seeds, 32 stress seeds, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; unsupported claims remain unsupported)
-- pytest: pass (13 passed in 11.06s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 17.91s; strict claim audit passed)
+- bash scripts/run_all.sh: pass (full experiment runtime 109.389s; 16 main seeds, 32 stress seeds, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier and paper-text scan passed)
+- pytest: pass (13 passed in 7.27s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
 - Learned artifact: learned_object_model_summary.json with CPU NumPy slot-level transition, hidden-property, identity-alignment, and reward predictors.
 - Repair artifact: figure2_repair_comparison.png, paired_effects.csv, and stress_metrics.csv. Raw Nmax combined-repair gain 0.8803086375224858 with win rate 1.0.
+- Ablation artifact: figure8_repair_ablation.png and repair_ablation.csv. Raw Nmax combined-repair dominance over the best single repair 0.27709535654229556.
+- Robustness artifact: figure9_seed_block_robustness.png and seed_block_robustness.csv. Seed-block robustness pass rate 1.0.
 - Stress artifact: figure6_stress_robustness.png. Combined repair mean selected stress utility 0.8494153088926296.
 
 ## Differentiation
@@ -30,7 +32,9 @@ It is not a graph-physics benchmark, a latent dynamics benchmark, a diffusion wo
 - results\tables\learned_metrics.csv
 - results\tables\main_metrics.csv
 - results\tables\paired_effects.csv
+- results\tables\repair_ablation.csv
 - results\tables\repair_metrics.csv
+- results\tables\seed_block_robustness.csv
 - results\tables\seed_metrics.csv
 - results\tables\stress_metrics.csv
 - results\tables\stress_seed_metrics.csv
@@ -42,11 +46,14 @@ It is not a graph-physics benchmark, a latent dynamics benchmark, a diffusion wo
 - figures\figure5_exact_law_validation.png
 - figures\figure6_stress_robustness.png
 - figures\figure7_learned_object_model.png
+- figures\figure8_repair_ablation.png
+- figures\figure9_seed_block_robustness.png
 ### docs
 - docs\claims.md
 - docs\differentiation_from_best_of_n_wam.md
 - docs\differentiation_from_prior_projects.md
 - docs\final_audit.md
+- docs\results_digest.md
 - docs\reviewer_attacks.md
 - docs\theory.md
 ### paper

@@ -1,6 +1,12 @@
 import pandas as pd
 
-from object_centric_best_of_n.metrics import paired_selector_effects, stress_summary
+from object_centric_best_of_n.metrics import (
+    aggregate_seed_metrics,
+    paired_selector_effects,
+    repair_ablation_summary,
+    seed_block_robustness,
+    stress_summary,
+)
 
 
 def test_paired_effects_and_stress_summary_are_computed():
@@ -27,9 +33,16 @@ def test_paired_effects_and_stress_summary_are_computed():
                 "upper_tail_rank_correlation": -0.5,
             }
         )
+        rows.append({**rows[-1], "selector": "identity_consistent", "selected_real_utility": 0.6, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "combined_repair", "selected_real_utility": 0.9, "identity_error": 0.0})
+        rows.append({**rows[-1], "selector": "oracle", "selected_real_utility": 0.95, "identity_error": 0.0})
     df = pd.DataFrame(rows)
     paired = paired_selector_effects(df)
     assert paired.loc[paired["selector"] == "combined_repair", "mean_gain"].iloc[0] == 0.7
     stress = stress_summary(df)
     assert "combined_vs_raw_gain_mean" in stress.columns
+    main = aggregate_seed_metrics(df)
+    ablation = repair_ablation_summary(main, paired)
+    assert "combined_vs_best_single_gain" in ablation.columns
+    robustness = seed_block_robustness(df, block_size=2)
+    assert robustness["combined_raw_nmax_gain"].min() == 0.7

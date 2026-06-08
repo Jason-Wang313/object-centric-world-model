@@ -23,6 +23,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
+- Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
 
 ## What This Is Not
 
@@ -37,12 +38,16 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_metrics.csv`
 - `results/tables/repair_metrics.csv`
 - `results/tables/paired_effects.csv`
+- `results/tables/repair_ablation.csv`
 - `results/tables/exact_law_validation.csv`
 - `results/tables/stress_seed_metrics.csv`
 - `results/tables/stress_metrics.csv`
+- `results/tables/seed_block_robustness.csv`
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
+- `results/verification_log.json`
+- `docs/results_digest.md`
 - `figures/figure1_selected_tail_binding_failure.png`
 - `figures/figure2_repair_comparison.png`
 - `figures/figure3_tail_diagnostics.png`
@@ -50,9 +55,11 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure5_exact_law_validation.png`
 - `figures/figure6_stress_robustness.png`
 - `figures/figure7_learned_object_model.png`
+- `figures/figure8_repair_ablation.png`
+- `figures/figure9_seed_block_robustness.png`
 
 ## Claim Boundaries
 
-Supported claims are limited to exact finite laws, controlled synthetic failure evidence, controlled repair evidence, and one CPU NumPy semi-learned object-centric artifact. The claim audit marks core claims as `strongly_supported` only when generated artifacts clear numeric thresholds. Unsupported claims include real-robot validation, broad benchmark superiority, and universal object learning.
+Supported claims are limited to exact finite laws, controlled synthetic failure evidence, controlled repair evidence, and one CPU NumPy semi-learned object-centric artifact. The claim audit marks core claims as `strongly_supported` only when generated artifacts clear numeric thresholds, required artifacts verify, and paper text avoids supported overclaims. Unsupported claims include real-robot validation, broad benchmark superiority, and universal object learning.
 
 See `results/claims_status.md` and `docs/final_audit.md` after running the scripts.

@@ -70,7 +70,9 @@
   "raw_tail_utility_drop": 0.36397088780796794,
   "combined_repair_raw_nmax_mean_gain": 0.8803086375224858,
   "combined_repair_raw_nmax_win_rate": 1.0,
+  "combined_repair_raw_ablation_dominance": 0.27709535654229556,
   "stress_combined_mean_selected_utility": 0.8494153088926296,
+  "seed_block_robustness_pass_rate": 1.0,
   "learned_metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
@@ -83,5 +85,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 139.351
+  "runtime_seconds": 109.389
 }

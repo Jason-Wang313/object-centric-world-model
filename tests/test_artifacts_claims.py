@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from object_centric_best_of_n.audit import claim_inventory, scan_forbidden_overclaims
+from object_centric_best_of_n.audit import (
+    claim_inventory,
+    scan_forbidden_overclaims,
+    scan_text_overclaims,
+    verify_artifacts,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,13 +42,17 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/learned_learning_curve.csv",
         "results/tables/repair_metrics.csv",
         "results/tables/paired_effects.csv",
+        "results/tables/repair_ablation.csv",
         "results/tables/exact_law_validation.csv",
         "results/tables/stress_seed_metrics.csv",
         "results/tables/stress_metrics.csv",
+        "results/tables/seed_block_robustness.csv",
         "results/run_summary.json",
         "results/learned_object_model_summary.json",
+        "results/verification_log.json",
         "results/claims_status.md",
         "results/claims_status.json",
+        "docs/results_digest.md",
         "figures/figure1_selected_tail_binding_failure.png",
         "figures/figure2_repair_comparison.png",
         "figures/figure3_tail_diagnostics.png",
@@ -51,6 +60,8 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "figures/figure5_exact_law_validation.png",
         "figures/figure6_stress_robustness.png",
         "figures/figure7_learned_object_model.png",
+        "figures/figure8_repair_ablation.png",
+        "figures/figure9_seed_block_robustness.png",
     ]
     missing = [rel for rel in required if not (ROOT / rel).exists()]
     assert not missing
@@ -58,6 +69,9 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
 
 def test_claim_audit_keeps_forbidden_claims_unsupported():
     assert scan_forbidden_overclaims(claim_inventory()) == []
+    assert scan_text_overclaims(ROOT) == []
+    verification = verify_artifacts(ROOT)
+    assert verification["passes"], verification["problems"]
     status_path = ROOT / "results" / "claims_status.json"
     if status_path.exists():
         payload = json.loads(status_path.read_text(encoding="utf-8"))

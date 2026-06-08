@@ -21,7 +21,9 @@ from object_centric_best_of_n.metrics import (
     deployment_gate_from_metrics,
     exact_law_prediction_error,
     paired_selector_effects,
+    repair_ablation_summary,
     selection_record,
+    seed_block_robustness,
     stress_summary,
 )
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
@@ -120,11 +122,15 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     stress_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     stress_seed_df = _run_stress_panel(generator, stress_seeds=stress_seeds, n=max(ns))
     stress_metrics = stress_summary(stress_seed_df)
+    ablation_metrics = repair_ablation_summary(main, paired_effects)
+    robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
 
     seed_df.to_csv(tables / "seed_metrics.csv", index=False)
     main.to_csv(tables / "main_metrics.csv", index=False)
     repair_metrics.to_csv(tables / "repair_metrics.csv", index=False)
     paired_effects.to_csv(tables / "paired_effects.csv", index=False)
+    ablation_metrics.to_csv(tables / "repair_ablation.csv", index=False)
+    robustness_metrics.to_csv(tables / "seed_block_robustness.csv", index=False)
     law_df.to_csv(tables / "exact_law_validation.csv", index=False)
     stress_seed_df.to_csv(tables / "stress_seed_metrics.csv", index=False)
     stress_metrics.to_csv(tables / "stress_metrics.csv", index=False)
@@ -134,7 +140,16 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     pd.DataFrame([learned_row]).to_csv(tables / "learned_metrics.csv", index=False)
     learned_curve = pd.read_csv(tables / "learned_learning_curve.csv")
 
-    write_all_figures(main, seed_df, law_df, figures, stress_df=stress_metrics, learned_curve=learned_curve)
+    write_all_figures(
+        main,
+        seed_df,
+        law_df,
+        figures,
+        stress_df=stress_metrics,
+        learned_curve=learned_curve,
+        ablation_df=ablation_metrics,
+        robustness_df=robustness_metrics,
+    )
     claims = write_claim_status(root)
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -148,6 +163,16 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     stress_combined = stress_metrics[
         (stress_metrics["selector"] == "combined_repair") & (stress_metrics["scenario"].isin(STRESS_SCENARIOS))
     ]
+    raw_ablation = ablation_metrics[ablation_metrics["scenario"] == "raw"]
+    robustness_pass_rate = float(
+        np.mean(
+            (robustness_metrics["raw_tail_score_gain"] >= 0.30)
+            & (robustness_metrics["raw_tail_utility_drop"] >= 0.10)
+            & (robustness_metrics["raw_tail_identity_error"] >= 0.75)
+            & (robustness_metrics["combined_raw_nmax_gain"] >= 0.55)
+            & (robustness_metrics["combined_raw_nmax_win_rate"] >= 0.75)
+        )
+    ) if not robustness_metrics.empty else None
     summary = {
         "mode": mode,
         "ns": ns,
@@ -162,7 +187,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "raw_tail_utility_drop": raw_tail_utility_drop,
         "combined_repair_raw_nmax_mean_gain": float(raw_combined_nmax["mean_gain"].iloc[0]) if not raw_combined_nmax.empty else None,
         "combined_repair_raw_nmax_win_rate": float(raw_combined_nmax["win_rate"].iloc[0]) if not raw_combined_nmax.empty else None,
+        "combined_repair_raw_ablation_dominance": float(raw_ablation["combined_vs_best_single_gain"].iloc[0]) if not raw_ablation.empty else None,
         "stress_combined_mean_selected_utility": float(stress_combined["selected_real_utility_mean"].mean()) if not stress_combined.empty else None,
+        "seed_block_robustness_pass_rate": robustness_pass_rate,
         "learned_metrics": learned_row,
         "passes_claim_audit": claims["passes_claim_audit"],
         "runtime_seconds": round(time.time() - start, 3),

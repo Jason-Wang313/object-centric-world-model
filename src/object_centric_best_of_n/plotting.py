@@ -137,6 +137,40 @@ def figure7_learned_learning_curve(learned_curve: pd.DataFrame, out: Path) -> No
     _save(fig, out / "figure7_learned_object_model.png")
 
 
+def figure8_repair_ablation(ablation: pd.DataFrame, out: Path) -> None:
+    if ablation.empty:
+        return
+    df = ablation.set_index("scenario")[
+        ["raw_selected_real_utility", "best_single_repair_utility", "combined_repair_utility", "oracle_utility"]
+    ]
+    fig, ax = plt.subplots(figsize=(8.2, 4.4))
+    df.plot(kind="bar", ax=ax, color=["#b23b3b", "#d1963a", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("scenario")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Repair ablation at high N")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(["raw", "best single repair", "combined repair", "oracle"], frameon=False, fontsize=8)
+    _save(fig, out / "figure8_repair_ablation.png")
+
+
+def figure9_seed_block_robustness(robustness: pd.DataFrame, out: Path) -> None:
+    if robustness.empty:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(10.2, 3.4))
+    x = robustness["block_id"].astype(str)
+    axes[0].bar(x, robustness["raw_tail_score_gain"], color="#2f6f9f")
+    axes[0].set_title("raw score gain")
+    axes[1].bar(x, robustness["raw_tail_utility_drop"], color="#b23b3b")
+    axes[1].set_title("raw utility drop")
+    axes[2].bar(x, robustness["combined_raw_nmax_gain"], color="#3c7c5a")
+    axes[2].set_title("combined gain")
+    for ax in axes:
+        ax.set_xlabel("seed block")
+        ax.grid(axis="y", alpha=0.25)
+    axes[0].set_ylabel("effect size")
+    _save(fig, out / "figure9_seed_block_robustness.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -144,6 +178,8 @@ def write_all_figures(
     figure_dir: str | Path,
     stress_df: pd.DataFrame | None = None,
     learned_curve: pd.DataFrame | None = None,
+    ablation_df: pd.DataFrame | None = None,
+    robustness_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -155,3 +191,7 @@ def write_all_figures(
         figure6_stress_robustness(stress_df, out)
     if learned_curve is not None:
         figure7_learned_learning_curve(learned_curve, out)
+    if ablation_df is not None:
+        figure8_repair_ablation(ablation_df, out)
+    if robustness_df is not None:
+        figure9_seed_block_robustness(robustness_df, out)
