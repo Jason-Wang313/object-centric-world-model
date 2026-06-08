@@ -3,8 +3,8 @@
 ## Supported
 
 - Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations.
-- Controlled object-centric scenes show selected-tail binding failure where object score can increase while real utility stagnates or falls; the good-scene negative control avoids the same collapse.
-- Identity consistency, hidden-property calibration, targeted probing, and combined repair improve selected utility in the controlled synthetic setting, including paired seed gains, repair ablations, seed-block robustness, score-noise sensitivity, and a high-N stress panel.
+- Controlled object-centric scenes show selected-tail binding failure where object score can increase while real utility stagnates or falls; the good-scene negative control avoids the same collapse, and dense-object OOD variants reproduce the corrupted-setting failure.
+- Identity consistency, hidden-property calibration, targeted probing, and combined repair improve selected utility in the controlled synthetic setting, including paired seed gains, repair ablations, seed-block robustness, score-noise sensitivity, dense-object OOD stress, and a high-N stress panel.
 - A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories, with feature ablations showing object information matters.
 
 ## Unsupported

@@ -363,6 +363,27 @@ def negative_control_summary(main_metrics: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def ood_summary(ood_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate OOD synthetic rows and attach combined-vs-raw paired gains."""
+
+    if ood_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(ood_seed_df)
+    paired = paired_selector_effects(ood_seed_df)
+    combined = paired[paired["selector"] == "combined_repair"][
+        ["experiment", "scenario", "N", "mean_gain", "gain_ci_low", "gain_ci_high", "win_rate", "sign_test_p"]
+    ].rename(
+        columns={
+            "mean_gain": "combined_vs_raw_gain_mean",
+            "gain_ci_low": "combined_vs_raw_gain_ci_low",
+            "gain_ci_high": "combined_vs_raw_gain_ci_high",
+            "win_rate": "combined_vs_raw_win_rate",
+            "sign_test_p": "combined_vs_raw_sign_test_p",
+        }
+    )
+    return main.merge(combined, on=["experiment", "scenario", "N"], how="left")
+
+
 def exact_law_prediction_error(df: pd.DataFrame) -> float:
     if df.empty:
         return float("nan")

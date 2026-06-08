@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 32.892s; strict claim audit passed)
-- bash scripts/run_all.sh: pass (full experiment runtime 102.734s; 16 main seeds, 24 sensitivity seeds, 32 stress seeds, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, and paper-text scan passed)
-- pytest: pass (13 passed in 9.71s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 34.762s; strict claim audit passed)
+- bash scripts/run_all.sh: pass (full experiment runtime 123.57s; 16 main seeds, 16 OOD dense-object seeds, 24 sensitivity seeds, 32 stress seeds, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, and OOD checks passed)
+- pytest: pass (13 passed in 11.56s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -19,6 +19,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Sensitivity artifact: figure11_score_noise_sensitivity.png and sensitivity_metrics.csv. Combined repair low-noise minimum utility 0.8374916544433992.
 - Negative-control artifact: figure12_negative_control.png and negative_control.csv. Good-control raw high-N utility 0.6554531451148605.
 - Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. Full-minus-no-mass property gain 0.1229166666666666.
+- OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. Dense corrupted OOD combined-vs-raw gain 0.8411636120707556.
 
 ## Differentiation
 The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.
@@ -37,6 +38,8 @@ It is not a graph-physics benchmark, a latent dynamics benchmark, a diffusion wo
 - results\tables\learned_metrics.csv
 - results\tables\main_metrics.csv
 - results\tables\negative_control.csv
+- results\tables\ood_metrics.csv
+- results\tables\ood_seed_metrics.csv
 - results\tables\paired_effects.csv
 - results\tables\repair_ablation.csv
 - results\tables\repair_metrics.csv
@@ -53,6 +56,7 @@ It is not a graph-physics benchmark, a latent dynamics benchmark, a diffusion wo
 - figures\figure11_score_noise_sensitivity.png
 - figures\figure12_negative_control.png
 - figures\figure13_learned_ablation.png
+- figures\figure14_ood_object_count_stress.png
 - figures\figure1_selected_tail_binding_failure.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png

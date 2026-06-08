@@ -24,6 +24,10 @@ Response: `score_calibration.csv` bins raw candidate object scores and measures 
 
 Response: `negative_control.csv` compares the good non-corrupted setting with corrupted high-N settings. The audit requires the good control to retain utility and low identity error while corrupted settings collapse.
 
+## Attack: The result may not survive more distractor objects.
+
+Response: `ood_metrics.csv` evaluates dense 6- and 8-object variants, including a dense good control and dense corrupted scenes. The audit requires dense corrupted scenes to collapse under raw selection and recover under combined repair.
+
 ## Attack: The paper text might drift beyond the artifact evidence.
 
 Response: `run_claim_audit.sh` scans README, docs, and paper text for supported forbidden overclaims, verifies required tables, figures, and JSON artifacts, and writes `results/artifact_manifest.json` with deterministic hashes. The generated `docs/results_digest.md` records the current evidence boundaries.

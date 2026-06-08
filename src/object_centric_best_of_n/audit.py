@@ -37,6 +37,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/sensitivity_metrics.csv": ("selector", "score_noise", "selected_real_utility_mean"),
     "results/tables/negative_control.csv": ("contrast", "selected_real_utility_mean", "identity_error_mean"),
     "results/tables/learned_ablation.csv": ("ablation", "property_accuracy", "identity_alignment_accuracy"),
+    "results/tables/ood_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
+    "results/tables/ood_metrics.csv": ("scenario", "selector", "selected_real_utility_mean"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
 
@@ -54,6 +56,7 @@ REQUIRED_FIGURES = (
     "figures/figure11_score_noise_sensitivity.png",
     "figures/figure12_negative_control.png",
     "figures/figure13_learned_ablation.png",
+    "figures/figure14_ood_object_count_stress.png",
 )
 
 REQUIRED_JSON = (
@@ -95,6 +98,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     sensitivity = _read_csv(tables / "sensitivity_metrics.csv")
     negative_control = _read_csv(tables / "negative_control.csv")
     learned_ablation = _read_csv(tables / "learned_ablation.csv")
+    ood = _read_csv(tables / "ood_metrics.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
 
     strengths: dict[str, dict[str, object]] = {}
@@ -116,6 +120,11 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             top_calibration = calibration.sort_values("score_bin").iloc[-1] if not calibration.empty else None
             good_control = negative_control[negative_control["contrast"] == "good_control"] if not negative_control.empty else pd.DataFrame()
             good_minus = negative_control[negative_control["contrast"] == "good_minus_corrupted"] if not negative_control.empty else pd.DataFrame()
+            ood_good = ood[(ood["scenario"] == "dense6_good") & (ood["selector"] == "raw")] if not ood.empty else pd.DataFrame()
+            ood_raw = ood[
+                (ood["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
+                & (ood["selector"] == "raw")
+            ] if not ood.empty else pd.DataFrame()
             strengths["C2"] = {
                 "passes": bool(
                     score_gain >= 0.35
@@ -133,8 +142,13 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     and float(good_control["identity_error_mean"].iloc[0]) <= 0.25
                     and not good_minus.empty
                     and float(good_minus["selected_real_utility_mean"].iloc[0]) >= 0.45
+                    and not ood_good.empty
+                    and float(ood_good["selected_real_utility_mean"].iloc[0]) >= 0.60
+                    and not ood_raw.empty
+                    and float(ood_raw["selected_real_utility_mean"].mean()) <= 0.12
+                    and float(ood_raw["identity_error_mean"].mean()) >= 0.80
                 ),
-                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, and good negative control avoids collapse",
+                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, and dense OOD corrupted variants collapse",
                 "observed": {
                     "raw_tail_score_gain": score_gain,
                     "raw_tail_utility_drop": utility_drop,
@@ -147,6 +161,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     "good_control_utility": float(good_control["selected_real_utility_mean"].iloc[0]) if not good_control.empty else None,
                     "good_control_identity_error": float(good_control["identity_error_mean"].iloc[0]) if not good_control.empty else None,
                     "good_minus_corrupted_utility": float(good_minus["selected_real_utility_mean"].iloc[0]) if not good_minus.empty else None,
+                    "ood_good_raw_utility": float(ood_good["selected_real_utility_mean"].iloc[0]) if not ood_good.empty else None,
+                    "ood_corrupted_raw_mean_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
+                    "ood_corrupted_raw_identity_error": float(ood_raw["identity_error_mean"].mean()) if not ood_raw.empty else None,
                 },
             }
     if not paired.empty and not stress.empty and not ablation.empty and not robustness.empty and not sensitivity.empty:
@@ -198,9 +215,24 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and sensitivity_margin is not None
             and sensitivity_margin >= 0.55
         )
+        ood_combined = ood[
+            (ood["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
+            & (ood["selector"] == "combined_repair")
+        ] if not ood.empty else pd.DataFrame()
+        ood_raw = ood[
+            (ood["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
+            & (ood["selector"] == "raw")
+        ] if not ood.empty else pd.DataFrame()
+        ood_pass = (
+            not ood_combined.empty
+            and not ood_raw.empty
+            and float(ood_combined["selected_real_utility_mean"].mean()) >= 0.80
+            and float(ood_combined["selected_real_utility_mean"].min()) >= 0.82
+            and float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) >= 0.70
+        )
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, and combined repair remains strong under score noise <= 0.10",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass and ood_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, and dense OOD repair succeeds",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -213,6 +245,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "min_block_combined_win_rate": float(robustness["combined_raw_nmax_win_rate"].min()) if not robustness.empty else None,
                 "combined_min_low_noise_utility": float(combined_sensitivity["selected_real_utility_mean"].min()) if not combined_sensitivity.empty else None,
                 "combined_vs_raw_low_noise_margin": sensitivity_margin,
+                "ood_combined_mean_utility": float(ood_combined["selected_real_utility_mean"].mean()) if not ood_combined.empty else None,
+                "ood_combined_min_utility": float(ood_combined["selected_real_utility_mean"].min()) if not ood_combined.empty else None,
+                "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,
             },
         }
     learned_metrics = learned.get("metrics", {})
@@ -467,6 +502,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Good-minus-corrupted raw high-N utility: {summary.get('good_minus_corrupted_raw_nmax_utility', 'unknown')}",
         f"- Learned full-minus-no-mass property accuracy: {summary.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}",
         f"- Learned full-minus-kinematic-pair identity accuracy: {summary.get('learned_full_minus_kinematic_pair_identity_accuracy', 'unknown')}",
+        f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
+        f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
         "",
         "## Learned Model",
     ]
@@ -627,6 +664,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Good-control raw high-N utility {summary_payload.get('good_control_raw_nmax_utility', 'unknown')}.",
             "- Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. "
             f"Full-minus-no-mass property gain {summary_payload.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}.",
+            "- OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. "
+            f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
             "",
             "## Differentiation",
             "The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",

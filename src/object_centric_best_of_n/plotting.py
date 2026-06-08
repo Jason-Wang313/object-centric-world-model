@@ -236,6 +236,26 @@ def figure13_learned_ablation(learned_ablation: pd.DataFrame, out: Path) -> None
     _save(fig, out / "figure13_learned_ablation.png")
 
 
+def figure14_ood_stress(ood: pd.DataFrame, out: Path) -> None:
+    if ood.empty:
+        return
+    df = ood[(ood["selector"].isin(["raw", "combined_repair", "oracle"])) & (ood["N"] == ood["N"].max())]
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=["raw", "combined_repair", "oracle"])
+    fig, ax = plt.subplots(figsize=(8.0, 4.3))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("OOD synthetic variant")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("OOD object-count stress")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False)
+    _save(fig, out / "figure14_ood_object_count_stress.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -249,6 +269,7 @@ def write_all_figures(
     sensitivity_df: pd.DataFrame | None = None,
     negative_df: pd.DataFrame | None = None,
     learned_ablation_df: pd.DataFrame | None = None,
+    ood_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -272,3 +293,5 @@ def write_all_figures(
         figure12_negative_control(negative_df, out)
     if learned_ablation_df is not None:
         figure13_learned_ablation(learned_ablation_df, out)
+    if ood_df is not None:
+        figure14_ood_stress(ood_df, out)

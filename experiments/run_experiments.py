@@ -21,6 +21,7 @@ from object_centric_best_of_n.metrics import (
     deployment_gate_from_metrics,
     exact_law_prediction_error,
     negative_control_summary,
+    ood_summary,
     paired_selector_effects,
     repair_ablation_summary,
     score_calibration_table,
@@ -41,6 +42,13 @@ SELECTOR_ORDER = ["raw", "identity_consistent", "property_calibrated", "targeted
 STRESS_SCENARIOS = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
 STRESS_SELECTORS = ["raw", "identity_consistent", "targeted_probe", "combined_repair", "random", "oracle"]
 SENSITIVITY_NOISE = [0.0, 0.02, 0.05, 0.10, 0.20, 0.35]
+OOD_VARIANTS = [
+    ("dense6_good", 6, False, False, False, "good"),
+    ("dense6_raw", 6, True, True, True, "raw"),
+    ("dense8_occlusion", 8, True, True, True, "occlusion"),
+    ("dense8_hidden", 8, False, True, False, "hidden_property"),
+]
+OOD_SELECTORS = ["raw", "combined_repair", "random", "oracle"]
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -144,6 +152,33 @@ def _run_sensitivity_panel(
     return pd.DataFrame(rows), pd.DataFrame(candidate_rows)
 
 
+def _run_ood_panel(
+    generator: ObjectCentricFutureGenerator,
+    ood_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in ood_seeds:
+        for variant_name, n_objects, occlusion, hidden_property, crossing, scenario in OOD_VARIANTS:
+            scene = make_scene(
+                seed=120_000 + seed,
+                n_objects=n_objects,
+                occlusion=occlusion,
+                hidden_property=hidden_property,
+                crossing=crossing,
+            )
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=scenario,
+                seed=77_000 + seed * 313 + len(variant_name),
+            )
+            for selector_name in OOD_SELECTORS:
+                selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                rows.append(selection_record("K_ood_object_count", variant_name, selector_name, n, seed, selected, candidates))
+    return pd.DataFrame(rows)
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -196,6 +231,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     sensitivity_seed_df, calibration_candidate_df = _run_sensitivity_panel(generator, sensitivity_seeds, n=max(ns), mode=mode)
     sensitivity_metrics = sensitivity_summary(sensitivity_seed_df)
     calibration_metrics = score_calibration_table(calibration_candidate_df)
+    ood_seeds = list(range(4)) if mode == "smoke" else list(range(16))
+    ood_seed_df = _run_ood_panel(generator, ood_seeds, n=max(ns))
+    ood_metrics = ood_summary(ood_seed_df)
     ablation_metrics = repair_ablation_summary(main, paired_effects)
     robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
     negative_control = negative_control_summary(main)
@@ -214,6 +252,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     sensitivity_metrics.to_csv(tables / "sensitivity_metrics.csv", index=False)
     calibration_candidate_df.to_csv(tables / "score_calibration_candidates.csv", index=False)
     calibration_metrics.to_csv(tables / "score_calibration.csv", index=False)
+    ood_seed_df.to_csv(tables / "ood_seed_metrics.csv", index=False)
+    ood_metrics.to_csv(tables / "ood_metrics.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
     learned_row = learned_metrics.as_dict()
@@ -234,6 +274,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         sensitivity_df=sensitivity_metrics,
         negative_df=negative_control,
         learned_ablation_df=learned_ablation,
+        ood_df=ood_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -263,6 +304,15 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     good_minus_corrupted = negative_control[negative_control["contrast"] == "good_minus_corrupted"]
     no_mass_ablation = learned_ablation[learned_ablation["ablation"] == "no_mass_sensor"]
     kinematic_pair_ablation = learned_ablation[learned_ablation["ablation"] == "kinematic_pair_identity"]
+    ood_combined = ood_metrics[
+        (ood_metrics["selector"] == "combined_repair")
+        & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
+    ]
+    ood_raw = ood_metrics[
+        (ood_metrics["selector"] == "raw")
+        & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
+    ]
+    ood_good = ood_metrics[(ood_metrics["selector"] == "raw") & (ood_metrics["scenario"] == "dense6_good")]
     sensitivity_low_noise = sensitivity_metrics[sensitivity_metrics["score_noise"] <= 0.10]
     combined_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "combined_repair_noisy"]
     raw_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "raw_noisy"]
@@ -280,6 +330,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_seed_rows": int(seed_df.shape[0]),
         "n_main_rows": int(main.shape[0]),
         "n_stress_rows": int(stress_seed_df.shape[0]),
+        "n_ood_rows": int(ood_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -299,6 +350,10 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "combined_vs_raw_low_noise_sensitivity_margin": sensitivity_margin,
         "learned_full_minus_no_mass_property_accuracy": float(no_mass_ablation["full_minus_property_accuracy"].iloc[0]) if not no_mass_ablation.empty else None,
         "learned_full_minus_kinematic_pair_identity_accuracy": float(kinematic_pair_ablation["full_minus_identity_alignment_accuracy"].iloc[0]) if not kinematic_pair_ablation.empty else None,
+        "ood_combined_mean_selected_utility": float(ood_combined["selected_real_utility_mean"].mean()) if not ood_combined.empty else None,
+        "ood_raw_mean_selected_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
+        "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,
+        "ood_good_control_raw_utility": float(ood_good["selected_real_utility_mean"].iloc[0]) if not ood_good.empty else None,
         "learned_metrics": learned_row,
         "passes_claim_audit": False,
         "runtime_seconds": round(time.time() - start, 3),

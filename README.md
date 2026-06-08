@@ -26,6 +26,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
 - Negative controls for the non-corrupted setting and learned feature ablations.
+- Dense-object OOD synthetic stress for 6- and 8-object scenes.
 
 ## What This Is Not
 
@@ -51,6 +52,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/sensitivity_metrics.csv`
 - `results/tables/negative_control.csv`
 - `results/tables/learned_ablation.csv`
+- `results/tables/ood_seed_metrics.csv`
+- `results/tables/ood_metrics.csv`
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
@@ -70,6 +73,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure11_score_noise_sensitivity.png`
 - `figures/figure12_negative_control.png`
 - `figures/figure13_learned_ablation.png`
+- `figures/figure14_ood_object_count_stress.png`
 
 ## Claim Boundaries
 

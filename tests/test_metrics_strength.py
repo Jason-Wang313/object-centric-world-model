@@ -3,6 +3,7 @@ import pandas as pd
 from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     negative_control_summary,
+    ood_summary,
     paired_selector_effects,
     repair_ablation_summary,
     score_calibration_table,
@@ -75,3 +76,5 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert set(sensitivity["selector"]) == {"raw_noisy", "combined_repair_noisy"}
     negative = negative_control_summary(main)
     assert "corrupted_mean" in set(negative["contrast"])
+    ood = ood_summary(df)
+    assert "combined_vs_raw_gain_mean" in ood.columns
