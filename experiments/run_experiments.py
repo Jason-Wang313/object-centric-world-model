@@ -29,6 +29,7 @@ from object_centric_best_of_n.metrics import (
     selection_record,
     seed_block_robustness,
     sensitivity_summary,
+    statistical_audit,
     stress_summary,
 )
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
@@ -308,6 +309,14 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     family_seeds = list(range(4)) if mode == "smoke" else list(range(16))
     family_seed_df = _run_model_family_panel(generator, family_seeds, n=max(ns))
     family_metrics = model_family_proxy_summary(family_seed_df)
+    bootstrap_reps = 400 if mode == "smoke" else 2000
+    statistical_metrics = statistical_audit(
+        seed_df,
+        ood_seed_df=ood_seed_df,
+        family_seed_df=family_seed_df,
+        bootstrap_reps=bootstrap_reps,
+        seed=240_001,
+    )
     ablation_metrics = repair_ablation_summary(main, paired_effects)
     robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
     negative_control = negative_control_summary(main)
@@ -330,6 +339,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     ood_metrics.to_csv(tables / "ood_metrics.csv", index=False)
     family_seed_df.to_csv(tables / "model_family_proxy_seed_metrics.csv", index=False)
     family_metrics.to_csv(tables / "model_family_proxy_metrics.csv", index=False)
+    statistical_metrics.to_csv(tables / "statistical_audit.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
     learned_row = learned_metrics.as_dict()
@@ -352,6 +362,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         learned_ablation_df=learned_ablation,
         ood_df=ood_metrics,
         family_df=family_metrics,
+        statistical_df=statistical_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -394,6 +405,11 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         (family_metrics["selector"] == "combined_repair")
         & (family_metrics["scenario"].isin(MODEL_FAMILY_SCENARIOS))
     ]
+    statistical_pass_margin = None
+    if not statistical_metrics.empty:
+        statistical_pass_margin = float(
+            (statistical_metrics["bootstrap_ci_low"] - statistical_metrics["threshold"]).min()
+        )
     sensitivity_low_noise = sensitivity_metrics[sensitivity_metrics["score_noise"] <= 0.10]
     combined_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "combined_repair_noisy"]
     raw_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "raw_noisy"]
@@ -439,6 +455,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
         "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
         "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,
+        "statistical_audit_all_pass": bool(statistical_metrics["passes"].all()) if not statistical_metrics.empty else None,
+        "statistical_audit_min_ci_margin": statistical_pass_margin,
         "learned_metrics": learned_row,
         "passes_claim_audit": False,
         "runtime_seconds": round(time.time() - start, 3),

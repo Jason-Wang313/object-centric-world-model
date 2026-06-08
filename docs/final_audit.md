@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 26.435s; strict claim audit passed)
-- bash scripts/run_all.sh: pass (full experiment runtime 104.183s; 16 main seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, and toy proxy checks passed)
-- pytest: pass (13 passed in 7.76s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 26.271s; strict claim audit passed)
+- bash scripts/run_all.sh: pass (full experiment runtime 107.936s; 16 main seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, bootstrap statistical audit, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, toy proxy checks, and bootstrap checks passed)
+- pytest: pass (13 passed in 11.72s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -21,6 +21,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. Full-minus-no-mass property gain 0.1229166666666666.
 - OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. Dense corrupted OOD combined-vs-raw gain 0.8411636120707556.
 - Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. Combined-vs-best-proxy gain 0.5504614056934154.
+- Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. Minimum bootstrap CI margin 0.08294730684862575.
 
 ## Differentiation
 The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.
@@ -52,6 +53,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\seed_metrics.csv
 - results\tables\sensitivity_metrics.csv
 - results\tables\sensitivity_seed_metrics.csv
+- results\tables\statistical_audit.csv
 - results\tables\stress_metrics.csv
 - results\tables\stress_seed_metrics.csv
 ### figures
@@ -61,6 +63,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure13_learned_ablation.png
 - figures\figure14_ood_object_count_stress.png
 - figures\figure15_model_family_proxies.png
+- figures\figure16_statistical_audit.png
 - figures\figure1_selected_tail_binding_failure.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png

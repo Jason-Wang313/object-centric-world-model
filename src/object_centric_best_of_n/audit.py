@@ -41,6 +41,7 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/ood_metrics.csv": ("scenario", "selector", "selected_real_utility_mean"),
     "results/tables/model_family_proxy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
     "results/tables/model_family_proxy_metrics.csv": ("scenario", "selector", "best_proxy_utility_mean", "combined_vs_best_proxy_gain_mean"),
+    "results/tables/statistical_audit.csv": ("effect_id", "estimate", "bootstrap_ci_low", "bootstrap_ci_high", "threshold", "passes"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
 
@@ -60,6 +61,7 @@ REQUIRED_FIGURES = (
     "figures/figure13_learned_ablation.png",
     "figures/figure14_ood_object_count_stress.png",
     "figures/figure15_model_family_proxies.png",
+    "figures/figure16_statistical_audit.png",
 )
 
 REQUIRED_JSON = (
@@ -103,6 +105,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     learned_ablation = _read_csv(tables / "learned_ablation.csv")
     ood = _read_csv(tables / "ood_metrics.csv")
     family = _read_csv(tables / "model_family_proxy_metrics.csv")
+    statistical = _read_csv(tables / "statistical_audit.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
 
     strengths: dict[str, dict[str, object]] = {}
@@ -129,6 +132,11 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 (ood["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
                 & (ood["selector"] == "raw")
             ] if not ood.empty else pd.DataFrame()
+            c2_stats = (
+                statistical[statistical["effect_id"].isin(["raw_tail_score_gain", "raw_tail_utility_drop"])]
+                if not statistical.empty
+                else pd.DataFrame()
+            )
             strengths["C2"] = {
                 "passes": bool(
                     score_gain >= 0.35
@@ -151,8 +159,10 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     and not ood_raw.empty
                     and float(ood_raw["selected_real_utility_mean"].mean()) <= 0.12
                     and float(ood_raw["identity_error_mean"].mean()) >= 0.80
+                    and not c2_stats.empty
+                    and bool(c2_stats["passes"].all())
                 ),
-                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, and dense OOD corrupted variants collapse",
+                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
                 "observed": {
                     "raw_tail_score_gain": score_gain,
                     "raw_tail_utility_drop": utility_drop,
@@ -168,6 +178,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     "ood_good_raw_utility": float(ood_good["selected_real_utility_mean"].iloc[0]) if not ood_good.empty else None,
                     "ood_corrupted_raw_mean_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
                     "ood_corrupted_raw_identity_error": float(ood_raw["identity_error_mean"].mean()) if not ood_raw.empty else None,
+                    "bootstrap_raw_tail_min_ci_margin": float((c2_stats["bootstrap_ci_low"] - c2_stats["threshold"]).min()) if not c2_stats.empty else None,
                 },
             }
     if not paired.empty and not stress.empty and not ablation.empty and not robustness.empty and not sensitivity.empty:
@@ -248,9 +259,24 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(family_combined["combined_vs_best_proxy_gain_mean"].min()) >= 0.05
             and float(family_combined["combined_oracle_gap_mean"].max()) <= 0.12
         )
+        c3_stats = (
+            statistical[
+                statistical["effect_id"].isin(
+                    [
+                        "combined_repair_raw_gain",
+                        "targeted_probe_hidden_gain",
+                        "ood_combined_repair_gain",
+                        "model_family_proxy_gain",
+                    ]
+                )
+            ]
+            if not statistical.empty
+            else pd.DataFrame()
+        )
+        statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass and ood_pass and family_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, and controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and robustness_pass and sensitivity_pass and ood_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -269,6 +295,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
                 "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
                 "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,
+                "bootstrap_repair_min_ci_margin": float((c3_stats["bootstrap_ci_low"] - c3_stats["threshold"]).min()) if not c3_stats.empty else None,
             },
         }
     learned_metrics = learned.get("metrics", {})
@@ -526,6 +553,7 @@ def write_results_digest(root: str | Path) -> None:
         f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
         f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
         f"- Toy proxy combined-vs-best-proxy gain: {summary.get('model_family_combined_vs_best_proxy_gain', 'unknown')}",
+        f"- Bootstrap audit minimum CI margin: {summary.get('statistical_audit_min_ci_margin', 'unknown')}",
         "",
         "## Learned Model",
     ]
@@ -690,6 +718,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
             "- Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. "
             f"Combined-vs-best-proxy gain {summary_payload.get('model_family_combined_vs_best_proxy_gain', 'unknown')}.",
+            "- Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. "
+            f"Minimum bootstrap CI margin {summary_payload.get('statistical_audit_min_ci_margin', 'unknown')}.",
             "",
             "## Differentiation",
             "The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",

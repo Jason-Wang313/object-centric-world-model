@@ -1,8 +1,8 @@
 {
   "command_results": {
-    "bash scripts/run_smoke.sh": "pass (smoke experiment runtime 26.435s; strict claim audit passed)",
-    "bash scripts/run_all.sh": "pass (full experiment runtime 104.183s; 16 main seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, gate block_high_n)",
-    "bash scripts/run_claim_audit.sh": "pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, and toy proxy checks passed)",
-    "pytest": "pass (13 passed in 7.76s on final run)"
+    "bash scripts/run_smoke.sh": "pass (smoke experiment runtime 26.271s; strict claim audit passed)",
+    "bash scripts/run_all.sh": "pass (full experiment runtime 107.936s; 16 main seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, bootstrap statistical audit, gate block_high_n)",
+    "bash scripts/run_claim_audit.sh": "pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, toy proxy checks, and bootstrap checks passed)",
+    "pytest": "pass (13 passed in 11.72s on final run)"
   }
 }

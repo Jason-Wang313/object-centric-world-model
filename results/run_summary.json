@@ -92,6 +92,8 @@
   "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
   "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
   "model_family_max_combined_oracle_gap": 0.10589603837960726,
+  "statistical_audit_all_pass": true,
+  "statistical_audit_min_ci_margin": 0.08294730684862575,
   "learned_metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
@@ -104,5 +106,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 104.183
+  "runtime_seconds": 107.936
 }

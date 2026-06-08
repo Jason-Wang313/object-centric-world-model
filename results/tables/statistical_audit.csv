@@ -1,0 +1,7 @@
+effect_id,description,estimate,bootstrap_ci_low,bootstrap_ci_high,threshold,direction,n_units,passes
+raw_tail_score_gain,Raw selected object-score gain from lowest to highest N.,0.5759192453426587,0.4400044173071301,0.7090730180713054,0.25,lower,16,True
+raw_tail_utility_drop,Raw selected real-utility drop from lowest to highest N.,0.36397088780796794,0.18294730684862576,0.552018676749414,0.1,lower,16,True
+combined_repair_raw_gain,Combined repair selected-utility gain over raw at high N.,0.8803086375224858,0.8627924411526106,0.8955036686405,0.5,lower,16,True
+targeted_probe_hidden_gain,Targeted probe selected-utility gain over raw for hidden-property scenes at high N.,0.7747901941902325,0.711606750147902,0.8296320256994852,0.1,lower,16,True
+ood_combined_repair_gain,Dense OOD corrupted-scene combined repair selected-utility gain over raw.,0.8411636120707556,0.8161818162870867,0.86236874842244,0.6,lower,48,True
+model_family_proxy_gain,Combined repair selected-utility gain over the best toy model-family proxy.,0.5457898784677047,0.47751432031258945,0.6112741839342106,0.2,lower,80,True

@@ -284,6 +284,28 @@ def figure15_model_family_proxies(family: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure15_model_family_proxies.png")
 
 
+def figure16_statistical_audit(statistical: pd.DataFrame, out: Path) -> None:
+    if statistical.empty:
+        return
+    df = statistical.copy()
+    x = range(df.shape[0])
+    yerr = [
+        df["estimate"] - df["bootstrap_ci_low"],
+        df["bootstrap_ci_high"] - df["estimate"],
+    ]
+    colors = ["#3c7c5a" if bool(passes) else "#b23b3b" for passes in df["passes"]]
+    fig, ax = plt.subplots(figsize=(9.2, 4.6))
+    ax.bar(x, df["estimate"], yerr=yerr, color=colors, capsize=4, alpha=0.90)
+    ax.scatter(x, df["threshold"], color="#222222", marker="_", s=180, label="audit threshold")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(df["effect_id"], rotation=30, ha="right")
+    ax.set_ylabel("effect estimate with bootstrap 95% CI")
+    ax.set_title("Statistical audit of key controlled effects")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8)
+    _save(fig, out / "figure16_statistical_audit.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -299,6 +321,7 @@ def write_all_figures(
     learned_ablation_df: pd.DataFrame | None = None,
     ood_df: pd.DataFrame | None = None,
     family_df: pd.DataFrame | None = None,
+    statistical_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -326,3 +349,5 @@ def write_all_figures(
         figure14_ood_stress(ood_df, out)
     if family_df is not None:
         figure15_model_family_proxies(family_df, out)
+    if statistical_df is not None:
+        figure16_statistical_audit(statistical_df, out)

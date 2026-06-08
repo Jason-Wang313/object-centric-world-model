@@ -28,6 +28,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Negative controls for the non-corrupted setting and learned feature ablations.
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
+- A bootstrap statistical audit for the main failure, repair, OOD, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -57,6 +58,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/ood_metrics.csv`
 - `results/tables/model_family_proxy_seed_metrics.csv`
 - `results/tables/model_family_proxy_metrics.csv`
+- `results/tables/statistical_audit.csv`
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
@@ -78,6 +80,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure13_learned_ablation.png`
 - `figures/figure14_ood_object_count_stress.png`
 - `figures/figure15_model_family_proxies.png`
+- `figures/figure16_statistical_audit.png`
 
 ## Claim Boundaries
 

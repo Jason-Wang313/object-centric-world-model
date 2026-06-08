@@ -10,6 +10,7 @@ from object_centric_best_of_n.metrics import (
     score_calibration_table,
     seed_block_robustness,
     sensitivity_summary,
+    statistical_audit,
     stress_summary,
 )
 
@@ -92,3 +93,18 @@ def test_paired_effects_and_stress_summary_are_computed():
     combined = family[family["selector"] == "combined_repair"]
     assert "combined_vs_best_proxy_gain_mean" in family.columns
     assert combined["combined_vs_best_proxy_gain_mean"].iloc[0] > 0.0
+    stats = statistical_audit(
+        df,
+        ood_seed_df=df,
+        family_seed_df=pd.DataFrame(
+            rows
+            + [
+                {**rows[0], "selector": "latent_global_proxy", "selected_real_utility": 0.35},
+                {**rows[0], "selector": "relational_slot_proxy", "selected_real_utility": 0.45},
+                {**rows[0], "selector": "diffusion_score_proxy", "selected_real_utility": 0.25},
+            ]
+        ),
+        bootstrap_reps=50,
+    )
+    assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
+    assert "combined_repair_raw_gain" in set(stats["effect_id"])

@@ -112,6 +112,46 @@ def _binomial_two_sided_p(wins: int, losses: int) -> float:
     return float(min(1.0, 2.0 * tail))
 
 
+def _bootstrap_mean_ci(values: Iterable[float], reps: int = 2000, seed: int = 0) -> tuple[float, float, float]:
+    arr = np.asarray(list(values), dtype=float)
+    if arr.size == 0:
+        return float("nan"), float("nan"), float("nan")
+    estimate = float(np.mean(arr))
+    if arr.size == 1:
+        return estimate, estimate, estimate
+    rng = np.random.default_rng(seed)
+    draws = rng.choice(arr, size=(int(reps), arr.size), replace=True)
+    means = np.mean(draws, axis=1)
+    low, high = np.percentile(means, [2.5, 97.5])
+    return estimate, float(low), float(high)
+
+
+def _paired_gain_units(
+    df: pd.DataFrame,
+    scenario: str,
+    treatment_selector: str,
+    baseline_selector: str = "raw",
+    n: int | None = None,
+) -> pd.Series:
+    if df.empty:
+        return pd.Series(dtype=float)
+    if n is None:
+        n = int(df["N"].max())
+    key_cols = ["scenario", "N", "seed"]
+    base = df[
+        (df["scenario"] == scenario)
+        & (df["selector"] == baseline_selector)
+        & (df["N"] == n)
+    ][key_cols + ["selected_real_utility"]].rename(columns={"selected_real_utility": "baseline"})
+    treat = df[
+        (df["scenario"] == scenario)
+        & (df["selector"] == treatment_selector)
+        & (df["N"] == n)
+    ][key_cols + ["selected_real_utility"]].rename(columns={"selected_real_utility": "treatment"})
+    merged = treat.merge(base, on=key_cols, how="inner")
+    return merged["treatment"] - merged["baseline"]
+
+
 def paired_selector_effects(seed_df: pd.DataFrame, baseline: str = "raw") -> pd.DataFrame:
     """Paired per-seed selector gains against a baseline selector."""
 
@@ -419,6 +459,127 @@ def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
             out["combined_vs_best_proxy_gain_mean"] = combined_utility - best_proxy
             out["combined_oracle_gap_mean"] = oracle_utility - combined_utility
             rows.append(out)
+    return pd.DataFrame(rows)
+
+
+def statistical_audit(
+    seed_df: pd.DataFrame,
+    ood_seed_df: pd.DataFrame | None = None,
+    family_seed_df: pd.DataFrame | None = None,
+    bootstrap_reps: int = 2000,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Bootstrap confidence audit for the main controlled evidence claims."""
+
+    rows: list[dict[str, float | int | str | bool]] = []
+
+    def add_row(
+        effect_id: str,
+        description: str,
+        units: Iterable[float],
+        threshold: float,
+        direction: str = "lower",
+    ) -> None:
+        values = list(units)
+        estimate, low, high = _bootstrap_mean_ci(values, reps=bootstrap_reps, seed=seed + len(rows) * 997)
+        ci_target = low if direction == "lower" else high
+        passes = bool(ci_target >= threshold) if direction == "lower" else bool(ci_target <= threshold)
+        rows.append(
+            {
+                "effect_id": effect_id,
+                "description": description,
+                "estimate": estimate,
+                "bootstrap_ci_low": low,
+                "bootstrap_ci_high": high,
+                "threshold": float(threshold),
+                "direction": direction,
+                "n_units": int(len(values)),
+                "passes": passes,
+            }
+        )
+
+    if not seed_df.empty:
+        raw = seed_df[(seed_df["scenario"] == "raw") & (seed_df["selector"] == "raw")]
+        if not raw.empty:
+            n_min = int(raw["N"].min())
+            n_max = int(raw["N"].max())
+            low_n = raw[raw["N"] == n_min][["seed", "selected_object_score", "selected_real_utility"]].rename(
+                columns={
+                    "selected_object_score": "score_low_n",
+                    "selected_real_utility": "utility_low_n",
+                }
+            )
+            high_n = raw[raw["N"] == n_max][["seed", "selected_object_score", "selected_real_utility"]].rename(
+                columns={
+                    "selected_object_score": "score_high_n",
+                    "selected_real_utility": "utility_high_n",
+                }
+            )
+            merged = low_n.merge(high_n, on="seed", how="inner")
+            add_row(
+                "raw_tail_score_gain",
+                "Raw selected object-score gain from lowest to highest N.",
+                merged["score_high_n"] - merged["score_low_n"],
+                threshold=0.25,
+            )
+            add_row(
+                "raw_tail_utility_drop",
+                "Raw selected real-utility drop from lowest to highest N.",
+                merged["utility_low_n"] - merged["utility_high_n"],
+                threshold=0.10,
+            )
+        add_row(
+            "combined_repair_raw_gain",
+            "Combined repair selected-utility gain over raw at high N.",
+            _paired_gain_units(seed_df, "raw", "combined_repair"),
+            threshold=0.50,
+        )
+        add_row(
+            "targeted_probe_hidden_gain",
+            "Targeted probe selected-utility gain over raw for hidden-property scenes at high N.",
+            _paired_gain_units(seed_df, "hidden_property", "targeted_probe"),
+            threshold=0.10,
+        )
+
+    if ood_seed_df is not None and not ood_seed_df.empty:
+        n_max = int(ood_seed_df["N"].max())
+        corrupted = ood_seed_df[ood_seed_df["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"])]
+        base = corrupted[(corrupted["selector"] == "raw") & (corrupted["N"] == n_max)][
+            ["scenario", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "baseline"})
+        treat = corrupted[(corrupted["selector"] == "combined_repair") & (corrupted["N"] == n_max)][
+            ["scenario", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "treatment"})
+        merged = treat.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "ood_combined_repair_gain",
+            "Dense OOD corrupted-scene combined repair selected-utility gain over raw.",
+            merged["treatment"] - merged["baseline"],
+            threshold=0.60,
+        )
+
+    if family_seed_df is not None and not family_seed_df.empty:
+        n_max = int(family_seed_df["N"].max())
+        proxies = family_seed_df[
+            (family_seed_df["selector"].isin(MODEL_FAMILY_PROXY_SELECTORS))
+            & (family_seed_df["N"] == n_max)
+        ]
+        best_proxy = (
+            proxies.groupby(["scenario", "seed"], as_index=False)["selected_real_utility"]
+            .max()
+            .rename(columns={"selected_real_utility": "best_proxy"})
+        )
+        combined = family_seed_df[(family_seed_df["selector"] == "combined_repair") & (family_seed_df["N"] == n_max)][
+            ["scenario", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "combined"})
+        merged = combined.merge(best_proxy, on=["scenario", "seed"], how="inner")
+        add_row(
+            "model_family_proxy_gain",
+            "Combined repair selected-utility gain over the best toy model-family proxy.",
+            merged["combined"] - merged["best_proxy"],
+            threshold=0.20,
+        )
+
     return pd.DataFrame(rows)
 
 

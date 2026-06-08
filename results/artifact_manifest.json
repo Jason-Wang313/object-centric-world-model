@@ -1,10 +1,10 @@
 {
-  "artifact_count": 40,
+  "artifact_count": 42,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 2310,
-      "sha256": "6f604d1b9f8b252468a8b732b3dfd02e847279b61dbdc1d1f6f3f2d5dffb3eb8"
+      "bytes": 2368,
+      "sha256": "f51b1d49d439a616f85516ae128898f885b5b762862c498336622c250f64116d"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -35,6 +35,11 @@
       "path": "figures/figure15_model_family_proxies.png",
       "bytes": 61799,
       "sha256": "512f3798c73fdaa78386845b3af5a2515800104e9cb206e5848d537b9b3f9cd6"
+    },
+    {
+      "path": "figures/figure16_statistical_audit.png",
+      "bytes": 93142,
+      "sha256": "35a48de761a94fb0bf076abd7748e002f3f233f40b4a7c2702ed58125ed403f2"
     },
     {
       "path": "figures/figure1_selected_tail_binding_failure.png",
@@ -88,8 +93,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 2672,
-      "sha256": "a212f2a738f9d0586e102fe6b4e03f7bfbd8339d0cb9f922ebd399af26caabf2"
+      "bytes": 2770,
+      "sha256": "d84dec79e52df75d5fae8ca14ff038a20bc00b3eb10f523b6302047cf6fa2888"
     },
     {
       "path": "results/tables/exact_law_validation.csv",
@@ -187,6 +192,11 @@
       "sha256": "51b58c3142b0a7d7e2624d29477688fe429f3c8a12c0ddb96e387737679ef8c8"
     },
     {
+      "path": "results/tables/statistical_audit.csv",
+      "bytes": 1104,
+      "sha256": "489a4bff3483a2d51e0b24568fa06715f0b00bcd246e4f8875e4cea740e457b3"
+    },
+    {
       "path": "results/tables/stress_metrics.csv",
       "bytes": 20209,
       "sha256": "e2dc891fd1c7a4878aee2a86a2d4a706e572898dfd7de72b8fa22c511cab2e2e"
@@ -198,8 +208,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 561,
-      "sha256": "b8f6a96bfc1e27d4f69347e3f71cb2406f9170b867d0f0df56573c4f117f9c86"
+      "bytes": 609,
+      "sha256": "c549697394bb2dd4a36aa3f8482f8b1d310db912b96c0af929e3e214fce504f5"
     }
   ]
 }

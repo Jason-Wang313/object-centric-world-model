@@ -21,7 +21,7 @@ Evidence: figure1 and main_metrics.csv for the raw scenario
 
 Strength: {
   "passes": true,
-  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, and dense OOD corrupted variants collapse",
+  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
   "observed": {
     "raw_tail_score_gain": 0.5759192453426587,
     "raw_tail_utility_drop": 0.3639708878079679,
@@ -36,7 +36,8 @@ Strength: {
     "good_minus_corrupted_utility": 0.608449149414918,
     "ood_good_raw_utility": 0.7549937089444607,
     "ood_corrupted_raw_mean_utility": 0.03568903305390833,
-    "ood_corrupted_raw_identity_error": 0.9166666666666666
+    "ood_corrupted_raw_identity_error": 0.9166666666666666,
+    "bootstrap_raw_tail_min_ci_margin": 0.0829473068486257
   }
 }
 
@@ -47,7 +48,7 @@ Evidence: figure2, figure4, paired_effects.csv, and stress_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, and controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12",
+  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
   "observed": {
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
@@ -65,7 +66,8 @@ Strength: {
     "ood_combined_vs_raw_gain": 0.8411636120707556,
     "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
     "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
-    "model_family_max_combined_oracle_gap": 0.1058960383796072
+    "model_family_max_combined_oracle_gap": 0.1058960383796072,
+    "bootstrap_repair_min_ci_margin": 0.21618181628708677
   }
 }
 
@@ -102,6 +104,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 40 required artifacts.
+Artifact verification checked 42 required artifacts.
 
 No paper-text or artifact overclaim problems detected.
