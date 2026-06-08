@@ -1,14 +1,17 @@
 {
-  "model": "numpy_linear_object_slot_model",
+  "model": "numpy_linear_object_slot_model_with_identity_alignment",
   "claim_scope": "controlled synthetic trajectories only",
   "metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
+    "identity_alignment_accuracy": 0.9875,
+    "random_identity_alignment_accuracy": 0.5,
     "transition_mse": 0.00027582489851947376,
     "constant_transition_mse": 0.03922277193173474,
     "reward_correlation": 0.953061460933608,
     "n_train_slots": 1040,
     "n_test_slots": 480
   },
+  "learning_curve_rows": 4,
   "passes_minimum_learned_artifact_checks": true
 }

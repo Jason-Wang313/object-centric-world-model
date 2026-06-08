@@ -12,9 +12,13 @@ Response: Correct. Claims are limited to controlled synthetic and semi-learned C
 
 Response: Correct. The repair stack uses controlled diagnostic signals such as identity instability, merge evidence, property entropy, and targeted probe observations. This is appropriate for a v1 mechanism study, not a deployment claim.
 
+## Attack: The repair result could be a seed fluke.
+
+Response: The upgraded run reports paired per-seed gains in `paired_effects.csv` and a separate high-N stress panel in `stress_metrics.csv`. The claim audit requires positive paired raw-to-repair gain, high win rate, targeted hidden-property gain, and stress utility before marking the repair claim strongly supported.
+
 ## Attack: The learned model is too simple.
 
-Response: The learned artifact is intentionally CPU NumPy and semi-learned. It proves that the repo is not hand-coded-only for the learned claim, but it does not establish modern benchmark performance.
+Response: The learned artifact is intentionally CPU NumPy and semi-learned. It now includes transition, hidden-property, identity-alignment, reward, and learning-curve evidence. It does not establish modern benchmark performance.
 
 ## Attack: Oracle rows make repairs look weak or strong.
 

@@ -16,7 +16,14 @@ import pandas as pd
 from object_centric_best_of_n.audit import write_claim_status, write_final_audit
 from object_centric_best_of_n.envs import make_scene
 from object_centric_best_of_n.learned_model import train_and_evaluate
-from object_centric_best_of_n.metrics import aggregate_seed_metrics, deployment_gate_from_metrics, exact_law_prediction_error, selection_record
+from object_centric_best_of_n.metrics import (
+    aggregate_seed_metrics,
+    deployment_gate_from_metrics,
+    exact_law_prediction_error,
+    paired_selector_effects,
+    selection_record,
+    stress_summary,
+)
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
 from object_centric_best_of_n.plotting import write_all_figures
 from object_centric_best_of_n.selection import SELECTORS
@@ -25,12 +32,44 @@ from object_centric_best_of_n.theory import law_validation_row
 
 SCENARIOS = ["good", "swap", "merge_split", "occlusion", "hidden_property", "raw"]
 SELECTOR_ORDER = ["raw", "identity_consistent", "property_calibrated", "targeted_probe", "combined_repair", "random", "oracle"]
+STRESS_SCENARIOS = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
+STRESS_SELECTORS = ["raw", "identity_consistent", "targeted_probe", "combined_repair", "random", "oracle"]
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
     if value is None:
         return default
     return [int(part.strip()) for part in value.split(",") if part.strip()]
+
+
+def _scene_for_scenario(seed: int, scenario: str):
+    return make_scene(
+        seed=seed,
+        occlusion=scenario in {"occlusion", "raw"},
+        hidden_property=scenario in {"hidden_property", "raw"},
+        crossing=scenario in {"occlusion", "swap", "raw"},
+    )
+
+
+def _run_stress_panel(
+    generator: ObjectCentricFutureGenerator,
+    stress_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in stress_seeds:
+        for scenario in STRESS_SCENARIOS:
+            scene = _scene_for_scenario(50_000 + seed, scenario)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=scenario,
+                seed=97_531 + seed * 173 + len(scenario),
+            )
+            for selector_name in STRESS_SELECTORS:
+                selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                rows.append(selection_record("F_high_n_stress", scenario, selector_name, n, seed, selected, candidates))
+    return pd.DataFrame(rows)
 
 
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
@@ -44,16 +83,11 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     seed_rows: list[dict[str, float | int | str]] = []
     law_rows: list[dict[str, float | int | str]] = []
     generator = ObjectCentricFutureGenerator(seed=17)
-    trials = 500 if mode == "smoke" else 1800
+    trials = 1200 if mode == "smoke" else 15_000
 
     for seed in seeds:
         for scenario in SCENARIOS:
-            scene = make_scene(
-                seed=10_000 + seed,
-                occlusion=scenario in {"occlusion", "raw"},
-                hidden_property=scenario in {"hidden_property", "raw"},
-                crossing=scenario in {"occlusion", "swap", "raw"},
-            )
+            scene = _scene_for_scenario(10_000 + seed, scenario)
             for n in ns:
                 candidates = generator.generate_candidates(
                     scene,
@@ -81,28 +115,54 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     seed_df = pd.DataFrame(seed_rows)
     main = aggregate_seed_metrics(seed_df)
     repair_metrics = main[main["selector"].isin(["raw", "identity_consistent", "property_calibrated", "targeted_probe", "combined_repair", "random", "oracle"])].copy()
+    paired_effects = paired_selector_effects(seed_df)
     law_df = pd.DataFrame(law_rows)
+    stress_seeds = list(range(4)) if mode == "smoke" else list(range(32))
+    stress_seed_df = _run_stress_panel(generator, stress_seeds=stress_seeds, n=max(ns))
+    stress_metrics = stress_summary(stress_seed_df)
 
     seed_df.to_csv(tables / "seed_metrics.csv", index=False)
     main.to_csv(tables / "main_metrics.csv", index=False)
     repair_metrics.to_csv(tables / "repair_metrics.csv", index=False)
+    paired_effects.to_csv(tables / "paired_effects.csv", index=False)
     law_df.to_csv(tables / "exact_law_validation.csv", index=False)
+    stress_seed_df.to_csv(tables / "stress_seed_metrics.csv", index=False)
+    stress_metrics.to_csv(tables / "stress_metrics.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
     learned_row = learned_metrics.as_dict()
     pd.DataFrame([learned_row]).to_csv(tables / "learned_metrics.csv", index=False)
+    learned_curve = pd.read_csv(tables / "learned_learning_curve.csv")
 
-    write_all_figures(main, seed_df, law_df, figures)
+    write_all_figures(main, seed_df, law_df, figures, stress_df=stress_metrics, learned_curve=learned_curve)
     claims = write_claim_status(root)
     gate = deployment_gate_from_metrics(main)
+    raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
+    raw_tail_score_gain = float(raw_tail["selected_object_score_mean"].iloc[-1] - raw_tail["selected_object_score_mean"].iloc[0])
+    raw_tail_utility_drop = float(raw_tail["selected_real_utility_mean"].iloc[0] - raw_tail["selected_real_utility_mean"].iloc[-1])
+    raw_combined_nmax = paired_effects[
+        (paired_effects["scenario"] == "raw")
+        & (paired_effects["selector"] == "combined_repair")
+        & (paired_effects["N"] == max(ns))
+    ]
+    stress_combined = stress_metrics[
+        (stress_metrics["selector"] == "combined_repair") & (stress_metrics["scenario"].isin(STRESS_SCENARIOS))
+    ]
     summary = {
         "mode": mode,
         "ns": ns,
         "seeds": seeds,
+        "stress_seeds": stress_seeds,
         "n_seed_rows": int(seed_df.shape[0]),
         "n_main_rows": int(main.shape[0]),
+        "n_stress_rows": int(stress_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
+        "raw_tail_score_gain": raw_tail_score_gain,
+        "raw_tail_utility_drop": raw_tail_utility_drop,
+        "combined_repair_raw_nmax_mean_gain": float(raw_combined_nmax["mean_gain"].iloc[0]) if not raw_combined_nmax.empty else None,
+        "combined_repair_raw_nmax_win_rate": float(raw_combined_nmax["win_rate"].iloc[0]) if not raw_combined_nmax.empty else None,
+        "stress_combined_mean_selected_utility": float(stress_combined["selected_real_utility_mean"].mean()) if not stress_combined.empty else None,
         "learned_metrics": learned_row,
         "passes_claim_audit": claims["passes_claim_audit"],
         "runtime_seconds": round(time.time() - start, 3),
@@ -121,7 +181,7 @@ def main() -> int:
     args = parser.parse_args()
 
     default_ns = [1, 4, 16] if args.mode == "smoke" else [1, 2, 4, 8, 16, 32, 64]
-    default_seeds = [0, 1] if args.mode == "smoke" else list(range(8))
+    default_seeds = [0, 1] if args.mode == "smoke" else list(range(16))
     summary = run(Path(args.root), args.mode, _parse_ints(args.ns, default_ns), _parse_ints(args.seeds, default_seeds))
     print(json.dumps(summary, indent=2))
     return 0

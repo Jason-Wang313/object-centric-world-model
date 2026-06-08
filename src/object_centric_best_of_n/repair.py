@@ -119,11 +119,17 @@ def targeted_diagnostic_probe(
     prior = property_prior_from_candidate(candidate)
     posterior = property_posterior_update(prior, observation, reliability=reliability)
     property_penalty = abs(posterior - (1.0 if true_heavy else 0.0))
+    consistency = temporal_identity_consistency(candidate)
+    merge = float(candidate.diagnostics.get("merge_evidence", 0.0))
+    instability = float(candidate.diagnostics.get("identity_instability", 0.5))
     diagnostic_score = (
         property_calibrated_score(candidate)
         + 0.30 * posterior
+        + 0.30 * consistency
         - 0.45 * property_penalty
         - 0.18 * float(candidate.property_entropy)
+        - 0.25 * merge
+        - 0.20 * instability
     )
     diagnostics = dict(candidate.diagnostics)
     diagnostics.update(

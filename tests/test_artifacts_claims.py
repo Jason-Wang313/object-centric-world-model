@@ -34,8 +34,12 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/main_metrics.csv",
         "results/tables/seed_metrics.csv",
         "results/tables/learned_metrics.csv",
+        "results/tables/learned_learning_curve.csv",
         "results/tables/repair_metrics.csv",
+        "results/tables/paired_effects.csv",
         "results/tables/exact_law_validation.csv",
+        "results/tables/stress_seed_metrics.csv",
+        "results/tables/stress_metrics.csv",
         "results/run_summary.json",
         "results/learned_object_model_summary.json",
         "results/claims_status.md",
@@ -45,6 +49,8 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "figures/figure3_tail_diagnostics.png",
         "figures/figure4_targeted_probe_before_after.png",
         "figures/figure5_exact_law_validation.png",
+        "figures/figure6_stress_robustness.png",
+        "figures/figure7_learned_object_model.png",
     ]
     missing = [rel for rel in required if not (ROOT / rel).exists()]
     assert not missing
@@ -55,6 +61,8 @@ def test_claim_audit_keeps_forbidden_claims_unsupported():
     status_path = ROOT / "results" / "claims_status.json"
     if status_path.exists():
         payload = json.loads(status_path.read_text(encoding="utf-8"))
+        core = {claim["id"]: claim["status"] for claim in payload["claims"] if claim["id"] in {"C1", "C2", "C3", "C4"}}
+        assert all(status == "strongly_supported" for status in core.values())
         unsupported = {claim["claim"]: claim["status"] for claim in payload["claims"] if "real robot" in claim["claim"].lower() or "benchmark" in claim["claim"].lower()}
         assert unsupported
         assert all(status == "unsupported" for status in unsupported.values())

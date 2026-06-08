@@ -22,6 +22,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - An object-centric future generator with slots, identities, hidden properties, trajectories, and failure diagnostics.
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, combined repair, random selection, and oracle selection.
+- Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 
 ## What This Is Not
 
@@ -35,7 +36,11 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/seed_metrics.csv`
 - `results/tables/learned_metrics.csv`
 - `results/tables/repair_metrics.csv`
+- `results/tables/paired_effects.csv`
 - `results/tables/exact_law_validation.csv`
+- `results/tables/stress_seed_metrics.csv`
+- `results/tables/stress_metrics.csv`
+- `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
 - `figures/figure1_selected_tail_binding_failure.png`
@@ -43,9 +48,11 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure3_tail_diagnostics.png`
 - `figures/figure4_targeted_probe_before_after.png`
 - `figures/figure5_exact_law_validation.png`
+- `figures/figure6_stress_robustness.png`
+- `figures/figure7_learned_object_model.png`
 
 ## Claim Boundaries
 
-Supported claims are limited to exact finite laws, controlled synthetic failure evidence, controlled repair evidence, and one CPU NumPy semi-learned object-centric artifact. Unsupported claims include real-robot validation, broad benchmark superiority, and universal object learning.
+Supported claims are limited to exact finite laws, controlled synthetic failure evidence, controlled repair evidence, and one CPU NumPy semi-learned object-centric artifact. The claim audit marks core claims as `strongly_supported` only when generated artifacts clear numeric thresholds. Unsupported claims include real-robot validation, broad benchmark superiority, and universal object learning.
 
 See `results/claims_status.md` and `docs/final_audit.md` after running the scripts.

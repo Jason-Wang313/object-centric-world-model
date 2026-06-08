@@ -130,15 +130,15 @@ def monte_carlo_best_of_n(
 
     rng = np.random.default_rng(seed)
     m = utility_arr.size
-    selected = np.empty(trials, dtype=float)
-    for t in range(trials):
-        sample = rng.integers(0, m, size=n)
-        sampled_scores = score_arr[sample]
-        max_score = np.max(sampled_scores)
-        tied_positions = np.flatnonzero(sampled_scores == max_score)
-        chosen_pos = int(rng.choice(tied_positions))
-        selected[t] = utility_arr[sample[chosen_pos]]
-    return float(np.mean(selected))
+    samples = rng.integers(0, m, size=(trials, n))
+    sampled_scores = score_arr[samples]
+    max_scores = np.max(sampled_scores, axis=1, keepdims=True)
+    tie_mask = sampled_scores == max_scores
+    tie_random = rng.random(size=(trials, n))
+    tie_random[~tie_mask] = -1.0
+    chosen_positions = np.argmax(tie_random, axis=1)
+    chosen_indices = samples[np.arange(trials), chosen_positions]
+    return float(np.mean(utility_arr[chosen_indices]))
 
 
 def oracle_score_check(utilities: Iterable[float], n: int = 8) -> dict[str, float | bool]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 import numpy as np
@@ -97,6 +98,76 @@ def aggregate_seed_metrics(seed_df: pd.DataFrame) -> pd.DataFrame:
             row[f"{col}_ci_high"] = high
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def _binomial_two_sided_p(wins: int, losses: int) -> float:
+    n = int(wins + losses)
+    if n == 0:
+        return 1.0
+    k = min(int(wins), int(losses))
+    tail = sum(math.comb(n, i) * (0.5**n) for i in range(k + 1))
+    return float(min(1.0, 2.0 * tail))
+
+
+def paired_selector_effects(seed_df: pd.DataFrame, baseline: str = "raw") -> pd.DataFrame:
+    """Paired per-seed selector gains against a baseline selector."""
+
+    key_cols = ["experiment", "scenario", "N", "seed"]
+    baseline_df = seed_df[seed_df["selector"] == baseline][key_cols + ["selected_real_utility"]].rename(
+        columns={"selected_real_utility": "baseline_selected_real_utility"}
+    )
+    rows: list[dict[str, float | int | str]] = []
+    for selector, group in seed_df[seed_df["selector"] != baseline].groupby("selector", sort=True):
+        merged = group.merge(baseline_df, on=key_cols, how="inner")
+        for keys, pair_group in merged.groupby(["experiment", "scenario", "N"], sort=True):
+            gains = pair_group["selected_real_utility"] - pair_group["baseline_selected_real_utility"]
+            mean, low, high = mean_ci(gains)
+            wins = int(np.sum(gains > 1e-12))
+            losses = int(np.sum(gains < -1e-12))
+            ties = int(gains.size - wins - losses)
+            std = float(np.std(gains, ddof=1)) if gains.size > 1 else 0.0
+            effect_size = float(mean / std) if std > 1e-12 else float("inf") if mean > 0 else 0.0
+            row = dict(zip(["experiment", "scenario", "N"], keys))
+            row.update(
+                {
+                    "selector": selector,
+                    "baseline": baseline,
+                    "n_pairs": int(gains.size),
+                    "mean_gain": mean,
+                    "gain_ci_low": low,
+                    "gain_ci_high": high,
+                    "wins": wins,
+                    "losses": losses,
+                    "ties": ties,
+                    "win_rate": float(wins / gains.size) if gains.size else 0.0,
+                    "sign_test_p": _binomial_two_sided_p(wins, losses),
+                    "paired_effect_size": effect_size,
+                }
+            )
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def stress_summary(stress_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate high-N stress rows and add paired raw-to-repair gains."""
+
+    if stress_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(stress_seed_df)
+    paired = paired_selector_effects(stress_seed_df)
+    paired = paired.rename(columns={"selector": "comparison_selector"})
+    combined = paired[paired["comparison_selector"] == "combined_repair"][
+        ["experiment", "scenario", "N", "mean_gain", "gain_ci_low", "gain_ci_high", "win_rate", "sign_test_p"]
+    ].rename(
+        columns={
+            "mean_gain": "combined_vs_raw_gain_mean",
+            "gain_ci_low": "combined_vs_raw_gain_ci_low",
+            "gain_ci_high": "combined_vs_raw_gain_ci_high",
+            "win_rate": "combined_vs_raw_win_rate",
+            "sign_test_p": "combined_vs_raw_sign_test_p",
+        }
+    )
+    return main.merge(combined, on=["experiment", "scenario", "N"], how="left")
 
 
 def exact_law_prediction_error(df: pd.DataFrame) -> float:
