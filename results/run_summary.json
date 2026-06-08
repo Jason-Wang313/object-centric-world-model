@@ -75,8 +75,14 @@
   "seed_block_robustness_pass_rate": 1.0,
   "raw_score_top_bin_object_real_gap": 1.095467459764002,
   "raw_score_top_bin_identity_error": 0.94140625,
+  "good_control_raw_nmax_utility": 0.6554531451148605,
+  "good_control_raw_nmax_identity_error": 0.125,
+  "good_minus_corrupted_raw_nmax_utility": 0.608449149414918,
+  "corrupted_mean_raw_nmax_utility": 0.047003995699942534,
   "combined_repair_min_low_noise_utility": 0.8374916544433992,
   "combined_vs_raw_low_noise_sensitivity_margin": 0.8534731753001509,
+  "learned_full_minus_no_mass_property_accuracy": 0.1229166666666666,
+  "learned_full_minus_kinematic_pair_identity_accuracy": 0.0760416666666666,
   "learned_metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
@@ -89,5 +95,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 110.536
+  "runtime_seconds": 102.734
 }

@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 23.053s; strict claim audit passed)
-- bash scripts/run_all.sh: pass (full experiment runtime 110.536s; 16 main seeds, 24 sensitivity seeds, 32 stress seeds, gate block_high_n)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 32.892s; strict claim audit passed)
+- bash scripts/run_all.sh: pass (full experiment runtime 102.734s; 16 main seeds, 24 sensitivity seeds, 32 stress seeds, gate block_high_n)
 - bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, and paper-text scan passed)
-- pytest: pass (13 passed in 10.31s on final run)
+- pytest: pass (13 passed in 9.71s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -17,6 +17,8 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Stress artifact: figure6_stress_robustness.png. Combined repair mean selected stress utility 0.8494153088926296.
 - Calibration artifact: figure10_score_calibration.png and score_calibration.csv. Top raw-score bin object-real gap 1.095467459764002.
 - Sensitivity artifact: figure11_score_noise_sensitivity.png and sensitivity_metrics.csv. Combined repair low-noise minimum utility 0.8374916544433992.
+- Negative-control artifact: figure12_negative_control.png and negative_control.csv. Good-control raw high-N utility 0.6554531451148605.
+- Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. Full-minus-no-mass property gain 0.1229166666666666.
 
 ## Differentiation
 The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.
@@ -30,9 +32,11 @@ It is not a graph-physics benchmark, a latent dynamics benchmark, a diffusion wo
 ## Artifact Inventory
 ### tables
 - results\tables\exact_law_validation.csv
+- results\tables\learned_ablation.csv
 - results\tables\learned_learning_curve.csv
 - results\tables\learned_metrics.csv
 - results\tables\main_metrics.csv
+- results\tables\negative_control.csv
 - results\tables\paired_effects.csv
 - results\tables\repair_ablation.csv
 - results\tables\repair_metrics.csv
@@ -47,6 +51,8 @@ It is not a graph-physics benchmark, a latent dynamics benchmark, a diffusion wo
 ### figures
 - figures\figure10_score_calibration.png
 - figures\figure11_score_noise_sensitivity.png
+- figures\figure12_negative_control.png
+- figures\figure13_learned_ablation.png
 - figures\figure1_selected_tail_binding_failure.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png

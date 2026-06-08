@@ -14,3 +14,4 @@ def test_learned_model_improves_over_simple_baselines(tmp_path):
     summary = json.loads((tmp_path / "learned_object_model_summary.json").read_text(encoding="utf-8"))
     assert summary["passes_minimum_learned_artifact_checks"] is True
     assert (tmp_path / "tables" / "learned_learning_curve.csv").exists()
+    assert (tmp_path / "tables" / "learned_ablation.csv").exists()

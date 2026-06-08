@@ -1,0 +1,4 @@
+contrast,N,selected_real_utility_mean,identity_error_mean,object_real_gap_mean
+good_control,64,0.6554531451148605,0.125,0.11496618639233275
+corrupted_mean,64,0.047003995699942534,0.9125,1.14676067942631
+good_minus_corrupted,64,0.608449149414918,-0.7875,-1.0317944930339773

@@ -318,6 +318,51 @@ def sensitivity_summary(sensitivity_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def negative_control_summary(main_metrics: pd.DataFrame) -> pd.DataFrame:
+    """Summarize whether high-N collapse is specific to corrupted object scenarios."""
+
+    if main_metrics.empty:
+        return pd.DataFrame()
+    nmax = int(main_metrics["N"].max())
+    raw = main_metrics[(main_metrics["selector"] == "raw") & (main_metrics["N"] == nmax)].copy()
+    if raw.empty:
+        return pd.DataFrame()
+    corrupted = raw[raw["scenario"].isin(["raw", "occlusion", "hidden_property", "swap", "merge_split"])]
+    good = raw[raw["scenario"] == "good"]
+    rows: list[dict[str, float | int | str]] = []
+    if not good.empty:
+        rows.append(
+            {
+                "contrast": "good_control",
+                "N": nmax,
+                "selected_real_utility_mean": float(good["selected_real_utility_mean"].iloc[0]),
+                "identity_error_mean": float(good["identity_error_mean"].iloc[0]),
+                "object_real_gap_mean": float(good["object_real_gap_mean"].iloc[0]),
+            }
+        )
+    if not corrupted.empty:
+        rows.append(
+            {
+                "contrast": "corrupted_mean",
+                "N": nmax,
+                "selected_real_utility_mean": float(corrupted["selected_real_utility_mean"].mean()),
+                "identity_error_mean": float(corrupted["identity_error_mean"].mean()),
+                "object_real_gap_mean": float(corrupted["object_real_gap_mean"].mean()),
+            }
+        )
+    if not good.empty and not corrupted.empty:
+        rows.append(
+            {
+                "contrast": "good_minus_corrupted",
+                "N": nmax,
+                "selected_real_utility_mean": float(good["selected_real_utility_mean"].iloc[0] - corrupted["selected_real_utility_mean"].mean()),
+                "identity_error_mean": float(good["identity_error_mean"].iloc[0] - corrupted["identity_error_mean"].mean()),
+                "object_real_gap_mean": float(good["object_real_gap_mean"].iloc[0] - corrupted["object_real_gap_mean"].mean()),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def exact_law_prediction_error(df: pd.DataFrame) -> float:
     if df.empty:
         return float("nan")

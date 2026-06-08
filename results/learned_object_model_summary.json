@@ -13,5 +13,6 @@
     "n_test_slots": 480
   },
   "learning_curve_rows": 4,
+  "ablation_rows": 5,
   "passes_minimum_learned_artifact_checks": true
 }

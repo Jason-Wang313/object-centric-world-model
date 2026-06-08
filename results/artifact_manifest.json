@@ -1,10 +1,10 @@
 {
-  "artifact_count": 30,
+  "artifact_count": 34,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 1884,
-      "sha256": "e3d48816ad6cd475f11b4b020ca8651eda5b74cbc35db72ad147568ea6a79428"
+      "bytes": 2144,
+      "sha256": "9c3ea0a84ae674c9ba8f3cd33164b1ece0f053ef38f1aa1bd94a58447301cdfd"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -15,6 +15,16 @@
       "path": "figures/figure11_score_noise_sensitivity.png",
       "bytes": 46947,
       "sha256": "58b77acf12617f0691909bf03dffbbd66e871d2f7e808f5accbbd74ec488b3b2"
+    },
+    {
+      "path": "figures/figure12_negative_control.png",
+      "bytes": 43595,
+      "sha256": "323a640c27f88064590a2c56ae6a67b6bf2aad307d370dbf4282d4646854789f"
+    },
+    {
+      "path": "figures/figure13_learned_ablation.png",
+      "bytes": 60076,
+      "sha256": "6ecaac7c7abb2d00756b13e66098c90cab603edabfc12578c8c1201dfe939028"
     },
     {
       "path": "figures/figure1_selected_tail_binding_failure.png",
@@ -63,18 +73,23 @@
     },
     {
       "path": "results/learned_object_model_summary.json",
-      "bytes": 611,
-      "sha256": "8eb6357f274d3d05c9a7c5e59d52ccb600bf260f715816a43aaef1df890d575e"
+      "bytes": 634,
+      "sha256": "c551d13b985cdc0f8a37579e5c34611c5750ab7b875afbd83be2696eb1487187"
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 1810,
-      "sha256": "b54c819cd681e27cc87eb2d5a6ceea9d13ca9abf6f9cfcce282632100b3b1311"
+      "bytes": 2188,
+      "sha256": "632d3709a0c4c7c218d12189560237f061b8b191057e23e302dd724fc83ac70e"
     },
     {
       "path": "results/tables/exact_law_validation.csv",
       "bytes": 8682,
       "sha256": "9aa9c913202d4f17eb39d7b299214d8793c6e66667902370decf6601aadf77d6"
+    },
+    {
+      "path": "results/tables/learned_ablation.csv",
+      "bytes": 1157,
+      "sha256": "49ebed5a02a9958213858bb0a8304b9bc54bded00109c4301b9eff6efb5df9e3"
     },
     {
       "path": "results/tables/learned_learning_curve.csv",
@@ -90,6 +105,11 @@
       "path": "results/tables/main_metrics.csv",
       "bytes": 157475,
       "sha256": "bbc8f76feaa52a18ff9e2cb7be4d917da2c8156ec069d4c6f2e4cd699aa85bfa"
+    },
+    {
+      "path": "results/tables/negative_control.csv",
+      "bytes": 277,
+      "sha256": "42bfdbfcc2a1c0666c6df62fb5bdcd35e0732094c415b39f00beefd56711dbed"
     },
     {
       "path": "results/tables/paired_effects.csv",
@@ -148,8 +168,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 476,
-      "sha256": "fcd8f85606c6f34db4d112b40754b4e3eb2896770420c2320cc66b1ea83ea8dc"
+      "bytes": 475,
+      "sha256": "5f73fa1f9645dad07ece55d6630656f336f428ef6f71b7e89363e446dea47d6f"
     }
   ]
 }

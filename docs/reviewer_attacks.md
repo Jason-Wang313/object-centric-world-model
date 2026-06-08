@@ -20,6 +20,10 @@ Response: The upgraded run reports paired per-seed gains in `paired_effects.csv`
 
 Response: `score_calibration.csv` bins raw candidate object scores and measures real utility, object-real gap, and identity-error rate. `sensitivity_metrics.csv` perturbs raw and repaired scores with score noise and requires the combined repair to remain strong under low-noise perturbations.
 
+## Attack: Best-of-N may just be bad in every synthetic scene.
+
+Response: `negative_control.csv` compares the good non-corrupted setting with corrupted high-N settings. The audit requires the good control to retain utility and low identity error while corrupted settings collapse.
+
 ## Attack: The paper text might drift beyond the artifact evidence.
 
 Response: `run_claim_audit.sh` scans README, docs, and paper text for supported forbidden overclaims, verifies required tables, figures, and JSON artifacts, and writes `results/artifact_manifest.json` with deterministic hashes. The generated `docs/results_digest.md` records the current evidence boundaries.
@@ -27,6 +31,10 @@ Response: `run_claim_audit.sh` scans README, docs, and paper text for supported 
 ## Attack: The learned model is too simple.
 
 Response: The learned artifact is intentionally CPU NumPy and semi-learned. It now includes transition, hidden-property, identity-alignment, reward, and learning-curve evidence. It does not establish modern benchmark performance.
+
+## Attack: The learned evidence may not use object information.
+
+Response: `learned_ablation.csv` removes object-relevant features such as the mass sensor and identity-pair features. The audit requires the full object-feature model to beat these ablations on hidden-property and identity-alignment metrics.
 
 ## Attack: Oracle rows make repairs look weak or strong.
 

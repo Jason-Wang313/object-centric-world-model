@@ -273,6 +273,82 @@ def _evaluate_for_train_size(
     )
 
 
+def _evaluate_with_masks(
+    seed: int,
+    n_train_scenes: int,
+    n_test_scenes: int,
+    feature_mask: np.ndarray,
+    identity_mask: np.ndarray,
+) -> LearnedMetrics:
+    x_train, y_trans_train, y_prop_train, y_reward_train = make_synthetic_trajectory_dataset(n_train_scenes, seed)
+    x_test, y_trans_test, y_prop_test, y_reward_test = make_synthetic_trajectory_dataset(n_test_scenes, seed + 10_000)
+    identity_x_train, identity_y_train = make_identity_alignment_dataset(n_train_scenes, seed)
+    identity_x_test, identity_y_test = make_identity_alignment_dataset(n_test_scenes, seed + 10_000)
+    model = NumpyObjectCentricModel().fit(
+        x_train[:, feature_mask],
+        y_trans_train,
+        y_prop_train,
+        y_reward_train,
+        identity_x=identity_x_train[:, identity_mask],
+        identity_y=identity_y_train,
+    )
+    pred_trans = model.predict_transition(x_test[:, feature_mask])
+    pred_prop = model.predict_property_proba(x_test[:, feature_mask])
+    pred_reward = model.predict_reward(x_test[:, feature_mask])
+    pred_identity = model.predict_identity_alignment(identity_x_test[:, identity_mask])
+    transition_mse = float(np.mean((pred_trans - y_trans_test) ** 2))
+    constant_transition = np.tile(np.mean(y_trans_train, axis=0), (y_trans_test.shape[0], 1))
+    constant_transition_mse = float(np.mean((constant_transition - y_trans_test) ** 2))
+    property_accuracy = float(np.mean((pred_prop >= 0.5).astype(float) == y_prop_test))
+    random_property = max(float(np.mean(y_prop_test)), 1.0 - float(np.mean(y_prop_test)))
+    identity_accuracy = float(np.mean((pred_identity >= 0.5).astype(float) == identity_y_test))
+    random_identity = max(float(np.mean(identity_y_test)), 1.0 - float(np.mean(identity_y_test)))
+    reward_correlation = 0.0
+    if np.std(pred_reward) > 1e-12 and np.std(y_reward_test) > 1e-12:
+        reward_correlation = float(np.corrcoef(pred_reward, y_reward_test)[0, 1])
+    return LearnedMetrics(
+        property_accuracy=property_accuracy,
+        random_property_accuracy=random_property,
+        identity_alignment_accuracy=identity_accuracy,
+        random_identity_alignment_accuracy=random_identity,
+        transition_mse=transition_mse,
+        constant_transition_mse=constant_transition_mse,
+        reward_correlation=reward_correlation,
+        n_train_slots=int(x_train.shape[0]),
+        n_test_slots=int(x_test.shape[0]),
+    )
+
+
+def learned_ablation_rows(seed: int, n_train_scenes: int, n_test_scenes: int) -> list[dict[str, float | int | str]]:
+    """Evaluate feature ablations for learned object-centric evidence."""
+
+    full_features = np.arange(8)
+    full_identity = np.arange(14)
+    ablations = [
+        ("full_object_features", full_features, full_identity),
+        ("no_mass_sensor", np.array([0, 1, 2, 3, 4, 5, 6]), full_identity),
+        ("kinematic_only_slots", np.array([0, 1, 2, 3]), full_identity),
+        ("appearance_only_slots", np.array([4, 5, 6, 7]), full_identity),
+        ("kinematic_pair_identity", full_features, np.array([0, 1, 2, 3, 8, 9, 10, 11])),
+    ]
+    rows: list[dict[str, float | int | str]] = []
+    for name, feature_mask, identity_mask in ablations:
+        metrics = _evaluate_with_masks(seed, n_train_scenes, n_test_scenes, feature_mask, identity_mask)
+        row = metrics.as_dict()
+        row["ablation"] = name
+        row["n_slot_features"] = int(len(feature_mask))
+        row["n_identity_features"] = int(len(identity_mask))
+        rows.append(row)
+    full = next(row for row in rows if row["ablation"] == "full_object_features")
+    for row in rows:
+        row["full_minus_property_accuracy"] = float(full["property_accuracy"] - row["property_accuracy"])
+        row["full_minus_identity_alignment_accuracy"] = float(
+            full["identity_alignment_accuracy"] - row["identity_alignment_accuracy"]
+        )
+        row["full_minus_reward_correlation"] = float(full["reward_correlation"] - row["reward_correlation"])
+    return rows
+
+
 def train_and_evaluate(
     output_dir: str | Path | None = None,
     seed: int = 0,
@@ -293,16 +369,21 @@ def train_and_evaluate(
             learning_rows.append(row)
         learning_curve = pd.DataFrame(learning_rows)
         learning_curve.to_csv(out / "tables" / "learned_learning_curve.csv", index=False)
+        ablation_table = pd.DataFrame(learned_ablation_rows(seed, n_train_scenes, n_test_scenes))
+        ablation_table.to_csv(out / "tables" / "learned_ablation.csv", index=False)
         summary = {
             "model": "numpy_linear_object_slot_model_with_identity_alignment",
             "claim_scope": "controlled synthetic trajectories only",
             "metrics": metrics.as_dict(),
             "learning_curve_rows": int(learning_curve.shape[0]),
+            "ablation_rows": int(ablation_table.shape[0]),
             "passes_minimum_learned_artifact_checks": bool(
                 metrics.property_accuracy >= metrics.random_property_accuracy + 0.15
                 and metrics.identity_alignment_accuracy >= metrics.random_identity_alignment_accuracy + 0.15
                 and metrics.transition_mse <= 0.25 * metrics.constant_transition_mse
                 and metrics.reward_correlation > 0.75
+                and float(ablation_table.loc[ablation_table["ablation"] == "no_mass_sensor", "full_minus_property_accuracy"].iloc[0]) >= 0.10
+                and float(ablation_table.loc[ablation_table["ablation"] == "kinematic_pair_identity", "full_minus_identity_alignment_accuracy"].iloc[0]) >= 0.05
             ),
         }
         (out / "learned_object_model_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")

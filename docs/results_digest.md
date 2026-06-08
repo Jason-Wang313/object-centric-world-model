@@ -13,6 +13,10 @@ This digest is generated from the current result artifacts.
 - Top raw-score calibration gap: 1.095467459764002
 - Combined repair low-noise minimum utility: 0.8374916544433992
 - Combined-vs-raw low-noise sensitivity margin: 0.8534731753001509
+- Good-control raw high-N utility: 0.6554531451148605
+- Good-minus-corrupted raw high-N utility: 0.608449149414918
+- Learned full-minus-no-mass property accuracy: 0.1229166666666666
+- Learned full-minus-kinematic-pair identity accuracy: 0.0760416666666666
 
 ## Learned Model
 - Property accuracy: 0.9958333333333333 versus baseline 0.75

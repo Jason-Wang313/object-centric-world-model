@@ -20,6 +20,7 @@ from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     deployment_gate_from_metrics,
     exact_law_prediction_error,
+    negative_control_summary,
     paired_selector_effects,
     repair_ablation_summary,
     score_calibration_table,
@@ -197,6 +198,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     calibration_metrics = score_calibration_table(calibration_candidate_df)
     ablation_metrics = repair_ablation_summary(main, paired_effects)
     robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
+    negative_control = negative_control_summary(main)
 
     seed_df.to_csv(tables / "seed_metrics.csv", index=False)
     main.to_csv(tables / "main_metrics.csv", index=False)
@@ -204,6 +206,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     paired_effects.to_csv(tables / "paired_effects.csv", index=False)
     ablation_metrics.to_csv(tables / "repair_ablation.csv", index=False)
     robustness_metrics.to_csv(tables / "seed_block_robustness.csv", index=False)
+    negative_control.to_csv(tables / "negative_control.csv", index=False)
     law_df.to_csv(tables / "exact_law_validation.csv", index=False)
     stress_seed_df.to_csv(tables / "stress_seed_metrics.csv", index=False)
     stress_metrics.to_csv(tables / "stress_metrics.csv", index=False)
@@ -216,6 +219,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     learned_row = learned_metrics.as_dict()
     pd.DataFrame([learned_row]).to_csv(tables / "learned_metrics.csv", index=False)
     learned_curve = pd.read_csv(tables / "learned_learning_curve.csv")
+    learned_ablation = pd.read_csv(tables / "learned_ablation.csv")
 
     write_all_figures(
         main,
@@ -228,6 +232,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         robustness_df=robustness_metrics,
         calibration_df=calibration_metrics,
         sensitivity_df=sensitivity_metrics,
+        negative_df=negative_control,
+        learned_ablation_df=learned_ablation,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -252,6 +258,11 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         )
     ) if not robustness_metrics.empty else None
     top_calibration = calibration_metrics.sort_values("score_bin").iloc[-1] if not calibration_metrics.empty else None
+    good_control = negative_control[negative_control["contrast"] == "good_control"]
+    corrupted_mean = negative_control[negative_control["contrast"] == "corrupted_mean"]
+    good_minus_corrupted = negative_control[negative_control["contrast"] == "good_minus_corrupted"]
+    no_mass_ablation = learned_ablation[learned_ablation["ablation"] == "no_mass_sensor"]
+    kinematic_pair_ablation = learned_ablation[learned_ablation["ablation"] == "kinematic_pair_identity"]
     sensitivity_low_noise = sensitivity_metrics[sensitivity_metrics["score_noise"] <= 0.10]
     combined_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "combined_repair_noisy"]
     raw_sensitivity = sensitivity_low_noise[sensitivity_low_noise["selector"] == "raw_noisy"]
@@ -280,8 +291,14 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "seed_block_robustness_pass_rate": robustness_pass_rate,
         "raw_score_top_bin_object_real_gap": float(top_calibration["object_real_gap"]) if top_calibration is not None else None,
         "raw_score_top_bin_identity_error": float(top_calibration["identity_error_rate"]) if top_calibration is not None else None,
+        "good_control_raw_nmax_utility": float(good_control["selected_real_utility_mean"].iloc[0]) if not good_control.empty else None,
+        "good_control_raw_nmax_identity_error": float(good_control["identity_error_mean"].iloc[0]) if not good_control.empty else None,
+        "good_minus_corrupted_raw_nmax_utility": float(good_minus_corrupted["selected_real_utility_mean"].iloc[0]) if not good_minus_corrupted.empty else None,
+        "corrupted_mean_raw_nmax_utility": float(corrupted_mean["selected_real_utility_mean"].iloc[0]) if not corrupted_mean.empty else None,
         "combined_repair_min_low_noise_utility": float(combined_sensitivity["selected_real_utility_mean"].min()) if not combined_sensitivity.empty else None,
         "combined_vs_raw_low_noise_sensitivity_margin": sensitivity_margin,
+        "learned_full_minus_no_mass_property_accuracy": float(no_mass_ablation["full_minus_property_accuracy"].iloc[0]) if not no_mass_ablation.empty else None,
+        "learned_full_minus_kinematic_pair_identity_accuracy": float(kinematic_pair_ablation["full_minus_identity_alignment_accuracy"].iloc[0]) if not kinematic_pair_ablation.empty else None,
         "learned_metrics": learned_row,
         "passes_claim_audit": False,
         "runtime_seconds": round(time.time() - start, 3),

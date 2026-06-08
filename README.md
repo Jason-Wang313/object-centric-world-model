@@ -25,6 +25,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
+- Negative controls for the non-corrupted setting and learned feature ablations.
 
 ## What This Is Not
 
@@ -48,6 +49,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/score_calibration.csv`
 - `results/tables/sensitivity_seed_metrics.csv`
 - `results/tables/sensitivity_metrics.csv`
+- `results/tables/negative_control.csv`
+- `results/tables/learned_ablation.csv`
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
@@ -65,6 +68,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure9_seed_block_robustness.png`
 - `figures/figure10_score_calibration.png`
 - `figures/figure11_score_noise_sensitivity.png`
+- `figures/figure12_negative_control.png`
+- `figures/figure13_learned_ablation.png`
 
 ## Claim Boundaries
 

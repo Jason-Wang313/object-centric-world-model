@@ -35,6 +35,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/score_calibration.csv": ("score_bin", "mean_raw_object_score", "mean_real_utility", "object_real_gap"),
     "results/tables/sensitivity_seed_metrics.csv": ("selector", "score_noise", "selected_real_utility", "identity_error"),
     "results/tables/sensitivity_metrics.csv": ("selector", "score_noise", "selected_real_utility_mean"),
+    "results/tables/negative_control.csv": ("contrast", "selected_real_utility_mean", "identity_error_mean"),
+    "results/tables/learned_ablation.csv": ("ablation", "property_accuracy", "identity_alignment_accuracy"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
 
@@ -50,6 +52,8 @@ REQUIRED_FIGURES = (
     "figures/figure9_seed_block_robustness.png",
     "figures/figure10_score_calibration.png",
     "figures/figure11_score_noise_sensitivity.png",
+    "figures/figure12_negative_control.png",
+    "figures/figure13_learned_ablation.png",
 )
 
 REQUIRED_JSON = (
@@ -89,6 +93,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     robustness = _read_csv(tables / "seed_block_robustness.csv")
     calibration = _read_csv(tables / "score_calibration.csv")
     sensitivity = _read_csv(tables / "sensitivity_metrics.csv")
+    negative_control = _read_csv(tables / "negative_control.csv")
+    learned_ablation = _read_csv(tables / "learned_ablation.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
 
     strengths: dict[str, dict[str, object]] = {}
@@ -108,6 +114,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             utility_drop = float(raw["selected_real_utility_mean"].iloc[0] - raw["selected_real_utility_mean"].iloc[-1])
             identity_tail = float(raw["identity_error_mean"].iloc[-1])
             top_calibration = calibration.sort_values("score_bin").iloc[-1] if not calibration.empty else None
+            good_control = negative_control[negative_control["contrast"] == "good_control"] if not negative_control.empty else pd.DataFrame()
+            good_minus = negative_control[negative_control["contrast"] == "good_minus_corrupted"] if not negative_control.empty else pd.DataFrame()
             strengths["C2"] = {
                 "passes": bool(
                     score_gain >= 0.35
@@ -120,8 +128,13 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     and top_calibration is not None
                     and float(top_calibration["object_real_gap"]) >= 0.45
                     and float(top_calibration["identity_error_rate"]) >= 0.55
+                    and not good_control.empty
+                    and float(good_control["selected_real_utility_mean"].iloc[0]) >= 0.60
+                    and float(good_control["identity_error_mean"].iloc[0]) <= 0.25
+                    and not good_minus.empty
+                    and float(good_minus["selected_real_utility_mean"].iloc[0]) >= 0.45
                 ),
-                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, and top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55",
+                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, and good negative control avoids collapse",
                 "observed": {
                     "raw_tail_score_gain": score_gain,
                     "raw_tail_utility_drop": utility_drop,
@@ -131,6 +144,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     "min_block_identity_error": float(robustness["raw_tail_identity_error"].min()) if not robustness.empty else None,
                     "top_calibration_object_real_gap": float(top_calibration["object_real_gap"]) if top_calibration is not None else None,
                     "top_calibration_identity_error": float(top_calibration["identity_error_rate"]) if top_calibration is not None else None,
+                    "good_control_utility": float(good_control["selected_real_utility_mean"].iloc[0]) if not good_control.empty else None,
+                    "good_control_identity_error": float(good_control["identity_error_mean"].iloc[0]) if not good_control.empty else None,
+                    "good_minus_corrupted_utility": float(good_minus["selected_real_utility_mean"].iloc[0]) if not good_minus.empty else None,
                 },
             }
     if not paired.empty and not stress.empty and not ablation.empty and not robustness.empty and not sensitivity.empty:
@@ -206,6 +222,12 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             learned_metrics["identity_alignment_accuracy"] - learned_metrics["random_identity_alignment_accuracy"]
         )
         transition_ratio = learned_metrics["transition_mse"] / learned_metrics["constant_transition_mse"]
+        no_mass = learned_ablation[learned_ablation["ablation"] == "no_mass_sensor"] if not learned_ablation.empty else pd.DataFrame()
+        kinematic_pair = (
+            learned_ablation[learned_ablation["ablation"] == "kinematic_pair_identity"]
+            if not learned_ablation.empty
+            else pd.DataFrame()
+        )
         strengths["C4"] = {
             "passes": bool(
                 learned.get("passes_minimum_learned_artifact_checks")
@@ -213,13 +235,19 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 and identity_margin >= 0.15
                 and transition_ratio <= 0.25
                 and learned_metrics["reward_correlation"] >= 0.75
+                and not no_mass.empty
+                and float(no_mass["full_minus_property_accuracy"].iloc[0]) >= 0.10
+                and not kinematic_pair.empty
+                and float(kinematic_pair["full_minus_identity_alignment_accuracy"].iloc[0]) >= 0.05
             ),
-            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75",
+            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, and learned feature ablations show object information matters",
             "observed": {
                 "property_margin": float(prop_margin),
                 "identity_alignment_margin": float(identity_margin),
                 "transition_mse_ratio": float(transition_ratio),
                 "reward_correlation": float(learned_metrics["reward_correlation"]),
+                "full_minus_no_mass_property_accuracy": float(no_mass["full_minus_property_accuracy"].iloc[0]) if not no_mass.empty else None,
+                "full_minus_kinematic_pair_identity_accuracy": float(kinematic_pair["full_minus_identity_alignment_accuracy"].iloc[0]) if not kinematic_pair.empty else None,
             },
         }
     return strengths
@@ -435,6 +463,10 @@ def write_results_digest(root: str | Path) -> None:
         f"- Top raw-score calibration gap: {summary.get('raw_score_top_bin_object_real_gap', 'unknown')}",
         f"- Combined repair low-noise minimum utility: {summary.get('combined_repair_min_low_noise_utility', 'unknown')}",
         f"- Combined-vs-raw low-noise sensitivity margin: {summary.get('combined_vs_raw_low_noise_sensitivity_margin', 'unknown')}",
+        f"- Good-control raw high-N utility: {summary.get('good_control_raw_nmax_utility', 'unknown')}",
+        f"- Good-minus-corrupted raw high-N utility: {summary.get('good_minus_corrupted_raw_nmax_utility', 'unknown')}",
+        f"- Learned full-minus-no-mass property accuracy: {summary.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}",
+        f"- Learned full-minus-kinematic-pair identity accuracy: {summary.get('learned_full_minus_kinematic_pair_identity_accuracy', 'unknown')}",
         "",
         "## Learned Model",
     ]
@@ -591,6 +623,10 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Top raw-score bin object-real gap {summary_payload.get('raw_score_top_bin_object_real_gap', 'unknown')}.",
             "- Sensitivity artifact: figure11_score_noise_sensitivity.png and sensitivity_metrics.csv. "
             f"Combined repair low-noise minimum utility {summary_payload.get('combined_repair_min_low_noise_utility', 'unknown')}.",
+            "- Negative-control artifact: figure12_negative_control.png and negative_control.csv. "
+            f"Good-control raw high-N utility {summary_payload.get('good_control_raw_nmax_utility', 'unknown')}.",
+            "- Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. "
+            f"Full-minus-no-mass property gain {summary_payload.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}.",
             "",
             "## Differentiation",
             "The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",

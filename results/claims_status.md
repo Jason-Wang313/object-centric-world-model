@@ -21,7 +21,7 @@ Evidence: figure1 and main_metrics.csv for the raw scenario
 
 Strength: {
   "passes": true,
-  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, and top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55",
+  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, and good negative control avoids collapse",
   "observed": {
     "raw_tail_score_gain": 0.5759192453426587,
     "raw_tail_utility_drop": 0.3639708878079679,
@@ -30,7 +30,10 @@ Strength: {
     "min_block_utility_drop": 0.252396546523533,
     "min_block_identity_error": 1.0,
     "top_calibration_object_real_gap": 1.095467459764002,
-    "top_calibration_identity_error": 0.94140625
+    "top_calibration_identity_error": 0.94140625,
+    "good_control_utility": 0.6554531451148605,
+    "good_control_identity_error": 0.125,
+    "good_minus_corrupted_utility": 0.608449149414918
   }
 }
 
@@ -64,12 +67,14 @@ Evidence: learned_object_model_summary.json, learned_metrics.csv, and learned_le
 
 Strength: {
   "passes": true,
-  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75",
+  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, and learned feature ablations show object information matters",
   "observed": {
     "property_margin": 0.24583333333333335,
     "identity_alignment_margin": 0.48750000000000004,
     "transition_mse_ratio": 0.007032264292782088,
-    "reward_correlation": 0.953061460933608
+    "reward_correlation": 0.953061460933608,
+    "full_minus_no_mass_property_accuracy": 0.1229166666666666,
+    "full_minus_kinematic_pair_identity_accuracy": 0.0760416666666666
   }
 }
 
@@ -88,6 +93,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 30 required artifacts.
+Artifact verification checked 34 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

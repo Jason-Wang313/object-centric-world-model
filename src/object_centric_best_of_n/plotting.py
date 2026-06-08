@@ -202,6 +202,40 @@ def figure11_sensitivity(sensitivity: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure11_score_noise_sensitivity.png")
 
 
+def figure12_negative_control(negative: pd.DataFrame, out: Path) -> None:
+    if negative.empty:
+        return
+    df = negative[negative["contrast"].isin(["good_control", "corrupted_mean"])].set_index("contrast")
+    fig, ax = plt.subplots(figsize=(6.6, 4.0))
+    df[["selected_real_utility_mean", "identity_error_mean", "object_real_gap_mean"]].plot(
+        kind="bar",
+        ax=ax,
+        color=["#3c7c5a", "#b23b3b", "#d1963a"],
+    )
+    ax.set_xlabel("raw high-N contrast")
+    ax.set_ylabel("mean value")
+    ax.set_title("Negative control: good scene vs corrupted scenes")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(["real utility", "identity error", "object-real gap"], frameon=False, fontsize=8)
+    _save(fig, out / "figure12_negative_control.png")
+
+
+def figure13_learned_ablation(learned_ablation: pd.DataFrame, out: Path) -> None:
+    if learned_ablation.empty:
+        return
+    df = learned_ablation.set_index("ablation")[
+        ["property_accuracy", "identity_alignment_accuracy", "reward_correlation"]
+    ]
+    fig, ax = plt.subplots(figsize=(8.2, 4.2))
+    df.plot(kind="bar", ax=ax, color=["#2f6f9f", "#3c7c5a", "#d1963a"])
+    ax.set_xlabel("learned feature set")
+    ax.set_ylabel("metric")
+    ax.set_title("Learned object-model ablations")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(["hidden property", "identity alignment", "reward"], frameon=False, fontsize=8)
+    _save(fig, out / "figure13_learned_ablation.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -213,6 +247,8 @@ def write_all_figures(
     robustness_df: pd.DataFrame | None = None,
     calibration_df: pd.DataFrame | None = None,
     sensitivity_df: pd.DataFrame | None = None,
+    negative_df: pd.DataFrame | None = None,
+    learned_ablation_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -232,3 +268,7 @@ def write_all_figures(
         figure10_score_calibration(calibration_df, out)
     if sensitivity_df is not None:
         figure11_sensitivity(sensitivity_df, out)
+    if negative_df is not None:
+        figure12_negative_control(negative_df, out)
+    if learned_ablation_df is not None:
+        figure13_learned_ablation(learned_ablation_df, out)
