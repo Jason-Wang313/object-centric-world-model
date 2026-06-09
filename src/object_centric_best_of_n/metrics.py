@@ -824,6 +824,83 @@ def synthetic_benchmark_summary(benchmark_seed_df: pd.DataFrame) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
+def deployment_policy_summary(policy_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate the deployment-gate policy simulation.
+
+    The policy rows reuse already selected candidates but compare what happens if
+    a conservative gate delegates high-N use to raw, an early raw stop, an
+    observable/probe repair, or the combined repair.
+    """
+
+    if policy_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(policy_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw_high_n"]
+        early = group[group["selector"] == "stop_early_raw"]
+        gate = group[group["selector"] == "gate_policy"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        early_utility = (
+            float(early["selected_real_utility_mean"].iloc[0]) if not early.empty else float("nan")
+        )
+        gate_utility = float(gate["selected_real_utility_mean"].iloc[0]) if not gate.empty else float("nan")
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        seed_group = policy_seed_df[
+            (policy_seed_df["scenario"] == group["scenario"].iloc[0])
+            & (policy_seed_df["N"] == group["N"].iloc[0])
+        ]
+        raw_seed = seed_group[seed_group["selector"] == "raw_high_n"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "raw"})
+        early_seed = seed_group[seed_group["selector"] == "stop_early_raw"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "early"})
+        gate_seed = seed_group[seed_group["selector"] == "gate_policy"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "gate"})
+        raw_pair = gate_seed.merge(raw_seed, on="seed", how="inner")
+        early_pair = gate_seed.merge(early_seed, on="seed", how="inner")
+        raw_gains = raw_pair["gate"] - raw_pair["raw"] if not raw_pair.empty else pd.Series(dtype=float)
+        early_gains = early_pair["gate"] - early_pair["early"] if not early_pair.empty else pd.Series(dtype=float)
+        action_counts = seed_group[seed_group["selector"] == "gate_policy"]["gate_action"].value_counts()
+        delegated_counts = seed_group[seed_group["selector"] == "gate_policy"]["delegated_selector"].value_counts()
+        action_summary = "|".join(f"{key}:{int(value)}" for key, value in action_counts.sort_index().items())
+        delegated_summary = "|".join(
+            f"{key}:{int(value)}" for key, value in delegated_counts.sort_index().items()
+        )
+        for _, row in group.iterrows():
+            selector_seed = seed_group[seed_group["selector"] == row["selector"]]
+            out = row.copy()
+            out["selected_N_mean"] = (
+                float(selector_seed["selected_N"].mean()) if "selected_N" in selector_seed else float("nan")
+            )
+            out["deployment_policy_vs_raw_gain_mean"] = gate_utility - raw_utility
+            out["deployment_policy_vs_stop_early_gain_mean"] = gate_utility - early_utility
+            out["deployment_policy_oracle_gap_mean"] = oracle_utility - gate_utility
+            out["deployment_policy_win_rate"] = (
+                float(np.mean(raw_gains > 1e-12)) if len(raw_gains) else float("nan")
+            )
+            out["deployment_policy_stop_early_win_rate"] = (
+                float(np.mean(early_gains > 1e-12)) if len(early_gains) else float("nan")
+            )
+            out["deployment_gate_actions"] = action_summary
+            out["deployment_delegated_selectors"] = delegated_summary
+            if not selector_seed.empty:
+                out["gate_identity_error_mean"] = float(selector_seed["gate_identity_error"].mean())
+                out["gate_object_real_gap_mean"] = float(selector_seed["gate_object_real_gap"].mean())
+                out["gate_property_entropy_mean"] = float(selector_seed["gate_property_entropy"].mean())
+                out["gate_repair_gain_mean"] = float(selector_seed["gate_repair_gain"].mean())
+            else:
+                out["gate_identity_error_mean"] = float("nan")
+                out["gate_object_real_gap_mean"] = float("nan")
+                out["gate_property_entropy_mean"] = float("nan")
+                out["gate_repair_gain_mean"] = float("nan")
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def pilot_calibration_summary(pilot_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate held-out pilot-label calibration rows."""
 
@@ -1148,6 +1225,7 @@ def statistical_audit(
     probe_cost_seed_df: pd.DataFrame | None = None,
     learned_selection_seed_df: pd.DataFrame | None = None,
     synthetic_benchmark_seed_df: pd.DataFrame | None = None,
+    deployment_policy_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -1512,6 +1590,45 @@ def statistical_audit(
             "Benchmark-style synthetic task-suite observable-only repair selected-utility gain over raw.",
             observable_merged["observable"] - observable_merged["baseline"],
             threshold=0.50,
+        )
+
+    if deployment_policy_seed_df is not None and not deployment_policy_seed_df.empty:
+        corrupted = deployment_policy_seed_df[
+            deployment_policy_seed_df["scenario"].isin(["raw", "occlusion", "hidden_property", "swap", "merge_split"])
+        ]
+        n_max = int(corrupted["N"].max()) if not corrupted.empty else int(deployment_policy_seed_df["N"].max())
+        source = corrupted if not corrupted.empty else deployment_policy_seed_df
+        base = source[
+            (source["selector"] == "raw_high_n")
+            & (source["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "baseline"}
+        )
+        early = source[
+            (source["selector"] == "stop_early_raw")
+            & (source["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "early"}
+        )
+        gate = source[
+            (source["selector"] == "gate_policy")
+            & (source["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "gate"}
+        )
+        raw_merged = gate.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "deployment_policy_gate_gain",
+            "Conservative deployment-gate policy selected-utility gain over raw high-N selection in corrupted scenes.",
+            raw_merged["gate"] - raw_merged["baseline"],
+            threshold=0.50,
+        )
+        early_merged = gate.merge(early, on=["scenario", "seed"], how="inner")
+        add_row(
+            "deployment_policy_gate_over_stop_early_gain",
+            "Conservative deployment-gate policy selected-utility gain over a raw stop-early fallback in corrupted scenes.",
+            early_merged["gate"] - early_merged["early"],
+            threshold=0.30,
         )
 
     return pd.DataFrame(rows)

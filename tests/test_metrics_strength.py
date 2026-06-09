@@ -3,6 +3,7 @@ import pandas as pd
 from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     counterfactual_target_summary,
+    deployment_policy_summary,
     domain_randomization_summary,
     extreme_object_count_summary,
     learned_selection_summary,
@@ -182,6 +183,36 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert synthetic_benchmark[
         synthetic_benchmark["selector"] == "combined_repair"
     ]["synthetic_benchmark_combined_win_rate"].iloc[0] == 1.0
+    deployment_policy_df = pd.DataFrame(
+        [
+            {
+                **row,
+                "experiment": "AA_deployment_gate_policy",
+                "selector": selector,
+                "selected_real_utility": utility,
+                "selected_N": 8 if selector != "stop_early_raw" else 4,
+                "gate_action": "block_high_n" if selector == "gate_policy" else f"baseline_{selector}",
+                "delegated_selector": "combined_repair" if selector == "gate_policy" else selector,
+                "gate_identity_error": 1.0,
+                "gate_object_real_gap": 0.8,
+                "gate_property_entropy": 0.7,
+                "gate_repair_gain": 0.7,
+            }
+            for row in rows
+            if row["selector"] == "raw"
+            for selector, utility in [
+                ("raw_high_n", 0.2),
+                ("stop_early_raw", 0.3),
+                ("gate_policy", 0.9),
+                ("oracle", 0.95),
+            ]
+        ]
+    )
+    deployment_policy = deployment_policy_summary(deployment_policy_df)
+    assert "deployment_policy_vs_raw_gain_mean" in deployment_policy.columns
+    assert deployment_policy[
+        deployment_policy["selector"] == "gate_policy"
+    ]["deployment_policy_win_rate"].iloc[0] == 1.0
     pilot = pilot_calibration_summary(df)
     assert "pilot_vs_raw_gain_mean" in pilot.columns
     assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0
@@ -267,6 +298,7 @@ def test_paired_effects_and_stress_summary_are_computed():
         probe_cost_seed_df=probe_cost_df,
         learned_selection_seed_df=learned_selection_df,
         synthetic_benchmark_seed_df=synthetic_benchmark_df,
+        deployment_policy_seed_df=deployment_policy_df,
         bootstrap_reps=50,
     )
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
@@ -282,5 +314,7 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "learned_selection_identity_over_reward_gain" in set(stats["effect_id"])
     assert "synthetic_benchmark_combined_repair_gain" in set(stats["effect_id"])
     assert "synthetic_benchmark_observable_repair_gain" in set(stats["effect_id"])
+    assert "deployment_policy_gate_gain" in set(stats["effect_id"])
+    assert "deployment_policy_gate_over_stop_early_gain" in set(stats["effect_id"])
     assert "probe_cost_combined_repair_gain" in set(stats["effect_id"])
     assert "probe_cost_targeted_hidden_repair_gain" in set(stats["effect_id"])

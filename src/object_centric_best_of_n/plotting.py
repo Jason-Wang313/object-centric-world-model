@@ -624,6 +624,33 @@ def figure29_synthetic_benchmark_suite(synthetic_benchmark: pd.DataFrame, out: P
     _save(fig, out / "figure29_synthetic_benchmark_suite.png")
 
 
+def figure30_deployment_gate_policy(deployment_policy: pd.DataFrame, out: Path) -> None:
+    if deployment_policy.empty:
+        return
+    selectors = ["raw_high_n", "stop_early_raw", "gate_policy", "oracle"]
+    df = deployment_policy[
+        (deployment_policy["selector"].isin(selectors))
+        & (deployment_policy["N"] == deployment_policy["N"].max())
+    ]
+    if df.empty:
+        return
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.4, 4.8))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#d1963a", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("deployment-gate scenario")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Deployment-gate policy simulation")
+    ax.set_ylim(0.0, 1.02)
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(["raw high-N", "raw stop-early", "gate policy", "oracle"], frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure30_deployment_gate_policy.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -653,6 +680,7 @@ def write_all_figures(
     learned_domain_shift_df: pd.DataFrame | None = None,
     learned_selection_df: pd.DataFrame | None = None,
     synthetic_benchmark_df: pd.DataFrame | None = None,
+    deployment_policy_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -708,3 +736,5 @@ def write_all_figures(
         figure28_learned_selection_transfer(learned_selection_df, out)
     if synthetic_benchmark_df is not None:
         figure29_synthetic_benchmark_suite(synthetic_benchmark_df, out)
+    if deployment_policy_df is not None:
+        figure30_deployment_gate_policy(deployment_policy_df, out)

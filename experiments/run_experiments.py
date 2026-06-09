@@ -20,6 +20,7 @@ from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     counterfactual_target_summary,
     deployment_gate_from_metrics,
+    deployment_policy_summary,
     domain_randomization_summary,
     exact_law_prediction_error,
     extreme_object_count_summary,
@@ -47,6 +48,7 @@ from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
 from object_centric_best_of_n.plotting import write_all_figures
 from object_centric_best_of_n.repair import (
     combined_repair_score,
+    conservative_selected_tail_stop_rule,
     fit_pilot_calibrator,
     pilot_calibrated_score,
     property_posterior_update,
@@ -125,6 +127,13 @@ PROBE_COSTS = [0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.30]
 PROBE_COST_SCENARIOS = ["hidden_property", "raw"]
 PROBE_COST_SELECTORS = ["raw", "targeted_probe", "observable_repair", "combined_repair", "oracle"]
 PROBE_USING_SELECTORS = {"targeted_probe", "observable_repair", "combined_repair"}
+DEPLOYMENT_POLICY_SELECTOR_FOR_ACTION = {
+    "allow_high_n": "raw",
+    "stop_early": "raw",
+    "collect_pilot_labels": "observable_repair",
+    "run_object_probe": "targeted_probe",
+    "block_high_n": "combined_repair",
+}
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -691,6 +700,132 @@ def _run_synthetic_benchmark_panel(
     return pd.DataFrame(rows)
 
 
+def _record_from_existing(
+    source: pd.Series,
+    selector: str,
+    high_n: int,
+    selected_n: int,
+    gate_action: str,
+    delegated_selector: str,
+    gate_summary: dict[str, float | int | str],
+) -> dict[str, float | int | str]:
+    metric_cols = [
+        "selected_candidate_id",
+        "selected_object_score",
+        "selected_real_utility",
+        "identity_error",
+        "swap_rate",
+        "merge_split_rate",
+        "property_error",
+        "property_entropy",
+        "occlusion_error",
+        "object_real_gap",
+        "candidate_mean_score",
+        "candidate_mean_real_utility",
+        "candidate_best_real_utility",
+        "regret",
+        "oracle_gap",
+        "upper_tail_rank_correlation",
+    ]
+    row: dict[str, float | int | str] = {
+        "experiment": "AA_deployment_gate_policy",
+        "scenario": str(source["scenario"]),
+        "selector": selector,
+        "N": int(high_n),
+        "seed": int(source["seed"]),
+        "selected_N": int(selected_n),
+        "gate_action": gate_action,
+        "delegated_selector": delegated_selector,
+        "gate_identity_error": float(gate_summary["identity_error"]),
+        "gate_object_real_gap": float(gate_summary["object_real_gap"]),
+        "gate_property_entropy": float(gate_summary["property_entropy"]),
+        "gate_repair_gain": float(gate_summary["repair_gain"]),
+    }
+    for col in metric_cols:
+        value = source[col]
+        row[col] = int(value) if col == "selected_candidate_id" else float(value)
+    return row
+
+
+def _run_deployment_policy_panel(seed_df: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    if seed_df.empty:
+        return pd.DataFrame(rows)
+    high_n = int(seed_df["N"].max())
+    ns = sorted(int(n) for n in seed_df["N"].unique())
+    early_candidates = [n for n in ns if n <= 4]
+    early_n = max(early_candidates) if early_candidates else ns[0]
+    for (scenario, seed), group in seed_df.groupby(["scenario", "seed"], sort=True):
+        raw_high = group[(group["selector"] == "raw") & (group["N"] == high_n)]
+        combined_high = group[(group["selector"] == "combined_repair") & (group["N"] == high_n)]
+        raw_early = group[(group["selector"] == "raw") & (group["N"] == early_n)]
+        oracle_high = group[(group["selector"] == "oracle") & (group["N"] == high_n)]
+        if raw_high.empty or combined_high.empty or raw_early.empty or oracle_high.empty:
+            continue
+        raw_high_row = raw_high.iloc[0]
+        combined_high_row = combined_high.iloc[0]
+        gate_summary = {
+            "N": high_n,
+            "identity_error": float(raw_high_row["identity_error"]),
+            "object_real_gap": float(raw_high_row["object_real_gap"]),
+            "property_entropy": float(raw_high_row["property_entropy"]),
+            "repair_gain": float(
+                combined_high_row["selected_real_utility"] - raw_high_row["selected_real_utility"]
+            ),
+        }
+        action = conservative_selected_tail_stop_rule(gate_summary)
+        delegated_selector = DEPLOYMENT_POLICY_SELECTOR_FOR_ACTION[action]
+        selected_n = early_n if action == "stop_early" else high_n
+        delegated = group[(group["selector"] == delegated_selector) & (group["N"] == selected_n)]
+        if delegated.empty:
+            continue
+        rows.append(
+            _record_from_existing(
+                raw_high_row,
+                "raw_high_n",
+                high_n,
+                high_n,
+                "baseline_raw_high_n",
+                "raw",
+                gate_summary,
+            )
+        )
+        rows.append(
+            _record_from_existing(
+                raw_early.iloc[0],
+                "stop_early_raw",
+                high_n,
+                early_n,
+                "stop_early",
+                "raw",
+                gate_summary,
+            )
+        )
+        rows.append(
+            _record_from_existing(
+                delegated.iloc[0],
+                "gate_policy",
+                high_n,
+                selected_n,
+                action,
+                delegated_selector,
+                gate_summary,
+            )
+        )
+        rows.append(
+            _record_from_existing(
+                oracle_high.iloc[0],
+                "oracle",
+                high_n,
+                high_n,
+                "oracle_reference",
+                "oracle",
+                gate_summary,
+            )
+        )
+    return pd.DataFrame(rows)
+
+
 def _pilot_training_candidates(
     generator: ObjectCentricFutureGenerator,
     train_seeds: list[int],
@@ -1074,6 +1209,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         )
     ].copy()
     paired_effects = paired_selector_effects(seed_df)
+    deployment_policy_seed_df = _run_deployment_policy_panel(seed_df)
+    deployment_policy_metrics = deployment_policy_summary(deployment_policy_seed_df)
     law_df = pd.DataFrame(law_rows)
     stress_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     stress_seed_df = _run_stress_panel(generator, stress_seeds=stress_seeds, n=max(ns))
@@ -1170,6 +1307,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         probe_cost_seed_df=probe_cost_seed_df,
         learned_selection_seed_df=learned_selection_seed_df,
         synthetic_benchmark_seed_df=synthetic_benchmark_seed_df,
+        deployment_policy_seed_df=deployment_policy_seed_df,
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
@@ -1182,6 +1320,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     main.to_csv(tables / "main_metrics.csv", index=False)
     repair_metrics.to_csv(tables / "repair_metrics.csv", index=False)
     paired_effects.to_csv(tables / "paired_effects.csv", index=False)
+    deployment_policy_seed_df.to_csv(tables / "deployment_policy_seed_metrics.csv", index=False)
+    deployment_policy_metrics.to_csv(tables / "deployment_policy_metrics.csv", index=False)
     ablation_metrics.to_csv(tables / "repair_ablation.csv", index=False)
     observable_metrics.to_csv(tables / "observable_repair_metrics.csv", index=False)
     robustness_metrics.to_csv(tables / "seed_block_robustness.csv", index=False)
@@ -1278,6 +1418,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         learned_domain_shift_df=learned_domain_shift,
         learned_selection_df=learned_selection_metrics,
         synthetic_benchmark_df=synthetic_benchmark_metrics,
+        deployment_policy_df=deployment_policy_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -1293,6 +1434,29 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     ]
     raw_ablation = ablation_metrics[ablation_metrics["scenario"] == "raw"]
     raw_observable = observable_metrics[observable_metrics["scenario"] == "raw"]
+    deployment_policy_gate = deployment_policy_metrics[deployment_policy_metrics["selector"] == "gate_policy"]
+    deployment_policy_raw = deployment_policy_metrics[deployment_policy_metrics["selector"] == "raw_high_n"]
+    deployment_policy_early = deployment_policy_metrics[deployment_policy_metrics["selector"] == "stop_early_raw"]
+    deployment_policy_oracle = deployment_policy_metrics[deployment_policy_metrics["selector"] == "oracle"]
+    deployment_policy_corrupted = deployment_policy_gate[
+        deployment_policy_gate["scenario"].isin(["raw", "occlusion", "hidden_property", "swap", "merge_split"])
+    ]
+    deployment_policy_corrupted_raw = deployment_policy_raw[
+        deployment_policy_raw["scenario"].isin(["raw", "occlusion", "hidden_property", "swap", "merge_split"])
+    ]
+    deployment_policy_corrupted_early = deployment_policy_early[
+        deployment_policy_early["scenario"].isin(["raw", "occlusion", "hidden_property", "swap", "merge_split"])
+    ]
+    deployment_policy_actions = (
+        "|".join(
+            f"{key}:{int(value)}"
+            for key, value in deployment_policy_seed_df[
+                deployment_policy_seed_df["selector"] == "gate_policy"
+            ]["gate_action"].value_counts().sort_index().items()
+        )
+        if not deployment_policy_seed_df.empty and "gate_action" in deployment_policy_seed_df
+        else None
+    )
     robustness_pass_rate = float(
         np.mean(
             (robustness_metrics["raw_tail_score_gain"] >= 0.30)
@@ -1420,6 +1584,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "stress_seeds": stress_seeds,
         "n_seed_rows": int(seed_df.shape[0]),
         "n_main_rows": int(main.shape[0]),
+        "n_deployment_policy_rows": int(deployment_policy_seed_df.shape[0]),
         "n_stress_rows": int(stress_seed_df.shape[0]),
         "n_ood_rows": int(ood_seed_df.shape[0]),
         "n_extreme_object_count_rows": int(extreme_object_seed_df.shape[0]),
@@ -1444,6 +1609,22 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "observable_repair_raw_nmax_utility": float(raw_observable["observable_repair_utility"].iloc[0]) if not raw_observable.empty else None,
         "observable_repair_raw_nmax_gain": float(raw_observable["observable_vs_raw_gain"].iloc[0]) if not raw_observable.empty else None,
         "observable_repair_combined_gap": float(raw_observable["combined_minus_observable_gap"].iloc[0]) if not raw_observable.empty else None,
+        "deployment_policy_mean_utility": float(deployment_policy_gate["selected_real_utility_mean"].mean()) if not deployment_policy_gate.empty else None,
+        "deployment_policy_raw_mean_utility": float(deployment_policy_raw["selected_real_utility_mean"].mean()) if not deployment_policy_raw.empty else None,
+        "deployment_policy_raw_high_mean_utility": float(deployment_policy_raw["selected_real_utility_mean"].mean()) if not deployment_policy_raw.empty else None,
+        "deployment_policy_stop_early_mean_utility": float(deployment_policy_early["selected_real_utility_mean"].mean()) if not deployment_policy_early.empty else None,
+        "deployment_policy_oracle_mean_utility": float(deployment_policy_oracle["selected_real_utility_mean"].mean()) if not deployment_policy_oracle.empty else None,
+        "deployment_policy_vs_raw_gain": float(deployment_policy_gate["deployment_policy_vs_raw_gain_mean"].mean()) if not deployment_policy_gate.empty else None,
+        "deployment_policy_corrupted_vs_raw_gain": float(deployment_policy_corrupted["deployment_policy_vs_raw_gain_mean"].mean()) if not deployment_policy_corrupted.empty else None,
+        "deployment_policy_vs_stop_early_gain": float(deployment_policy_gate["deployment_policy_vs_stop_early_gain_mean"].mean()) if not deployment_policy_gate.empty else None,
+        "deployment_policy_corrupted_vs_stop_early_gain": float(deployment_policy_corrupted["deployment_policy_vs_stop_early_gain_mean"].mean()) if not deployment_policy_corrupted.empty else None,
+        "deployment_policy_min_corrupted_utility": float(deployment_policy_corrupted["selected_real_utility_mean"].min()) if not deployment_policy_corrupted.empty else None,
+        "deployment_policy_min_win_rate": float(deployment_policy_corrupted["deployment_policy_win_rate"].min()) if not deployment_policy_corrupted.empty else None,
+        "deployment_policy_all_scenario_min_win_rate": float(deployment_policy_gate["deployment_policy_win_rate"].min()) if not deployment_policy_gate.empty else None,
+        "deployment_policy_corrupted_raw_mean_utility": float(deployment_policy_corrupted_raw["selected_real_utility_mean"].mean()) if not deployment_policy_corrupted_raw.empty else None,
+        "deployment_policy_corrupted_stop_early_mean_utility": float(deployment_policy_corrupted_early["selected_real_utility_mean"].mean()) if not deployment_policy_corrupted_early.empty else None,
+        "deployment_policy_oracle_gap": float(deployment_policy_gate["deployment_policy_oracle_gap_mean"].mean()) if not deployment_policy_gate.empty else None,
+        "deployment_policy_actions": deployment_policy_actions,
         "stress_combined_mean_selected_utility": float(stress_combined["selected_real_utility_mean"].mean()) if not stress_combined.empty else None,
         "seed_block_robustness_pass_rate": robustness_pass_rate,
         "raw_score_top_bin_object_real_gap": float(top_calibration["object_real_gap"]) if top_calibration is not None else None,

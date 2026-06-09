@@ -63,6 +63,7 @@
   ],
   "n_seed_rows": 5376,
   "n_main_rows": 336,
+  "n_deployment_policy_rows": 384,
   "n_stress_rows": 1120,
   "n_ood_rows": 320,
   "n_extreme_object_count_rows": 480,
@@ -87,6 +88,22 @@
   "observable_repair_raw_nmax_utility": 0.8803086375224858,
   "observable_repair_raw_nmax_gain": 0.8803086375224858,
   "observable_repair_combined_gap": 0.0,
+  "deployment_policy_mean_utility": 0.8319993316826387,
+  "deployment_policy_raw_mean_utility": 0.14841218726909552,
+  "deployment_policy_raw_high_mean_utility": 0.14841218726909552,
+  "deployment_policy_stop_early_mean_utility": 0.3574720356248464,
+  "deployment_policy_oracle_mean_utility": 0.9223588028593329,
+  "deployment_policy_vs_raw_gain": 0.6835871444135432,
+  "deployment_policy_corrupted_vs_raw_gain": 0.7883015801574633,
+  "deployment_policy_vs_stop_early_gain": 0.4745272960577922,
+  "deployment_policy_corrupted_vs_stop_early_gain": 0.5368058036226959,
+  "deployment_policy_min_corrupted_utility": 0.7880296839171549,
+  "deployment_policy_min_win_rate": 0.9375,
+  "deployment_policy_all_scenario_min_win_rate": 0.4375,
+  "deployment_policy_corrupted_raw_mean_utility": 0.047003995699942534,
+  "deployment_policy_corrupted_stop_early_mean_utility": 0.2984997722347099,
+  "deployment_policy_oracle_gap": 0.0903594711766943,
+  "deployment_policy_actions": "allow_high_n:9|block_high_n:75|collect_pilot_labels:2|run_object_probe:7|stop_early:3",
   "stress_combined_mean_selected_utility": 0.8494153088926296,
   "seed_block_robustness_pass_rate": 1.0,
   "raw_score_top_bin_object_real_gap": 1.095467459764002,
@@ -199,5 +216,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 655.163
+  "runtime_seconds": 677.009
 }

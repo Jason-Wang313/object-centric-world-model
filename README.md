@@ -31,6 +31,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.
 - Extreme object-count synthetic stress for 10- and 12-object scenes.
 - Benchmark-style synthetic task-suite stress over dense clutter, retargeting, crossing, occlusion, hidden-mass, merge/split, and mixed raw variants.
+- Deployment-gate policy simulation comparing raw high-N selection, raw stop-early fallback, gate-selected repair/probe actions, and oracle.
 - Held-out domain-randomized synthetic stress with varied object counts and corruption flags.
 - Counterfactual target-identity stress that retargets the true object away from object zero.
 - Multi-target identity sweep over six possible true target identities.
@@ -40,7 +41,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
 - Diagnostic probe-cost sensitivity, reporting net utility after charging probe actions.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, synthetic task-suite, counterfactual target, target-identity sweep, learned selection transfer, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, synthetic task-suite, deployment-gate policy, counterfactual target, target-identity sweep, learned selection transfer, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -58,6 +59,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_selection_metrics.csv`
 - `results/tables/synthetic_benchmark_seed_metrics.csv`
 - `results/tables/synthetic_benchmark_metrics.csv`
+- `results/tables/deployment_policy_seed_metrics.csv`
+- `results/tables/deployment_policy_metrics.csv`
 - `results/tables/repair_metrics.csv`
 - `results/tables/paired_effects.csv`
 - `results/tables/repair_ablation.csv`
@@ -133,6 +136,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure27_target_identity_sweep.png`
 - `figures/figure28_learned_selection_transfer.png`
 - `figures/figure29_synthetic_benchmark_suite.png`
+- `figures/figure30_deployment_gate_policy.png`
 
 ## Claim Boundaries
 

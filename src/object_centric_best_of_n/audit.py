@@ -30,6 +30,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_selection_metrics.csv": ("scenario", "selector", "learned_identity_vs_raw_gain_mean", "learned_identity_vs_reward_gain_mean"),
     "results/tables/synthetic_benchmark_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "suite_variant"),
     "results/tables/synthetic_benchmark_metrics.csv": ("scenario", "selector", "suite_variant", "synthetic_benchmark_combined_vs_raw_gain_mean", "synthetic_benchmark_observable_vs_raw_gain_mean"),
+    "results/tables/deployment_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "gate_action", "delegated_selector"),
+    "results/tables/deployment_policy_metrics.csv": ("scenario", "selector", "deployment_policy_vs_raw_gain_mean", "deployment_policy_win_rate"),
     "results/tables/repair_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean"),
     "results/tables/paired_effects.csv": ("scenario", "selector", "N", "mean_gain", "win_rate"),
     "results/tables/repair_ablation.csv": ("scenario", "combined_vs_raw_gain", "combined_vs_best_single_gain"),
@@ -99,6 +101,7 @@ REQUIRED_FIGURES = (
     "figures/figure27_target_identity_sweep.png",
     "figures/figure28_learned_selection_transfer.png",
     "figures/figure29_synthetic_benchmark_suite.png",
+    "figures/figure30_deployment_gate_policy.png",
 )
 
 REQUIRED_JSON = (
@@ -147,6 +150,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     learned_shift = _read_csv(tables / "learned_domain_shift.csv")
     learned_selection = _read_csv(tables / "learned_selection_metrics.csv")
     synthetic_benchmark = _read_csv(tables / "synthetic_benchmark_metrics.csv")
+    deployment_policy = _read_csv(tables / "deployment_policy_metrics.csv")
     ood = _read_csv(tables / "ood_metrics.csv")
     extreme = _read_csv(tables / "extreme_object_count_metrics.csv")
     family = _read_csv(tables / "model_family_proxy_metrics.csv")
@@ -460,6 +464,51 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(synthetic_benchmark_combined["synthetic_benchmark_combined_win_rate"].min()) >= 0.85
             and float(synthetic_benchmark_observable["synthetic_benchmark_observable_win_rate"].min()) >= 0.85
         )
+        deployment_policy_corrupted_scenarios = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
+        deployment_policy_gate = (
+            deployment_policy[
+                (deployment_policy["selector"] == "gate_policy")
+                & (deployment_policy["scenario"].isin(deployment_policy_corrupted_scenarios))
+            ]
+            if not deployment_policy.empty
+            else pd.DataFrame()
+        )
+        deployment_policy_raw = (
+            deployment_policy[
+                (deployment_policy["selector"] == "raw_high_n")
+                & (deployment_policy["scenario"].isin(deployment_policy_corrupted_scenarios))
+            ]
+            if not deployment_policy.empty
+            else pd.DataFrame()
+        )
+        deployment_policy_early = (
+            deployment_policy[
+                (deployment_policy["selector"] == "stop_early_raw")
+                & (deployment_policy["scenario"].isin(deployment_policy_corrupted_scenarios))
+            ]
+            if not deployment_policy.empty
+            else pd.DataFrame()
+        )
+        deployment_policy_oracle = (
+            deployment_policy[
+                (deployment_policy["selector"] == "oracle")
+                & (deployment_policy["scenario"].isin(deployment_policy_corrupted_scenarios))
+            ]
+            if not deployment_policy.empty
+            else pd.DataFrame()
+        )
+        deployment_policy_pass = (
+            not deployment_policy_gate.empty
+            and not deployment_policy_raw.empty
+            and not deployment_policy_early.empty
+            and not deployment_policy_oracle.empty
+            and float(deployment_policy_gate["selected_real_utility_mean"].mean()) >= 0.72
+            and float(deployment_policy_gate["selected_real_utility_mean"].min()) >= 0.60
+            and float(deployment_policy_gate["deployment_policy_vs_raw_gain_mean"].mean()) >= 0.50
+            and float(deployment_policy_gate["deployment_policy_vs_stop_early_gain_mean"].mean()) >= 0.05
+            and float(deployment_policy_gate["deployment_policy_win_rate"].min()) >= 0.75
+            and float(deployment_policy_gate["deployment_policy_oracle_gap_mean"].mean()) <= 0.25
+        )
         pilot_calibrated = pilot[pilot["selector"] == "pilot_calibrated"] if not pilot.empty else pd.DataFrame()
         pilot_pass = (
             not pilot_calibrated.empty
@@ -613,6 +662,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                         "target_sweep_observable_repair_gain",
                         "synthetic_benchmark_combined_repair_gain",
                         "synthetic_benchmark_observable_repair_gain",
+                        "deployment_policy_gate_gain",
+                        "deployment_policy_gate_over_stop_early_gain",
                         "pilot_calibrated_repair_gain",
                         "pilot_budget_mature_gain",
                         "leave_one_failure_pilot_gain",
@@ -628,8 +679,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and target_sweep_pass and synthetic_benchmark_pass and pilot_pass and pilot_budget_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap, multi-target identity-sweep, and benchmark-style synthetic task-suite stress succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and target_sweep_pass and synthetic_benchmark_pass and deployment_policy_pass and pilot_pass and pilot_budget_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap, multi-target identity-sweep, benchmark-style synthetic task-suite stress, and deployment-gate policy simulation succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -682,6 +733,12 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "synthetic_benchmark_combined_vs_raw_gain": float(synthetic_benchmark_combined["synthetic_benchmark_combined_vs_raw_gain_mean"].mean()) if not synthetic_benchmark_combined.empty else None,
                 "synthetic_benchmark_observable_vs_raw_gain": float(synthetic_benchmark_observable["synthetic_benchmark_observable_vs_raw_gain_mean"].mean()) if not synthetic_benchmark_observable.empty else None,
                 "synthetic_benchmark_combined_min_win_rate": float(synthetic_benchmark_combined["synthetic_benchmark_combined_win_rate"].min()) if not synthetic_benchmark_combined.empty else None,
+                "deployment_policy_gate_mean_utility": float(deployment_policy_gate["selected_real_utility_mean"].mean()) if not deployment_policy_gate.empty else None,
+                "deployment_policy_gate_min_utility": float(deployment_policy_gate["selected_real_utility_mean"].min()) if not deployment_policy_gate.empty else None,
+                "deployment_policy_vs_raw_gain": float(deployment_policy_gate["deployment_policy_vs_raw_gain_mean"].mean()) if not deployment_policy_gate.empty else None,
+                "deployment_policy_vs_stop_early_gain": float(deployment_policy_gate["deployment_policy_vs_stop_early_gain_mean"].mean()) if not deployment_policy_gate.empty else None,
+                "deployment_policy_min_win_rate": float(deployment_policy_gate["deployment_policy_win_rate"].min()) if not deployment_policy_gate.empty else None,
+                "deployment_policy_oracle_gap": float(deployment_policy_gate["deployment_policy_oracle_gap_mean"].mean()) if not deployment_policy_gate.empty else None,
                 "pilot_calibrated_mean_utility": float(pilot_calibrated["selected_real_utility_mean"].mean()) if not pilot_calibrated.empty else None,
                 "pilot_calibrated_min_utility": float(pilot_calibrated["selected_real_utility_mean"].min()) if not pilot_calibrated.empty else None,
                 "pilot_calibrated_vs_raw_gain": float(pilot_calibrated["pilot_vs_raw_gain_mean"].mean()) if not pilot_calibrated.empty else None,
@@ -819,7 +876,7 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C3",
             "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
             "status": _status(strengths.get("C3", {}).get("passes") if root is not None else None),
-            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, figure29, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, synthetic_benchmark_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
+            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, figure29, figure30, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, synthetic_benchmark_metrics.csv, deployment_policy_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
             "strength": strengths.get("C3", {}),
         },
         {
@@ -1021,6 +1078,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Learned selection identity-vs-reward gain: {summary.get('learned_selection_identity_vs_reward_gain', 'unknown')}",
         f"- Synthetic task-suite combined-vs-raw gain: {summary.get('synthetic_benchmark_combined_vs_raw_gain', 'unknown')}",
         f"- Synthetic task-suite observable-vs-raw gain: {summary.get('synthetic_benchmark_observable_vs_raw_gain', 'unknown')}",
+        f"- Deployment policy corrupted gate-vs-raw gain: {summary.get('deployment_policy_corrupted_vs_raw_gain', summary.get('deployment_policy_vs_raw_gain', 'unknown'))}",
+        f"- Deployment policy corrupted gate-vs-stop-early gain: {summary.get('deployment_policy_corrupted_vs_stop_early_gain', summary.get('deployment_policy_vs_stop_early_gain', 'unknown'))}",
         f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
         f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
         f"- Extreme object-count combined-vs-raw gain: {summary.get('extreme_object_count_combined_vs_raw_gain', 'unknown')}",
@@ -1210,6 +1269,9 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "- Synthetic task-suite artifact: figure29_synthetic_benchmark_suite.png and synthetic_benchmark_metrics.csv. "
             f"Combined-vs-raw gain {summary_payload.get('synthetic_benchmark_combined_vs_raw_gain', 'unknown')} "
             f"and minimum combined variant utility {summary_payload.get('synthetic_benchmark_combined_min_variant_utility', 'unknown')}.",
+            "- Deployment-policy artifact: figure30_deployment_gate_policy.png and deployment_policy_metrics.csv. "
+            f"Corrupted gate-vs-raw gain {summary_payload.get('deployment_policy_corrupted_vs_raw_gain', summary_payload.get('deployment_policy_vs_raw_gain', 'unknown'))} "
+            f"and corrupted gate-vs-stop-early gain {summary_payload.get('deployment_policy_corrupted_vs_stop_early_gain', summary_payload.get('deployment_policy_vs_stop_early_gain', 'unknown'))}.",
             "- OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. "
             f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
             "- Extreme object-count artifact: figure24_extreme_object_count.png and extreme_object_count_metrics.csv. "
@@ -1241,7 +1303,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",
-            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, benchmark-style synthetic task-suite stress, held-out domain-randomized stress, target-identity sweep stress, learned selection transfer, held-out pilot-label calibration, pilot-label budget sensitivity, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
+            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, benchmark-style synthetic task-suite stress, deployment-gate policy simulation, held-out domain-randomized stress, target-identity sweep stress, learned selection transfer, held-out pilot-label calibration, pilot-label budget sensitivity, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
             "- Observable-only, pilot-calibrated, noisy-probe, and probe-cost repair reduce direct hidden-property truth alignment and free-probe assumptions, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",

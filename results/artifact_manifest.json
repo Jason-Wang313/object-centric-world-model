@@ -1,10 +1,10 @@
 {
-  "artifact_count": 81,
+  "artifact_count": 84,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 3489,
-      "sha256": "b1ec0f3521f0565869fbd2182b458cbf1d1fd36c63559bf820c8e215e2af479e"
+      "bytes": 3632,
+      "sha256": "ef2993ed9e188680c55b50d8ece63c59f5d089349df279777230d2889bd0ebd3"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -38,8 +38,8 @@
     },
     {
       "path": "figures/figure16_statistical_audit.png",
-      "bytes": 234122,
-      "sha256": "73b2fa54dc208440f4e078edad63b57f042ae25b598eb0f09a073378cfd7ed98"
+      "bytes": 249589,
+      "sha256": "9ca70267de46f968df79c70201beb388555ce69e1733e4c7d581795a0834f774"
     },
     {
       "path": "figures/figure17_observable_repair.png",
@@ -117,6 +117,11 @@
       "sha256": "c38a8a82bf67c712505e841712175c4de77c7bf47cf20b54a593422603a48605"
     },
     {
+      "path": "figures/figure30_deployment_gate_policy.png",
+      "bytes": 57608,
+      "sha256": "32b7eee1b52849c1d1b63fd32c63f7f83c92e3846abf88d9ff4285d342106ea1"
+    },
+    {
       "path": "figures/figure3_tail_diagnostics.png",
       "bytes": 76357,
       "sha256": "8482f268cf03196332019c85b24cda2f8f526ddf766f05e2ea5accbfc96bafad"
@@ -168,8 +173,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 8164,
-      "sha256": "6ba91e93e54892cd45ac00f1dacd76869d10f2088ae98dddcd83682f05eac4e2"
+      "bytes": 9272,
+      "sha256": "f689b9ce6696b50e7c2c8ab013704b72d43b81bd05485e3eee82b6faa59c4664"
     },
     {
       "path": "results/tables/counterfactual_target_metrics.csv",
@@ -180,6 +185,16 @@
       "path": "results/tables/counterfactual_target_seed_metrics.csv",
       "bytes": 62896,
       "sha256": "38d484a0f082f60607bedd6f571daedcc618fc40d6243b0533c68746e89ff4a5"
+    },
+    {
+      "path": "results/tables/deployment_policy_metrics.csv",
+      "bytes": 18683,
+      "sha256": "88ce65dbe061552a21908e919d319f0a24cc62e9737737592757178ebf81db0d"
+    },
+    {
+      "path": "results/tables/deployment_policy_seed_metrics.csv",
+      "bytes": 128135,
+      "sha256": "7f5f170e4cb1c76335942ec1c364a02ec12364901a14f4db5bad747ff52ca28e"
     },
     {
       "path": "results/tables/domain_randomization_metrics.csv",
@@ -368,8 +383,8 @@
     },
     {
       "path": "results/tables/statistical_audit.csv",
-      "bytes": 4726,
-      "sha256": "34c5aa6f936d484932187906c642532d09bae9d9cb2727ced0555020362e206b"
+      "bytes": 5166,
+      "sha256": "961ce8008ab05af7c97f01fdd6d5a44bb1ae1680c190471c9f4ddf6131363153"
     },
     {
       "path": "results/tables/stress_metrics.csv",
@@ -403,8 +418,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 2160,
-      "sha256": "95ac8f1f09f3d26795c2091378b08e72eb6832ac9ed94494da322c724131454e"
+      "bytes": 2558,
+      "sha256": "ee96c64a286d9ccb52c2b7d052021fabfb60c3f47b3e81f0793b01648e843dbb"
     }
   ]
 }

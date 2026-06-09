@@ -52,10 +52,10 @@
       "id": "C3",
       "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
       "status": "strongly_supported",
-      "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, figure29, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, synthetic_benchmark_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
+      "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, figure29, figure30, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, synthetic_benchmark_metrics.csv, deployment_policy_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
       "strength": {
         "passes": true,
-        "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap, multi-target identity-sweep, and benchmark-style synthetic task-suite stress succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+        "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap, multi-target identity-sweep, benchmark-style synthetic task-suite stress, and deployment-gate policy simulation succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
         "observed": {
           "combined_raw_nmax_gain": 0.8803086375224858,
           "combined_raw_nmax_win_rate": 1.0,
@@ -108,6 +108,12 @@
           "synthetic_benchmark_combined_vs_raw_gain": 0.8161407808398964,
           "synthetic_benchmark_observable_vs_raw_gain": 0.8160747948047943,
           "synthetic_benchmark_combined_min_win_rate": 1.0,
+          "deployment_policy_gate_mean_utility": 0.8353055758574058,
+          "deployment_policy_gate_min_utility": 0.7880296839171549,
+          "deployment_policy_vs_raw_gain": 0.7883015801574633,
+          "deployment_policy_vs_stop_early_gain": 0.5368058036226959,
+          "deployment_policy_min_win_rate": 0.9375,
+          "deployment_policy_oracle_gap": 0.08559554132737154,
           "pilot_calibrated_mean_utility": 0.827787343785161,
           "pilot_calibrated_min_utility": 0.7851225988354029,
           "pilot_calibrated_vs_raw_gain": 0.8192029444060406,
@@ -142,7 +148,7 @@
           "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
           "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
           "model_family_max_combined_oracle_gap": 0.1058960383796072,
-          "bootstrap_repair_min_ci_margin": 0.21608402224147516
+          "bootstrap_repair_min_ci_margin": 0.1716973318133445
         }
       }
     },
@@ -190,7 +196,7 @@
   "forbidden_supported_overclaims": [],
   "paper_text_overclaims": [],
   "artifact_verification": {
-    "checked_count": 82,
+    "checked_count": 85,
     "problems": [],
     "passes": true
   },

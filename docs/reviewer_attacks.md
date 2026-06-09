@@ -24,6 +24,10 @@ Response: `probe_cost_metrics.csv` charges diagnostic actions before reporting s
 
 Response: `pilot_calibration_metrics.csv` evaluates a held-out selector trained from pilot-labeled candidates using observable object features. The train seeds are separate from the held-out raw, randomized-domain, and target-swap evaluation seeds. `pilot_budget_metrics.csv` sweeps the number of labeled candidates, and `leave_one_failure_metrics.csv` holds each raw, occlusion, hidden-property, swap, or merge/split failure family out during pilot-calibrator training and then evaluates it as the test family. The audit requires calibrated selected utility, paired raw gain, budget sensitivity, win rate, oracle gap, leave-one-failure transfer, and bootstrap lower-bound checks before counting the evidence.
 
+## Attack: The deployment gate emits actions, but obeying the gate is not evaluated.
+
+Response: `deployment_policy_metrics.csv` and `figure30_deployment_gate_policy.png` simulate a conservative policy that maps gate actions to raw high-N, raw stop-early, observable repair, targeted probing, or combined repair. The audit requires the gate policy to recover corrupted scenarios while beating both raw high-N selection and a raw stop-early fallback with bootstrap lower-bound checks.
+
 ## Attack: The repair result could be a seed fluke.
 
 Response: The upgraded run reports paired per-seed gains in `paired_effects.csv`, nonparametric bootstrap intervals in `statistical_audit.csv`, repair ablations in `repair_ablation.csv`, seed-block robustness in `seed_block_robustness.csv`, and a separate high-N stress panel in `stress_metrics.csv`. The claim audit requires positive paired raw-to-repair gain, high win rate, targeted hidden-property gain, ablation dominance, seed-block robustness, bootstrap lower-bound checks, and stress utility before marking the repair claim strongly supported.
