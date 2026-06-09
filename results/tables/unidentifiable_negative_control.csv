@@ -1,0 +1,6 @@
+contrast,split_seed,N,selector,repair_tier,uses_real_utility_features,uses_hidden_features,hyperparameter_source,selected_real_utility_mean,oracle_selected_real_utility_mean,oracle_gap_mean,identity_error_mean,gate_action,gate_reason,observable_feature_collision_rate,block_accuracy,tail_rank_failure,final_test
+hidden_mode_unidentifiable,0,64,adaptive_gate,deployable_no_leak,False,False,fixed_predeclared,0.08,0.92,0.8400000000000001,0.0,block_high_n,hidden_mode_unidentifiable,0.984375,1.0,1,1
+hidden_mode_unidentifiable,1,64,adaptive_gate,deployable_no_leak,False,False,fixed_predeclared,0.92,0.92,0.0,1.0,block_high_n,hidden_mode_unidentifiable,0.984375,1.0,1,1
+hidden_mode_unidentifiable,2,64,adaptive_gate,deployable_no_leak,False,False,fixed_predeclared,0.08,0.92,0.8400000000000001,1.0,block_high_n,hidden_mode_unidentifiable,0.984375,1.0,1,1
+hidden_mode_unidentifiable,3,64,adaptive_gate,deployable_no_leak,False,False,fixed_predeclared,0.08,0.92,0.8400000000000001,0.0,block_high_n,hidden_mode_unidentifiable,0.984375,1.0,1,1
+hidden_mode_unidentifiable,4,64,adaptive_gate,deployable_no_leak,False,False,fixed_predeclared,0.92,0.92,0.0,1.0,block_high_n,hidden_mode_unidentifiable,0.984375,1.0,1,1

@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -17,7 +18,9 @@ from object_centric_best_of_n.audit import write_claim_status, write_final_audit
 from object_centric_best_of_n.envs import make_scene, retarget_scene
 from object_centric_best_of_n.learned_model import learned_candidate_scores, train_and_evaluate
 from object_centric_best_of_n.metrics import (
+    add_repair_metadata,
     aggregate_seed_metrics,
+    calibration_diagnostics_summary,
     counterfactual_target_summary,
     deployment_gate_from_metrics,
     deployment_policy_summary,
@@ -36,6 +39,7 @@ from object_centric_best_of_n.metrics import (
     noisy_probe_summary,
     probe_cost_summary,
     repair_ablation_summary,
+    repair_robustness_by_split,
     score_calibration_table,
     selection_record,
     seed_block_robustness,
@@ -50,7 +54,9 @@ from object_centric_best_of_n.plotting import write_all_figures
 from object_centric_best_of_n.repair import (
     combined_repair_score,
     conservative_selected_tail_stop_rule,
+    empty_pilot_calibrator,
     fit_pilot_calibrator,
+    hidden_mode_unidentifiable_gate,
     observable_repair_score,
     pilot_calibration_features,
     pilot_calibrated_score,
@@ -134,7 +140,7 @@ SYNTHETIC_BENCHMARK_VARIANTS = [
 ]
 SYNTHETIC_BENCHMARK_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
-PILOT_BUDGETS = [16, 32, 64, 128, 256, 512]
+PILOT_BUDGETS = [0, 8, 32, 128]
 NOISY_PROBE_RELIABILITIES = [0.55, 0.65, 0.75, 0.85, 0.90]
 NOISY_PROBE_SELECTORS = ["raw", "noisy_probe_repair", "observable_repair", "combined_repair", "random", "oracle"]
 PROBE_COSTS = [0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.30]
@@ -1230,7 +1236,7 @@ def _run_pilot_budget_panel(
     for budget in budgets:
         budget_n = int(min(budget, len(train_candidates)))
         subset = [train_candidates[int(idx)] for idx in order[:budget_n]]
-        calibrator = fit_pilot_calibrator(subset, ridge=5e-3)
+        calibrator = empty_pilot_calibrator() if budget_n == 0 else fit_pilot_calibrator(subset, ridge=5e-3)
         calibrators.append({"pilot_label_budget": budget_n, "calibrator": calibrator})
         for seed, scenario_label, scene, generator_scenario, flags, candidates in eval_cases:
             pilot_scores = np.asarray([pilot_calibrated_score(candidate, calibrator) for candidate in candidates])
@@ -1426,6 +1432,517 @@ def _run_probe_cost_panel(
     return pd.DataFrame(rows)
 
 
+REPAIR_SPLIT_SEEDS = [0, 1, 2, 3, 4]
+REPAIR_GRID = [
+    {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 2e-3,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.90,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1",
+    },
+    {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 2e-3,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.90,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1",
+    },
+    {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 5e-3,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.90,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1",
+    },
+]
+SUPPORT_SELECTOR_GRID = ["observable_repair", "targeted_probe"]
+
+
+def _repair_condition_catalog(mode: str) -> list[dict[str, int | str]]:
+    condition_seeds = list(range(4)) if mode == "smoke" else list(range(12))
+    rows: list[dict[str, int | str]] = []
+    for condition_seed in condition_seeds:
+        for scenario_idx, scenario in enumerate(STRESS_SCENARIOS):
+            scene_seed = 610_000 + condition_seed * 31 + scenario_idx
+            rows.append(
+                {
+                    "condition_id": f"{scenario}:{condition_seed}",
+                    "condition_seed": int(condition_seed),
+                    "scenario": scenario,
+                    "scene_seed": int(scene_seed),
+                }
+            )
+    return rows
+
+
+def _repair_condition_splits(mode: str, split_seeds: list[int]) -> pd.DataFrame:
+    conditions = _repair_condition_catalog(mode)
+    split_names = ["pilot_train", "pilot_calibration", "dev", "final_test"]
+    rows: list[dict[str, int | str]] = []
+    for split_seed in split_seeds:
+        rng = np.random.default_rng(620_000 + split_seed)
+        order = rng.permutation(len(conditions))
+        n_total = len(conditions)
+        n_train = max(1, int(round(0.25 * n_total)))
+        n_cal = max(1, int(round(0.20 * n_total)))
+        n_dev = max(1, int(round(0.20 * n_total)))
+        boundaries = {
+            "pilot_train": set(int(idx) for idx in order[:n_train]),
+            "pilot_calibration": set(int(idx) for idx in order[n_train : n_train + n_cal]),
+            "dev": set(int(idx) for idx in order[n_train + n_cal : n_train + n_cal + n_dev]),
+            "final_test": set(int(idx) for idx in order[n_train + n_cal + n_dev :]),
+        }
+        for split_name in split_names:
+            for idx in sorted(boundaries[split_name]):
+                rows.append({"split_seed": int(split_seed), "split": split_name, **conditions[idx]})
+    return pd.DataFrame(rows)
+
+
+def _scene_for_repair_condition(row: pd.Series):
+    return _scene_for_scenario(int(row["scene_seed"]), str(row["scenario"]))
+
+
+def _condition_candidates(
+    generator: ObjectCentricFutureGenerator,
+    condition: pd.Series,
+    n: int,
+    cache: dict[tuple[int, str], tuple[object, list[object]]] | None = None,
+) -> tuple[object, list[object]]:
+    key = (int(n), str(condition["condition_id"]))
+    if cache is not None and key in cache:
+        return cache[key]
+    scenario = str(condition["scenario"])
+    scene = _scene_for_repair_condition(condition)
+    seed = 631_000 + int(condition["condition_seed"]) * 997 + n * 37 + len(scenario)
+    candidates = generator.generate_candidates(scene, n=n, scenario=scenario, seed=seed)
+    if cache is not None:
+        cache[key] = (scene, candidates)
+    return scene, candidates
+
+
+def _candidate_uncertainty(candidate) -> float:
+    return float(
+        np.clip(
+            0.36 * _diagnostic(candidate, "identity_instability", 0.5)
+            + 0.34 * _diagnostic(candidate, "merge_evidence")
+            + 0.30 * float(candidate.property_entropy),
+            0.0,
+            1.0,
+        )
+    )
+
+
+def _pilot_train_subset(
+    generator: ObjectCentricFutureGenerator,
+    split_conditions: pd.DataFrame,
+    n: int,
+    budget: int,
+    ridge: float,
+    split_seed: int,
+    cache: dict[tuple[int, str], tuple[object, list[object]]] | None = None,
+) -> dict[str, object]:
+    if budget <= 0:
+        return empty_pilot_calibrator()
+    candidates = []
+    for _, condition in split_conditions[split_conditions["split"] == "pilot_train"].iterrows():
+        _, condition_candidates = _condition_candidates(generator, condition, n=n, cache=cache)
+        candidates.extend(condition_candidates)
+    rng = np.random.default_rng(640_000 + split_seed + int(budget))
+    order = rng.permutation(len(candidates))
+    subset = [candidates[int(idx)] for idx in order[: min(int(budget), len(candidates))]]
+    return fit_pilot_calibrator(subset, ridge=ridge) if subset else empty_pilot_calibrator()
+
+
+def _conformal_residual_quantile(
+    generator: ObjectCentricFutureGenerator,
+    split_conditions: pd.DataFrame,
+    n: int,
+    calibrator: dict[str, object],
+    confidence: float,
+    cache: dict[tuple[int, str], tuple[object, list[object]]] | None = None,
+) -> float:
+    residuals: list[float] = []
+    for _, condition in split_conditions[split_conditions["split"] == "pilot_calibration"].iterrows():
+        _, candidates = _condition_candidates(generator, condition, n=n, cache=cache)
+        for candidate in candidates:
+            residuals.append(max(0.0, pilot_calibrated_score(candidate, calibrator) - float(candidate.real_utility)))
+    if not residuals:
+        return 0.0
+    return float(np.quantile(np.asarray(residuals, dtype=float), float(confidence)))
+
+
+def _pilot_lcb_scores(
+    candidates,
+    calibrator: dict[str, object],
+    residual_q: float,
+    uncertainty_penalty: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    predictions = np.asarray([pilot_calibrated_score(candidate, calibrator) for candidate in candidates], dtype=float)
+    uncertainty = np.asarray([_candidate_uncertainty(candidate) for candidate in candidates], dtype=float)
+    lcbs = np.clip(predictions - residual_q - float(uncertainty_penalty) * uncertainty, 0.0, 1.0)
+    return predictions, lcbs, uncertainty
+
+
+def _mean_dev_gap_closure(
+    generator: ObjectCentricFutureGenerator,
+    split_conditions: pd.DataFrame,
+    n: int,
+    selector_name: str,
+    split_seed: int,
+    calibrator: dict[str, object] | None = None,
+    residual_q: float = 0.0,
+    uncertainty_penalty: float = 0.0,
+    cache: dict[tuple[int, str], tuple[object, list[object]]] | None = None,
+) -> float:
+    values: list[float] = []
+    dev = split_conditions[split_conditions["split"] == "dev"]
+    for _, condition in dev.iterrows():
+        scene, candidates = _condition_candidates(generator, condition, n=n, cache=cache)
+        raw = SELECTORS["raw"](candidates, scene, seed=split_seed + n)
+        oracle = SELECTORS["oracle"](candidates, scene, seed=split_seed + n)
+        if selector_name == "pilot_calibrated":
+            assert calibrator is not None
+            _, lcbs, _ = _pilot_lcb_scores(
+                candidates,
+                calibrator=calibrator,
+                residual_q=residual_q,
+                uncertainty_penalty=uncertainty_penalty,
+            )
+            selected = _select_by_scores_with_label(candidates, lcbs, seed=split_seed + n, label="pilot_calibrated")
+        else:
+            selected = SELECTORS[selector_name](candidates, scene, seed=split_seed + n)
+        denominator = float(oracle.real_utility - raw.real_utility)
+        if abs(denominator) > 1e-12:
+            values.append(float((selected.real_utility - raw.real_utility) / denominator))
+    return float(np.mean(values)) if values else float("-inf")
+
+
+def _run_final_test_repair_panel(
+    generator: ObjectCentricFutureGenerator,
+    mode: str,
+    ns: list[int],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, object]]]:
+    max_n = max(ns)
+    eval_ns = [n for n in [32, 64] if n <= max_n]
+    if not eval_ns:
+        eval_ns = [max_n]
+    split_df = _repair_condition_splits(mode, REPAIR_SPLIT_SEEDS)
+    final_rows: list[dict[str, float | int | str]] = []
+    calibration_rows: list[dict[str, float | int | str]] = []
+    selection_rows: list[dict[str, object]] = []
+    selected_configs: list[dict[str, object]] = []
+    candidate_cache: dict[tuple[int, str], tuple[object, list[object]]] = {}
+    for split_seed in REPAIR_SPLIT_SEEDS:
+        split_conditions = split_df[split_df["split_seed"] == split_seed].copy()
+        for n in eval_ns:
+            for budget in PILOT_BUDGETS:
+                dev_scores: list[tuple[float, dict[str, object], dict[str, object], float]] = []
+                for config in REPAIR_GRID:
+                    calibrator = _pilot_train_subset(
+                        generator,
+                        split_conditions,
+                        n=n,
+                        budget=budget,
+                        ridge=float(config["ridge"]),
+                        split_seed=split_seed,
+                        cache=candidate_cache,
+                    )
+                    residual_q = _conformal_residual_quantile(
+                        generator,
+                        split_conditions,
+                        n=n,
+                        calibrator=calibrator,
+                        confidence=float(config["conformal_confidence"]),
+                        cache=candidate_cache,
+                    )
+                    dev_score = _mean_dev_gap_closure(
+                        generator,
+                        split_conditions,
+                        n=n,
+                        selector_name="pilot_calibrated",
+                        split_seed=split_seed,
+                        calibrator=calibrator,
+                        residual_q=residual_q,
+                        uncertainty_penalty=float(config["uncertainty_penalty"]),
+                        cache=candidate_cache,
+                    )
+                    dev_scores.append((dev_score, config, calibrator, residual_q))
+                    selection_rows.append(
+                        {
+                            "split_seed": int(split_seed),
+                            "N": int(n),
+                            "repair_budget": int(budget),
+                            "selector": "pilot_calibrated",
+                            "repair_tier": "deployable_no_leak",
+                            "config_id": str(config["config_id"]),
+                            "ridge": float(config["ridge"]),
+                            "uncertainty_penalty": float(config["uncertainty_penalty"]),
+                            "conformal_confidence": float(config["conformal_confidence"]),
+                            "gate_threshold": float(config["gate_threshold"]),
+                            "feature_set": str(config["feature_set"]),
+                            "dev_gap_closure_mean": float(dev_score),
+                            "selected": 0,
+                            "hyperparameter_source": "dev_condition_grid",
+                            "final_test": 0,
+                        }
+                    )
+                best_score, best_config, best_calibrator, best_residual_q = max(dev_scores, key=lambda item: item[0])
+                for row in selection_rows:
+                    if (
+                        row["split_seed"] == split_seed
+                        and row["N"] == n
+                        and row["repair_budget"] == budget
+                        and row["selector"] == "pilot_calibrated"
+                        and row["config_id"] == best_config["config_id"]
+                    ):
+                        row["selected"] = 1
+                support_scores = [
+                    (
+                        _mean_dev_gap_closure(
+                            generator,
+                            split_conditions,
+                            n=n,
+                            selector_name=support_selector,
+                            split_seed=split_seed,
+                            cache=candidate_cache,
+                        ),
+                        support_selector,
+                    )
+                    for support_selector in SUPPORT_SELECTOR_GRID
+                ]
+                support_dev_score, support_selector = max(support_scores, key=lambda item: item[0])
+                selection_rows.append(
+                    {
+                        "split_seed": int(split_seed),
+                        "N": int(n),
+                        "repair_budget": int(budget),
+                        "selector": support_selector,
+                        "repair_tier": "support_covered",
+                        "config_id": f"support_{support_selector}",
+                        "ridge": float("nan"),
+                        "uncertainty_penalty": float("nan"),
+                        "conformal_confidence": float("nan"),
+                        "gate_threshold": float("nan"),
+                        "feature_set": "support_probe_proxy",
+                        "dev_gap_closure_mean": float(support_dev_score),
+                        "selected": 1,
+                        "hyperparameter_source": "dev_condition_grid",
+                        "final_test": 0,
+                    }
+                )
+                selected_configs.append(
+                    {
+                        "split_seed": int(split_seed),
+                        "N": int(n),
+                        "repair_budget": int(budget),
+                        "deployable_config": dict(best_config),
+                        "deployable_dev_gap_closure_mean": float(best_score),
+                        "support_selector": support_selector,
+                        "support_dev_gap_closure_mean": float(support_dev_score),
+                    }
+                )
+                final_conditions = split_conditions[split_conditions["split"] == "final_test"]
+                for _, condition in final_conditions.iterrows():
+                    scene, candidates = _condition_candidates(generator, condition, n=n, cache=candidate_cache)
+                    raw = SELECTORS["raw"](candidates, scene, seed=split_seed + n)
+                    oracle = SELECTORS["oracle"](candidates, scene, seed=split_seed + n)
+                    predictions, lcbs, uncertainty = _pilot_lcb_scores(
+                        candidates,
+                        calibrator=best_calibrator,
+                        residual_q=best_residual_q,
+                        uncertainty_penalty=float(best_config["uncertainty_penalty"]),
+                    )
+                    pilot_selected = _select_by_scores_with_label(
+                        candidates,
+                        lcbs,
+                        seed=split_seed + n + budget,
+                        label="pilot_calibrated",
+                    )
+                    support_selected = SELECTORS[support_selector](candidates, scene, seed=split_seed + n)
+                    oracle_feature_selected = SELECTORS["combined_repair"](candidates, scene, seed=split_seed + n)
+                    all_labeled_selected = SELECTORS["oracle"](candidates, scene, seed=split_seed + n)
+                    selected_ids = {int(pilot_selected.candidate_id)}
+                    q_edges = np.quantile(uncertainty, [1 / 3, 2 / 3]) if len(uncertainty) >= 3 else [0.33, 0.66]
+                    for candidate, prediction, lcb, unc in zip(candidates, predictions, lcbs, uncertainty):
+                        if unc <= q_edges[0]:
+                            risk_bin = "low"
+                        elif unc <= q_edges[1]:
+                            risk_bin = "medium"
+                        else:
+                            risk_bin = "high"
+                        calibration_rows.append(
+                            {
+                                "split_seed": int(split_seed),
+                                "condition_id": str(condition["condition_id"]),
+                                "scenario": str(condition["scenario"]),
+                                "N": int(n),
+                                "repair_budget": int(budget),
+                                "selector": "pilot_calibrated",
+                                "repair_tier": "deployable_no_leak",
+                                "candidate_id": int(candidate.candidate_id),
+                                "predicted_utility": float(prediction),
+                                "lcb_utility": float(lcb),
+                                "real_utility": float(candidate.real_utility),
+                                "lcb_covered": int(float(candidate.real_utility) >= float(lcb)),
+                                "selected_tail": int(int(candidate.candidate_id) in selected_ids),
+                                "risk_bin": risk_bin,
+                                "uncertainty": float(unc),
+                                "violation": int(float(candidate.real_utility) < float(lcb)),
+                                "adaptive_gate_regret": 0.0,
+                                "block_accuracy": float("nan"),
+                                "final_test": 1,
+                                "uses_real_utility_features": False,
+                                "uses_hidden_features": False,
+                                "hyperparameter_source": "dev_condition_grid",
+                            }
+                        )
+                    selector_records = [
+                        ("raw", raw),
+                        ("pilot_calibrated", pilot_selected),
+                        (support_selector, support_selected),
+                        ("combined_repair", oracle_feature_selected),
+                        ("repair_all_candidates_labeled_oracle", all_labeled_selected),
+                    ]
+                    for selector_name, selected in selector_records:
+                        record = selection_record(
+                            "AC_nested_final_test_repair",
+                            str(condition["scenario"]),
+                            selector_name,
+                            n,
+                            int(condition["condition_seed"]),
+                            selected,
+                            candidates,
+                        )
+                        record.update(
+                            {
+                                "split_seed": int(split_seed),
+                                "condition_id": str(condition["condition_id"]),
+                                "condition_split": "final_test",
+                                "repair_budget": int(budget),
+                                "raw_selected_real_utility": float(raw.real_utility),
+                                "oracle_selected_real_utility": float(oracle.real_utility),
+                                "gap_closure": float(
+                                    (selected.real_utility - raw.real_utility) / (oracle.real_utility - raw.real_utility)
+                                )
+                                if abs(float(oracle.real_utility - raw.real_utility)) > 1e-12
+                                else float("nan"),
+                                "deployable_config_id": str(best_config["config_id"]),
+                                "support_selector": support_selector,
+                                "conformal_residual_q": float(best_residual_q),
+                                "conformal_confidence": float(best_config["conformal_confidence"]),
+                                "final_test": 1,
+                            }
+                        )
+                        final_rows.append(record)
+    final_df = add_repair_metadata(pd.DataFrame(final_rows), final_test=True)
+    robustness_df = repair_robustness_by_split(final_df)
+    calibration_df = pd.DataFrame(calibration_rows)
+    calibration_summary = calibration_diagnostics_summary(calibration_df)
+    selection_df = pd.DataFrame(selection_rows)
+    return final_df, robustness_df, calibration_summary, split_df, selection_df, selected_configs
+
+
+def _run_unidentifiable_negative_control(
+    generator: ObjectCentricFutureGenerator,
+    n: int,
+    split_seeds: list[int],
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for split_seed in split_seeds:
+        scene = _scene_for_scenario(690_000 + split_seed, "raw")
+        base = generator.generate_candidates(scene, n=1, scenario="raw", seed=691_000 + split_seed)[0]
+        candidates = []
+        for idx in range(n):
+            utility = 0.92 if idx % 2 else 0.08
+            candidates.append(
+                replace(
+                    base,
+                    candidate_id=idx,
+                    score=1.0,
+                    real_utility=float(utility),
+                    hidden_property_true=float(utility),
+                    object_real_gap=float(1.0 - utility),
+                )
+            )
+        raw = SELECTORS["raw"](candidates, scene, seed=split_seed + n)
+        oracle = SELECTORS["oracle"](candidates, scene, seed=split_seed + n)
+        gate = hidden_mode_unidentifiable_gate(candidates, n=n)
+        action = conservative_selected_tail_stop_rule({"N": n, **gate})
+        block_accuracy = float(action == "block_high_n")
+        rows.append(
+            {
+                "contrast": "hidden_mode_unidentifiable",
+                "split_seed": int(split_seed),
+                "N": int(n),
+                "selector": "adaptive_gate",
+                "repair_tier": "deployable_no_leak",
+                "uses_real_utility_features": False,
+                "uses_hidden_features": False,
+                "hyperparameter_source": "fixed_predeclared",
+                "selected_real_utility_mean": float(raw.real_utility),
+                "oracle_selected_real_utility_mean": float(oracle.real_utility),
+                "oracle_gap_mean": float(oracle.real_utility - raw.real_utility),
+                "identity_error_mean": float(raw.identity_error),
+                "gate_action": action,
+                "gate_reason": str(gate["gate_reason"]),
+                "observable_feature_collision_rate": float(gate["observable_feature_collision_rate"]),
+                "block_accuracy": block_accuracy,
+                "tail_rank_failure": int(action == "block_high_n"),
+                "final_test": 1,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _learned_generalization_diagnostics(
+    learned_row: dict[str, float],
+    learned_repair_policy_metrics: pd.DataFrame,
+    repair_robustness: pd.DataFrame,
+) -> pd.DataFrame:
+    learned_policy = (
+        learned_repair_policy_metrics[learned_repair_policy_metrics["selector"] == "learned_repair_policy"]
+        if not learned_repair_policy_metrics.empty
+        else pd.DataFrame()
+    )
+    deployable_repair = (
+        repair_robustness[
+            (repair_robustness["repair_tier"] == "deployable_no_leak")
+            & (repair_robustness["selector"] == "pilot_calibrated")
+        ]
+        if not repair_robustness.empty
+        else pd.DataFrame()
+    )
+    transition_mse = float(learned_row.get("transition_mse", float("nan")))
+    constant_transition_mse = float(learned_row.get("constant_transition_mse", float("nan")))
+    return pd.DataFrame(
+        [
+            {
+                "evaluation_split": "heldout_final_test",
+                "trajectory_mse": transition_mse,
+                "final_state_error": float(np.sqrt(max(transition_mse, 0.0))) if np.isfinite(transition_mse) else float("nan"),
+                "denoising_proxy_loss": transition_mse,
+                "baseline_trajectory_mse": constant_transition_mse,
+                "sample_diversity": float(learned_policy["selected_real_utility_mean"].std(ddof=0))
+                if not learned_policy.empty
+                else float("nan"),
+                "rank_correlation": float(learned_row.get("reward_correlation", float("nan"))),
+                "selected_tail_calibration_error": float(learned_policy["learned_repair_policy_oracle_gap_mean"].mean())
+                if not learned_policy.empty and "learned_repair_policy_oracle_gap_mean" in learned_policy
+                else float("nan"),
+                "repair_gap_closure": float(deployable_repair["mean_gap_closure_across_splits"].mean())
+                if not deployable_repair.empty
+                else float("nan"),
+                "repair_tier": "deployable_no_leak",
+                "final_test": 1,
+            }
+        ]
+    )
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -1433,6 +1950,14 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     figures = root / "figures"
     tables.mkdir(parents=True, exist_ok=True)
     figures.mkdir(parents=True, exist_ok=True)
+    progress_log = results / "run_progress.log"
+
+    def mark(stage: str) -> None:
+        with progress_log.open("a", encoding="utf-8") as handle:
+            handle.write(f"{time.time() - start:.3f}\t{mode}\t{stage}\n")
+
+    progress_log.write_text("", encoding="utf-8")
+    mark("start")
 
     seed_rows: list[dict[str, float | int | str]] = []
     law_rows: list[dict[str, float | int | str]] = []
@@ -1468,6 +1993,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
 
     seed_df = pd.DataFrame(seed_rows)
     main = aggregate_seed_metrics(seed_df)
+    mark("main_controlled_complete")
     repair_metrics = main[
         main["selector"].isin(
             [
@@ -1485,6 +2011,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     paired_effects = paired_selector_effects(seed_df)
     deployment_policy_seed_df = _run_deployment_policy_panel(seed_df)
     deployment_policy_metrics = deployment_policy_summary(deployment_policy_seed_df)
+    mark("deployment_policy_complete")
     law_df = pd.DataFrame(law_rows)
     stress_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     stress_seed_df = _run_stress_panel(generator, stress_seeds=stress_seeds, n=max(ns))
@@ -1493,6 +2020,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     sensitivity_seed_df, calibration_candidate_df = _run_sensitivity_panel(generator, sensitivity_seeds, n=max(ns), mode=mode)
     sensitivity_metrics = sensitivity_summary(sensitivity_seed_df)
     calibration_metrics = score_calibration_table(calibration_candidate_df)
+    mark("stress_sensitivity_complete")
     ood_seeds = list(range(4)) if mode == "smoke" else list(range(16))
     ood_seed_df = _run_ood_panel(generator, ood_seeds, n=max(ns))
     ood_metrics = ood_summary(ood_seed_df)
@@ -1511,6 +2039,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     target_sweep_seeds = list(range(4)) if mode == "smoke" else list(range(48))
     target_sweep_seed_df = _run_target_identity_sweep_panel(generator, target_sweep_seeds, n=max(ns))
     target_sweep_metrics = target_identity_sweep_summary(target_sweep_seed_df)
+    mark("ood_extreme_family_domain_counter_target_complete")
     pilot_train_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     pilot_eval_seeds = list(range(4)) if mode == "smoke" else list(range(48))
     pilot_seed_df, pilot_calibrator = _run_pilot_calibration_panel(
@@ -1545,9 +2074,11 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     probe_cost_seeds = list(range(4)) if mode == "smoke" else list(range(48))
     probe_cost_seed_df = _run_probe_cost_panel(generator, probe_cost_seeds=probe_cost_seeds, n=max(ns))
     probe_cost_metrics = probe_cost_summary(probe_cost_seed_df)
+    mark("pilot_probe_panels_complete")
     learned_metrics, learned_model = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
     learned_row = learned_metrics.as_dict()
     pd.DataFrame([learned_row]).to_csv(tables / "learned_metrics.csv", index=False)
+    mark("learned_model_complete")
     learned_curve = pd.read_csv(tables / "learned_learning_curve.csv")
     learned_ablation = pd.read_csv(tables / "learned_ablation.csv")
     learned_domain_shift = pd.read_csv(tables / "learned_domain_shift.csv")
@@ -1570,6 +2101,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         n=max(ns),
     )
     learned_repair_policy_metrics = learned_repair_policy_summary(learned_repair_policy_seed_df)
+    mark("learned_selection_repair_complete")
     synthetic_benchmark_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     synthetic_benchmark_seed_df = _run_synthetic_benchmark_panel(
         generator,
@@ -1577,6 +2109,26 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         n=max(ns),
     )
     synthetic_benchmark_metrics = synthetic_benchmark_summary(synthetic_benchmark_seed_df)
+    mark("synthetic_benchmark_complete")
+    (
+        repair_final_test_df,
+        repair_robustness_split_df,
+        calibration_diagnostics,
+        repair_condition_splits,
+        repair_model_selection,
+        selected_repair_configs,
+    ) = _run_final_test_repair_panel(generator, mode=mode, ns=ns)
+    unidentifiable_negative_control = _run_unidentifiable_negative_control(
+        generator,
+        n=max(ns),
+        split_seeds=REPAIR_SPLIT_SEEDS,
+    )
+    learned_generalization = _learned_generalization_diagnostics(
+        learned_row,
+        learned_repair_policy_metrics,
+        repair_robustness_split_df,
+    )
+    mark("nested_repair_complete")
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
@@ -1597,10 +2149,50 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
+    mark("statistical_audit_complete")
     ablation_metrics = repair_ablation_summary(main, paired_effects)
     observable_metrics = observable_repair_summary(main, paired_effects)
     robustness_metrics = seed_block_robustness(seed_df, block_size=2 if mode == "smoke" else 4)
     negative_control = negative_control_summary(main)
+
+    seed_df = add_repair_metadata(seed_df)
+    main = add_repair_metadata(main)
+    repair_metrics = add_repair_metadata(repair_metrics)
+    paired_effects = add_repair_metadata(paired_effects)
+    deployment_policy_seed_df = add_repair_metadata(deployment_policy_seed_df)
+    deployment_policy_metrics = add_repair_metadata(deployment_policy_metrics)
+    stress_seed_df = add_repair_metadata(stress_seed_df)
+    stress_metrics = add_repair_metadata(stress_metrics)
+    sensitivity_seed_df = add_repair_metadata(sensitivity_seed_df)
+    sensitivity_metrics = add_repair_metadata(sensitivity_metrics)
+    ood_seed_df = add_repair_metadata(ood_seed_df)
+    ood_metrics = add_repair_metadata(ood_metrics)
+    extreme_object_seed_df = add_repair_metadata(extreme_object_seed_df)
+    extreme_object_metrics = add_repair_metadata(extreme_object_metrics)
+    family_seed_df = add_repair_metadata(family_seed_df)
+    family_metrics = add_repair_metadata(family_metrics)
+    domain_seed_df = add_repair_metadata(domain_seed_df)
+    domain_metrics = add_repair_metadata(domain_metrics)
+    counter_seed_df = add_repair_metadata(counter_seed_df)
+    counter_metrics = add_repair_metadata(counter_metrics)
+    target_sweep_seed_df = add_repair_metadata(target_sweep_seed_df)
+    target_sweep_metrics = add_repair_metadata(target_sweep_metrics)
+    pilot_seed_df = add_repair_metadata(pilot_seed_df)
+    pilot_metrics = add_repair_metadata(pilot_metrics)
+    pilot_budget_seed_df = add_repair_metadata(pilot_budget_seed_df)
+    pilot_budget_metrics = add_repair_metadata(pilot_budget_metrics)
+    loso_seed_df = add_repair_metadata(loso_seed_df)
+    loso_metrics = add_repair_metadata(loso_metrics)
+    noisy_probe_seed_df = add_repair_metadata(noisy_probe_seed_df)
+    noisy_probe_metrics = add_repair_metadata(noisy_probe_metrics)
+    probe_cost_seed_df = add_repair_metadata(probe_cost_seed_df)
+    probe_cost_metrics = add_repair_metadata(probe_cost_metrics)
+    learned_selection_seed_df = add_repair_metadata(learned_selection_seed_df)
+    learned_selection_metrics = add_repair_metadata(learned_selection_metrics)
+    learned_repair_policy_seed_df = add_repair_metadata(learned_repair_policy_seed_df)
+    learned_repair_policy_metrics = add_repair_metadata(learned_repair_policy_metrics)
+    synthetic_benchmark_seed_df = add_repair_metadata(synthetic_benchmark_seed_df)
+    synthetic_benchmark_metrics = add_repair_metadata(synthetic_benchmark_metrics)
 
     seed_df.to_csv(tables / "seed_metrics.csv", index=False)
     main.to_csv(tables / "main_metrics.csv", index=False)
@@ -1647,6 +2239,28 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     learned_repair_policy_metrics.to_csv(tables / "learned_repair_policy_metrics.csv", index=False)
     synthetic_benchmark_seed_df.to_csv(tables / "synthetic_benchmark_seed_metrics.csv", index=False)
     synthetic_benchmark_metrics.to_csv(tables / "synthetic_benchmark_metrics.csv", index=False)
+    repair_final_test_df.to_csv(tables / "repair_final_test_metrics.csv", index=False)
+    repair_robustness_split_df.to_csv(tables / "repair_robustness_by_split.csv", index=False)
+    calibration_diagnostics.to_csv(tables / "calibration_diagnostics.csv", index=False)
+    repair_condition_splits.to_csv(tables / "repair_condition_splits.csv", index=False)
+    repair_model_selection.to_csv(tables / "repair_model_selection.csv", index=False)
+    unidentifiable_negative_control.to_csv(tables / "unidentifiable_negative_control.csv", index=False)
+    learned_generalization.to_csv(tables / "learned_generalization_diagnostics.csv", index=False)
+    (results / "repair_model_selection.json").write_text(
+        json.dumps(
+            {
+                "mode": mode,
+                "split_seeds": REPAIR_SPLIT_SEEDS,
+                "pilot_budgets": PILOT_BUDGETS,
+                "grid": REPAIR_GRID,
+                "support_selector_grid": SUPPORT_SELECTOR_GRID,
+                "selected_configs": selected_repair_configs,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    mark("tables_written")
     learned_repair_policy_summary_payload = {
         "mode": mode,
         "train_seeds": learned_repair_policy_train_seeds,
@@ -1719,7 +2333,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         learned_repair_policy_df=learned_repair_policy_metrics,
         synthetic_benchmark_df=synthetic_benchmark_metrics,
         deployment_policy_df=deployment_policy_metrics,
+        repair_robustness_df=repair_robustness_split_df,
     )
+    mark("figures_written")
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
     raw_tail_score_gain = float(raw_tail["selected_object_score_mean"].iloc[-1] - raw_tail["selected_object_score_mean"].iloc[0])
@@ -1887,11 +2503,50 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
             combined_sensitivity["selected_real_utility_mean"].mean()
             - raw_sensitivity["selected_real_utility_mean"].mean()
         )
+    robustness_n = int(repair_robustness_split_df["N"].max()) if not repair_robustness_split_df.empty else max(ns)
+
+    def _robust_closure(selector: str, budget: int | None = None) -> float | None:
+        if repair_robustness_split_df.empty:
+            return None
+        focus = repair_robustness_split_df[
+            (repair_robustness_split_df["selector"] == selector)
+            & (repair_robustness_split_df["N"] == robustness_n)
+        ]
+        if budget is not None and "repair_budget" in focus:
+            focus = focus[focus["repair_budget"] == budget]
+        if focus.empty:
+            return None
+        return float(focus["mean_gap_closure_across_splits"].iloc[0])
+
+    def _robust_worst_quartile(selector: str, budget: int | None = None) -> float | None:
+        if repair_robustness_split_df.empty:
+            return None
+        focus = repair_robustness_split_df[
+            (repair_robustness_split_df["selector"] == selector)
+            & (repair_robustness_split_df["N"] == robustness_n)
+        ]
+        if budget is not None and "repair_budget" in focus:
+            focus = focus[focus["repair_budget"] == budget]
+        if focus.empty:
+            return None
+        return float(focus["worst_quartile_gap_closure"].iloc[0])
+
+    calibration_overall = (
+        calibration_diagnostics[calibration_diagnostics["metric_scope"] == "overall"]
+        if not calibration_diagnostics.empty
+        else pd.DataFrame()
+    )
+    hidden_control_block_rate = (
+        float((unidentifiable_negative_control["gate_action"] == "block_high_n").mean())
+        if not unidentifiable_negative_control.empty
+        else None
+    )
     summary = {
         "mode": mode,
         "ns": ns,
         "seeds": seeds,
         "stress_seeds": stress_seeds,
+        "repair_split_seeds": REPAIR_SPLIT_SEEDS,
         "n_seed_rows": int(seed_df.shape[0]),
         "n_main_rows": int(main.shape[0]),
         "n_deployment_policy_rows": int(deployment_policy_seed_df.shape[0]),
@@ -1910,6 +2565,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_learned_selection_rows": int(learned_selection_seed_df.shape[0]),
         "n_learned_repair_policy_rows": int(learned_repair_policy_seed_df.shape[0]),
         "n_synthetic_benchmark_rows": int(synthetic_benchmark_seed_df.shape[0]),
+        "n_repair_final_test_rows": int(repair_final_test_df.shape[0]),
+        "n_repair_split_seed_rows": int(repair_robustness_split_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -1946,6 +2603,15 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "corrupted_mean_raw_nmax_utility": float(corrupted_mean["selected_real_utility_mean"].iloc[0]) if not corrupted_mean.empty else None,
         "combined_repair_min_low_noise_utility": float(combined_sensitivity["selected_real_utility_mean"].min()) if not combined_sensitivity.empty else None,
         "combined_vs_raw_low_noise_sensitivity_margin": sensitivity_margin,
+        "deployable_no_leak_budget32_gap_closure": _robust_closure("pilot_calibrated", 32),
+        "deployable_no_leak_budget128_gap_closure": _robust_closure("pilot_calibrated", 128),
+        "deployable_no_leak_budget32_worst_quartile_gap_closure": _robust_worst_quartile("pilot_calibrated", 32),
+        "support_covered_budget32_gap_closure": _robust_closure("observable_repair", 32),
+        "support_covered_budget128_gap_closure": _robust_closure("observable_repair", 128),
+        "oracle_upper_bound_gap_closure": _robust_closure("repair_all_candidates_labeled_oracle", 32),
+        "calibration_lcb_coverage_overall": float(calibration_overall["lcb_coverage"].iloc[0]) if not calibration_overall.empty else None,
+        "calibration_violation_rate_overall": float(calibration_overall["violation_rate"].iloc[0]) if not calibration_overall.empty else None,
+        "hidden_mode_unidentifiable_block_rate": hidden_control_block_rate,
         "learned_full_minus_no_mass_property_accuracy": float(no_mass_ablation["full_minus_property_accuracy"].iloc[0]) if not no_mass_ablation.empty else None,
         "learned_full_minus_kinematic_pair_identity_accuracy": float(kinematic_pair_ablation["full_minus_identity_alignment_accuracy"].iloc[0]) if not kinematic_pair_ablation.empty else None,
         "learned_shift_min_property_margin": float(shifted_learned["property_margin"].min()) if not shifted_learned.empty else None,
@@ -1969,6 +2635,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "learned_repair_policy_min_win_rate": float(learned_repair_policy_policy["learned_repair_policy_win_rate"].min()) if not learned_repair_policy_policy.empty else None,
         "learned_repair_policy_mean_learned_identity_win_rate": float(learned_repair_policy_policy["learned_repair_policy_over_learned_identity_win_rate"].mean()) if not learned_repair_policy_policy.empty else None,
         "learned_repair_policy_min_learned_identity_win_rate": float(learned_repair_policy_policy["learned_repair_policy_over_learned_identity_win_rate"].min()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_mean_learned_identity_nonloss_rate": float(learned_repair_policy_policy["learned_repair_policy_over_learned_identity_nonloss_rate"].mean()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_min_learned_identity_nonloss_rate": float(learned_repair_policy_policy["learned_repair_policy_over_learned_identity_nonloss_rate"].min()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_max_learned_identity_loss": float(learned_repair_policy_policy["learned_repair_policy_worst_learned_identity_loss"].max()) if not learned_repair_policy_policy.empty else None,
         "learned_repair_policy_pilot_mean_utility": float(learned_repair_policy_pilot["selected_real_utility_mean"].mean()) if not learned_repair_policy_pilot.empty else None,
         "learned_repair_policy_train_correlation": float(learned_repair_policy["train_correlation"]),
         "learned_repair_policy_train_mae": float(learned_repair_policy["train_mae"]),
@@ -2054,6 +2723,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "runtime_seconds": round(time.time() - start, 3),
     }
     (results / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    mark("summary_written")
     verification_log = results / "verification_log.json"
     if not verification_log.exists():
         verification_log.write_text(
@@ -2073,6 +2743,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     (results / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     write_claim_status(root)
     write_final_audit(root, command_results={f"experiments --mode {mode}": "pass"})
+    mark("claim_audit_written")
     return summary
 
 

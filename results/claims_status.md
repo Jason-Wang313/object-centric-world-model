@@ -48,15 +48,24 @@ Strength: {
   }
 }
 
-## C3: strongly_supported
-Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.
+## C3: partial
+Pilot-label calibrated lower-confidence selection reduces selected-tail hallucination in controlled support-covered regimes, with no-leak deployable evidence separated from support-covered probes and oracle upper bounds.
 
-Evidence: figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, figure29, figure30, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, synthetic_benchmark_metrics.csv, deployment_policy_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv
+Evidence: repair_final_test_metrics.csv, repair_robustness_by_split.csv, repair_model_selection.csv, calibration_diagnostics.csv, unidentifiable_negative_control.csv, figure10_repair_robustness.png, plus tiered legacy repair tables and figures
 
 Strength: {
-  "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap, multi-target identity-sweep, benchmark-style synthetic task-suite stress, and deployment-gate policy simulation succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+  "passes": false,
+  "partial": true,
+  "threshold": "nested final-test robustness must report at least five split seeds; deployable_no_leak pilot-label LCB repair at budget 32 must close >= 70% of the raw-to-oracle gap; support_covered repair must close >= 80% at budget 32 and >= 85% at budget 128; oracle upper bounds must close >= 95%; LCB coverage should be near the 90% conformal target; and the hidden-mode unidentifiable negative control must block high-N with a hidden_mode_unidentifiable or tail_rank_failure reason",
   "observed": {
+    "deployable_no_leak_budget32_gap_closure": 0.6839114807061593,
+    "support_covered_budget32_gap_closure": 0.9189083243131476,
+    "support_covered_budget128_gap_closure": 0.9189083243131476,
+    "oracle_upper_bound_gap_closure": 1.0,
+    "repair_split_seed_count": 5,
+    "lcb_coverage": 0.9581597222222222,
+    "hidden_mode_negative_control_blocks": true,
+    "legacy_combined_repair_checks_pass": true,
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
     "targeted_hidden_property_nmax_gain": 0.7747901941902325,
@@ -120,12 +129,12 @@ Strength: {
     "pilot_calibrated_min_win_rate": 1.0,
     "pilot_calibrated_max_oracle_gap": 0.1327885883263263,
     "pilot_train_correlation": 0.983367982746434,
-    "pilot_budget_mature_mean_utility": 0.8439224499476208,
-    "pilot_budget_mature_vs_raw_gain": 0.8302670022712365,
+    "pilot_budget_mature_mean_utility": 0.8468038448009049,
+    "pilot_budget_mature_vs_raw_gain": 0.8331483971245207,
     "pilot_budget_mature_min_win_rate": 1.0,
-    "pilot_budget_largest_mean_utility": 0.8383726702129214,
-    "pilot_budget_largest_max_oracle_gap": 0.100120217810831,
-    "pilot_budget_min_mature_train_correlation": 0.9858498253079078,
+    "pilot_budget_largest_mean_utility": 0.8468038448009049,
+    "pilot_budget_largest_max_oracle_gap": 0.1026896366595336,
+    "pilot_budget_min_mature_train_correlation": 0.9874007990156269,
     "leave_one_failure_pilot_mean_utility": 0.8160878196526353,
     "leave_one_failure_pilot_min_utility": 0.806587797091829,
     "leave_one_failure_pilot_vs_raw_gain": 0.7758011252035516,
@@ -159,7 +168,7 @@ Evidence: learned_object_model_summary.json, learned_metrics.csv, learned_learni
 
 Strength: {
   "passes": true,
-  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
+  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, minimum learned-identity non-loss rate >= 0.50, worst learned-identity seed loss <= 0.18, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
   "observed": {
     "property_margin": 0.24583333333333335,
     "identity_alignment_margin": 0.48750000000000004,
@@ -183,6 +192,9 @@ Strength: {
     "learned_repair_policy_min_win_rate": 1.0,
     "learned_repair_policy_mean_learned_identity_win_rate": 0.6294642857142857,
     "learned_repair_policy_min_learned_identity_win_rate": 0.375,
+    "learned_repair_policy_mean_learned_identity_nonloss_rate": 0.7544642857142857,
+    "learned_repair_policy_min_learned_identity_nonloss_rate": 0.65625,
+    "learned_repair_policy_max_learned_identity_loss": 0.1424497166038502,
     "learned_repair_policy_max_oracle_gap": 0.0979578738535866,
     "learned_repair_policy_train_correlation": 0.984585387941474,
     "learned_selection_bootstrap_min_ci_margin": 0.0849170953633546
@@ -203,8 +215,15 @@ Evidence: no broad benchmark suite is present
 
 Strength: {}
 
+## C7: unsupported
+The repair method is universal or guarantees 100% recovery.
 
-Paper claim coverage checked 6 rows: 4 positive claims and 2 boundary nonclaims.
-Artifact verification checked 91 required artifacts.
+Evidence: hidden-mode negative controls show impossible cases must be blocked rather than recovered
+
+Strength: {}
+
+
+Paper claim coverage checked 7 rows: 4 positive claims and 3 boundary nonclaims.
+Artifact verification checked 100 required artifacts.
 
 No paper-text, paper-claim coverage, or artifact overclaim problems detected.

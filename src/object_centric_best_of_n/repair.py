@@ -112,6 +112,22 @@ def fit_pilot_calibrator(
     }
 
 
+def empty_pilot_calibrator() -> dict[str, object]:
+    """Return a deterministic no-label baseline calibrator for budget-zero rows."""
+
+    return {
+        "feature_names": list(PILOT_CALIBRATION_FEATURES),
+        "feature_mean": [0.0] * len(PILOT_CALIBRATION_FEATURES),
+        "feature_scale": [1.0] * len(PILOT_CALIBRATION_FEATURES),
+        "weights": [0.5] + [0.0] * len(PILOT_CALIBRATION_FEATURES),
+        "ridge": 0.0,
+        "n_train_candidates": 0,
+        "train_mae": 0.0,
+        "train_correlation": 0.0,
+        "no_label_baseline": True,
+    }
+
+
 def pilot_calibrated_score(candidate: Candidate, calibrator: dict[str, object]) -> float:
     """Predict real utility from pilot-calibrated observable features."""
 
@@ -292,6 +308,11 @@ def observable_repair_score(candidate: Candidate, scene: ObjectScene, seed: int 
 def conservative_selected_tail_stop_rule(summary: dict[str, float | int | str]) -> str:
     """Emit exactly one allowed deployment-gate action."""
 
+    if bool(summary.get("hidden_mode_unidentifiable", False)) or str(summary.get("gate_reason", "")) in {
+        "hidden_mode_unidentifiable",
+        "tail_rank_failure",
+    }:
+        return "block_high_n"
     n = int(summary.get("N", 1))
     identity = float(summary.get("identity_error", 0.0))
     gap = float(summary.get("object_real_gap", 0.0))
@@ -306,3 +327,37 @@ def conservative_selected_tail_stop_rule(summary: dict[str, float | int | str]) 
     if repair_gain < -0.02:
         return "stop_early"
     return "allow_high_n"
+
+
+def observable_feature_signature(candidate: Candidate) -> tuple[float, ...]:
+    """Rounded deployable signature used to detect indistinguishable candidates."""
+
+    return tuple(float(np.round(value, 6)) for value in pilot_calibration_features(candidate))
+
+
+def hidden_mode_unidentifiable_gate(candidates: Iterable[Candidate], n: int) -> dict[str, float | int | str]:
+    """Block high-N when observable candidate signatures collapse to one mode."""
+
+    candidate_list = list(candidates)
+    if not candidate_list:
+        return {"gate_action": "block_high_n", "gate_reason": "empty_candidate_set", "observable_feature_collision_rate": 1.0}
+    signatures = [observable_feature_signature(candidate) for candidate in candidate_list]
+    unique = len(set(signatures))
+    collision_rate = 1.0 - unique / max(1, len(signatures))
+    if int(n) >= 16 and unique <= 1:
+        return {
+            "gate_action": "block_high_n",
+            "gate_reason": "hidden_mode_unidentifiable",
+            "observable_feature_collision_rate": float(collision_rate),
+        }
+    if int(n) >= 16 and collision_rate >= 0.75:
+        return {
+            "gate_action": "block_high_n",
+            "gate_reason": "tail_rank_failure",
+            "observable_feature_collision_rate": float(collision_rate),
+        }
+    return {
+        "gate_action": "allow_high_n",
+        "gate_reason": "observable_modes_separable",
+        "observable_feature_collision_rate": float(collision_rate),
+    }

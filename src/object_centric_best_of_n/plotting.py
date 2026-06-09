@@ -187,6 +187,38 @@ def figure10_score_calibration(calibration: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure10_score_calibration.png")
 
 
+def figure10_repair_robustness(robustness: pd.DataFrame, out: Path) -> None:
+    if robustness.empty:
+        return
+    required = {"selector", "repair_budget", "N", "split_seed", "split_gap_closure_mean"}
+    if not required.issubset(robustness.columns):
+        return
+    focus = robustness[
+        (robustness["selector"].isin(["pilot_calibrated", "observable_repair", "combined_repair"]))
+        & (robustness["N"] == robustness["N"].max())
+        & (robustness["repair_budget"].isin([32, 128]))
+    ].copy()
+    if focus.empty:
+        focus = robustness[
+            (robustness["selector"].isin(["pilot_calibrated", "observable_repair", "combined_repair"]))
+            & (robustness["N"] == robustness["N"].max())
+        ].copy()
+    if focus.empty:
+        return
+    focus["label"] = focus["selector"].astype(str) + " / " + focus["repair_budget"].astype(str)
+    fig, ax = plt.subplots(figsize=(8.8, 4.4))
+    for label, group in focus.groupby("label", sort=True):
+        group = group.sort_values("split_seed")
+        ax.plot(group["split_seed"], group["split_gap_closure_mean"], marker="o", linewidth=2, label=label)
+    ax.axhline(0.70, color="#777777", linestyle="--", linewidth=1, label="70% closure")
+    ax.set_xlabel("split seed")
+    ax.set_ylabel("final-test gap closure")
+    ax.set_title("Nested split repair robustness")
+    ax.grid(alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure10_repair_robustness.png")
+
+
 def figure11_sensitivity(sensitivity: pd.DataFrame, out: Path) -> None:
     if sensitivity.empty:
         return
@@ -726,6 +758,7 @@ def write_all_figures(
     learned_repair_policy_df: pd.DataFrame | None = None,
     synthetic_benchmark_df: pd.DataFrame | None = None,
     deployment_policy_df: pd.DataFrame | None = None,
+    repair_robustness_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -743,6 +776,8 @@ def write_all_figures(
         figure9_seed_block_robustness(robustness_df, out)
     if calibration_df is not None:
         figure10_score_calibration(calibration_df, out)
+    if repair_robustness_df is not None:
+        figure10_repair_robustness(repair_robustness_df, out)
     if sensitivity_df is not None:
         figure11_sensitivity(sensitivity_df, out)
     if negative_df is not None:

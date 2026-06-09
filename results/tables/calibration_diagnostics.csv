@@ -1,0 +1,6 @@
+metric_scope,risk_bin,repair_tier,n_rows,lcb_coverage,selected_tail_lcb_coverage,violation_rate,adaptive_gate_regret,block_accuracy,split_seed
+overall,all,deployable_no_leak,40320,0.9581597222222222,,0.04184027777777777,0.0,,-1
+selected_tail,all,deployable_no_leak,840,0.8702380952380953,0.8702380952380953,0.12976190476190474,0.0,,-1
+risk_bin,high,deployable_no_leak,13440,0.9257440476190476,,0.0742559523809524,0.0,,-1
+risk_bin,low,deployable_no_leak,13860,0.9869408369408369,,0.013059163059163104,0.0,,-1
+risk_bin,medium,deployable_no_leak,13020,0.9609831029185868,,0.039016897081413204,0.0,,-1

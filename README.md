@@ -23,7 +23,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
 - Held-out learned domain-shift checks for dense, occluded, crossing, and mixed object-count synthetic variants.
 - Learned selection transfer, where the CPU NumPy reward and identity-alignment heads score held-out candidate futures.
-- Learned repair-policy transfer, where observable diagnostics plus CPU learned heads train a ridge utility policy that is conservatively blended with learned identity-reward and observable repair scores on held-out synthetic benchmark variants.
+- Learned repair-policy transfer, where observable diagnostics plus CPU learned heads train a ridge utility policy that is conservatively blended with learned identity-reward and observable repair scores on held-out synthetic benchmark variants, with learned-identity non-loss and worst-loss diagnostics reported.
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
@@ -102,6 +102,13 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/probe_cost_metrics.csv`
 - `results/tables/model_family_proxy_seed_metrics.csv`
 - `results/tables/model_family_proxy_metrics.csv`
+- `results/tables/repair_final_test_metrics.csv`
+- `results/tables/repair_robustness_by_split.csv`
+- `results/tables/repair_condition_splits.csv`
+- `results/tables/repair_model_selection.csv`
+- `results/tables/calibration_diagnostics.csv`
+- `results/tables/unidentifiable_negative_control.csv`
+- `results/tables/learned_generalization_diagnostics.csv`
 - `results/tables/statistical_audit.csv`
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
@@ -111,6 +118,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/pilot_calibration_summary.json`
 - `results/pilot_budget_summary.json`
 - `results/leave_one_failure_summary.json`
+- `results/repair_model_selection.json`
 - `results/verification_log.json`
 - `results/artifact_manifest.json`
 - `docs/paper_claim_coverage.md`
@@ -125,6 +133,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure8_repair_ablation.png`
 - `figures/figure9_seed_block_robustness.png`
 - `figures/figure10_score_calibration.png`
+- `figures/figure10_repair_robustness.png`
 - `figures/figure11_score_noise_sensitivity.png`
 - `figures/figure12_negative_control.png`
 - `figures/figure13_learned_ablation.png`
@@ -149,6 +158,6 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 
 ## Claim Boundaries
 
-Supported claims are limited to exact finite laws, controlled synthetic failure evidence, controlled repair evidence, toy proxy diagnostics, and one CPU NumPy semi-learned object-centric artifact. The claim audit marks core claims as `strongly_supported` only when generated artifacts clear numeric thresholds, required artifacts verify, and paper text avoids supported overclaims. Unsupported claims include real-robot validation, broad benchmark superiority, and universal object learning.
+Supported claims are limited to exact finite laws, controlled synthetic failure evidence, tiered repair evidence, toy proxy diagnostics, and one CPU NumPy semi-learned object-centric artifact. Repair evidence is split into deployable no-leak, support-covered, and oracle upper-bound tiers. The claim audit marks repair `partial` unless no-leak final-test robustness thresholds pass, required artifacts verify, and paper text avoids supported overclaims. Unsupported claims include real-robot validation, broad benchmark superiority, universal repair, guaranteed 100% recovery, and universal object learning.
 
 See `results/claims_status.md` and `docs/final_audit.md` after running the scripts.

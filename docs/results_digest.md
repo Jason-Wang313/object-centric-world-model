@@ -24,6 +24,8 @@ This digest is generated from the current result artifacts.
 - Learned selection identity-vs-reward gain: 0.3596642896057789
 - Learned repair-policy raw gain: 0.8234771981724383
 - Learned repair-policy over learned-identity gain: 0.2252909624035247
+- Learned repair-policy min learned-identity non-loss rate: 0.65625
+- Learned repair-policy worst learned-identity seed loss: 0.1424497166038502
 - Synthetic task-suite combined-vs-raw gain: 0.8161407808398964
 - Synthetic task-suite observable-vs-raw gain: 0.8160747948047943
 - Deployment policy corrupted gate-vs-raw gain: 0.7883015801574633
@@ -36,8 +38,8 @@ This digest is generated from the current result artifacts.
 - Counterfactual target-swap combined-vs-raw gain: 0.816906396281512
 - Target-identity sweep combined-vs-raw gain: 0.8102272022985341
 - Pilot-calibrated held-out gain: 0.8192029444060406
-- Pilot-budget mature gain: 0.8302670022712365
-- Pilot-budget largest gain: 0.8247172225365372
+- Pilot-budget mature gain: 0.8331483971245207
+- Pilot-budget largest gain: 0.8331483971245207
 - Leave-one-failure pilot gain: 0.7758011252035516
 - Noisy-probe reliable gain: 0.8667438725697415
 - Probe-cost low-cost combined-vs-raw gain: 0.77494187977645
@@ -54,15 +56,16 @@ This digest is generated from the current result artifacts.
 ## Claim Status
 - C1: strongly_supported - Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations.
 - C2: strongly_supported - In controlled object-centric scenes, high-N selection can increase object score while real utility stagnates or falls due to binding failures.
-- C3: strongly_supported - Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.
+- C3: partial - Pilot-label calibrated lower-confidence selection reduces selected-tail hallucination in controlled support-covered regimes, with no-leak deployable evidence separated from support-covered probes and oracle upper bounds.
 - C4: strongly_supported - A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories.
 - C5: unsupported - The method is validated on real robot systems.
 - C6: unsupported - The method establishes broad benchmark superiority over graph physics, latent, or diffusion world models.
+- C7: unsupported - The repair method is universal or guarantees 100% recovery.
 
 ## Paper Claim Coverage
-- Positive paper claims strongly covered: 4 / 4
-- Unsupported boundary nonclaims explicit: 2 / 2
-- Cited claim locations verified: 6 / 6
+- Positive paper claims strongly covered: 3 / 4
+- Unsupported boundary nonclaims explicit: 3 / 3
+- Cited claim locations verified: 7 / 7
 - Coverage audit passes: True
 
 ## Boundaries

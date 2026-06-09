@@ -10,7 +10,15 @@ Response: Correct. Claims are limited to controlled synthetic and semi-learned C
 
 ## Attack: Repairs may use generator diagnostics.
 
-Response: Correct for the strongest controlled stack: it uses diagnostic signals such as identity instability, merge evidence, property entropy, and targeted probe observations. The upgraded run also reports `observable_repair_metrics.csv`, where an observable-only repair score uses slot diagnostics and probe posterior information without comparing to the scene's true hidden property. This is still a synthetic mechanism study, not a deployment claim.
+Response: Correct for the stronger controlled and oracle stacks, which is why repair tables now carry `repair_tier`, `uses_real_utility_features`, `uses_hidden_features`, `hyperparameter_source`, `split_seed`, and `final_test`. Deployable no-leak rows may use generated futures, model scores, generated uncertainty, and pilot labels only. Probe/simulator rows are support-covered, and all-candidate labeled or hidden-truth rows are oracle upper bounds, not deployment evidence.
+
+## Attack: The repair result leaks evaluation real utility.
+
+Response: The audit fails if any `deployable_no_leak` row is marked as using real-utility features or hidden features, or if an oracle-like selector is mislabeled as deployable. Pilot labels are restricted to pilot-train/calibration conditions, and final-test selectors cannot access evaluation `real_utility`.
+
+## Attack: The repair hyperparameters were hand-tuned on test.
+
+Response: `repair_condition_splits.csv` records condition-level pilot train, pilot calibration, dev, and final-test splits for each split seed. `repair_model_selection.csv` and `repair_model_selection.json` record the fixed grid and selected configuration. Selection uses dev conditions only; final numbers are reported on held-out final-test conditions.
 
 ## Attack: Diagnostic probes are unrealistically clean.
 
@@ -78,8 +86,16 @@ Response: `learned_selection_metrics.csv` uses the CPU NumPy reward and identity
 
 ## Attack: The learned model is disconnected from the repair stack.
 
-Response: `learned_repair_policy_metrics.csv` trains a small ridge repair policy from observable candidate diagnostics plus CPU learned reward, identity-alignment, and hidden-property confidence heads, then selects with a conservative blend of ridge utility, learned identity-reward, and normalized observable repair scores on held-out benchmark-style synthetic variants. The audit requires the learned repair policy to beat both raw selection and the learned identity+reward selector with bootstrap lower-bound checks, while remaining close to oracle.
+Response: `learned_repair_policy_metrics.csv` trains a small ridge repair policy from observable candidate diagnostics plus CPU learned reward, identity-alignment, and hidden-property confidence heads, then selects with a conservative blend of ridge utility, learned identity-reward, and normalized observable repair scores on held-out benchmark-style synthetic variants. The audit requires the learned repair policy to beat raw selection, beat the learned identity+reward selector in mean paired utility with bootstrap lower-bound checks, retain a minimum non-loss rate against learned identity, bound the worst seed-level loss, and remain close to oracle.
 
 ## Attack: Oracle rows make repairs look weak or strong.
 
-Response: Oracle rows are upper bounds for interpreting regret and oracle gap. Repair claims are based on controlled improvements over raw and random selectors, not equality to oracle in every setting.
+Response: Oracle rows are upper bounds for interpreting regret and oracle gap. `repair_all_candidates_labeled_oracle` and hidden-feature repair rows are explicitly labeled `oracle_upper_bound`, and the audit fails if they are presented as deployable evidence.
+
+## Attack: Some hidden modes are impossible to identify.
+
+Response: `unidentifiable_negative_control.csv` constructs paired candidates with identical observable generated features but different hidden real utility. The adaptive gate must return `block_high_n` with `hidden_mode_unidentifiable` or `tail_rank_failure`. This is why the paper does not claim universal repair or guaranteed 100% recovery.
+
+## Attack: Learned repair could rely on weak raw learned utility ordering.
+
+Response: `learned_generalization_diagnostics.csv` reports held-out trajectory MSE, final-state error, proxy loss, sample diversity, rank correlation, selected-tail calibration error, and repair gap closure. If learned rank correlation is weak, the claim is limited to pilot calibration and uncertainty-assisted selection rather than raw learned utility ordering.

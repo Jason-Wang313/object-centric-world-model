@@ -16,6 +16,9 @@ FORBIDDEN_SUPPORTED_PATTERNS = (
     "sota",
     "state of the art",
     "universal object learning",
+    "universal repair",
+    "guaranteed 100% recovery",
+    "100% recovery",
     "broad benchmark",
     "benchmark superiority",
 )
@@ -29,14 +32,14 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_selection_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "learned_reward_mean"),
     "results/tables/learned_selection_metrics.csv": ("scenario", "selector", "learned_identity_vs_raw_gain_mean", "learned_identity_vs_reward_gain_mean"),
     "results/tables/learned_repair_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "learned_repair_policy_train_correlation"),
-    "results/tables/learned_repair_policy_metrics.csv": ("scenario", "selector", "learned_repair_policy_vs_raw_gain_mean", "learned_repair_policy_vs_learned_identity_gain_mean"),
+    "results/tables/learned_repair_policy_metrics.csv": ("scenario", "selector", "learned_repair_policy_vs_raw_gain_mean", "learned_repair_policy_vs_learned_identity_gain_mean", "learned_repair_policy_over_learned_identity_nonloss_rate", "learned_repair_policy_worst_learned_identity_loss", "repair_tier", "uses_real_utility_features"),
     "results/tables/paper_claim_coverage.csv": ("claim_id", "claim_role", "audit_status", "coverage_status", "paper_locations", "locations_verified"),
     "results/tables/synthetic_benchmark_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "suite_variant"),
     "results/tables/synthetic_benchmark_metrics.csv": ("scenario", "selector", "suite_variant", "synthetic_benchmark_combined_vs_raw_gain_mean", "synthetic_benchmark_observable_vs_raw_gain_mean"),
     "results/tables/deployment_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "gate_action", "delegated_selector"),
     "results/tables/deployment_policy_metrics.csv": ("scenario", "selector", "deployment_policy_vs_raw_gain_mean", "deployment_policy_win_rate"),
-    "results/tables/repair_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean"),
-    "results/tables/paired_effects.csv": ("scenario", "selector", "N", "mean_gain", "win_rate"),
+    "results/tables/repair_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean", "repair_tier", "uses_real_utility_features", "uses_hidden_features", "hyperparameter_source", "split_seed", "final_test"),
+    "results/tables/paired_effects.csv": ("scenario", "selector", "N", "mean_gain", "win_rate", "repair_tier", "uses_real_utility_features", "uses_hidden_features", "hyperparameter_source"),
     "results/tables/repair_ablation.csv": ("scenario", "combined_vs_raw_gain", "combined_vs_best_single_gain"),
     "results/tables/observable_repair_metrics.csv": ("scenario", "observable_repair_utility", "observable_vs_raw_gain", "combined_minus_observable_gap"),
     "results/tables/stress_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
@@ -70,6 +73,13 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/noisy_probe_metrics.csv": ("scenario", "selector", "probe_reliability", "noisy_probe_vs_raw_gain_mean"),
     "results/tables/probe_cost_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "probe_cost", "gross_selected_real_utility"),
     "results/tables/probe_cost_metrics.csv": ("scenario", "selector", "probe_cost", "probe_cost_combined_vs_raw_gain_mean"),
+    "results/tables/repair_final_test_metrics.csv": ("scenario", "selector", "N", "split_seed", "repair_tier", "uses_real_utility_features", "uses_hidden_features", "hyperparameter_source", "final_test", "gap_closure"),
+    "results/tables/repair_robustness_by_split.csv": ("split_seed", "selector", "repair_tier", "repair_budget", "mean_gap_closure_across_splits", "median_gap_closure_across_splits", "gap_closure_ci_low_across_splits", "min_split_gap_closure", "worst_quartile_gap_closure", "final_test"),
+    "results/tables/repair_condition_splits.csv": ("split_seed", "split", "condition_id", "scenario", "condition_seed"),
+    "results/tables/repair_model_selection.csv": ("split_seed", "selector", "repair_tier", "config_id", "dev_gap_closure_mean", "selected", "hyperparameter_source", "final_test"),
+    "results/tables/calibration_diagnostics.csv": ("metric_scope", "risk_bin", "repair_tier", "lcb_coverage", "selected_tail_lcb_coverage", "violation_rate", "adaptive_gate_regret", "block_accuracy"),
+    "results/tables/unidentifiable_negative_control.csv": ("contrast", "selector", "gate_action", "gate_reason", "observable_feature_collision_rate", "block_accuracy", "tail_rank_failure", "repair_tier"),
+    "results/tables/learned_generalization_diagnostics.csv": ("evaluation_split", "trajectory_mse", "final_state_error", "denoising_proxy_loss", "sample_diversity", "rank_correlation", "selected_tail_calibration_error", "repair_gap_closure", "final_test"),
     "results/tables/statistical_audit.csv": ("effect_id", "estimate", "bootstrap_ci_low", "bootstrap_ci_high", "threshold", "passes"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
@@ -85,6 +95,7 @@ REQUIRED_FIGURES = (
     "figures/figure8_repair_ablation.png",
     "figures/figure9_seed_block_robustness.png",
     "figures/figure10_score_calibration.png",
+    "figures/figure10_repair_robustness.png",
     "figures/figure11_score_noise_sensitivity.png",
     "figures/figure12_negative_control.png",
     "figures/figure13_learned_ablation.png",
@@ -116,6 +127,7 @@ REQUIRED_JSON = (
     "results/paper_claim_coverage.json",
     "results/pilot_budget_summary.json",
     "results/leave_one_failure_summary.json",
+    "results/repair_model_selection.json",
     "results/verification_log.json",
     "results/artifact_manifest.json",
 )
@@ -169,6 +181,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     loso = _read_csv(tables / "leave_one_failure_metrics.csv")
     noisy_probe = _read_csv(tables / "noisy_probe_metrics.csv")
     probe_cost = _read_csv(tables / "probe_cost_metrics.csv")
+    repair_robustness = _read_csv(tables / "repair_robustness_by_split.csv")
+    calibration_diagnostics = _read_csv(tables / "calibration_diagnostics.csv")
+    unidentifiable_negative_control = _read_csv(tables / "unidentifiable_negative_control.csv")
     statistical = _read_csv(tables / "statistical_audit.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
     learned_repair_policy_summary = _read_json(root / "results" / "learned_repair_policy_summary.json")
@@ -686,10 +701,80 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             else pd.DataFrame()
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
+        robustness_n = int(repair_robustness["N"].max()) if not repair_robustness.empty else None
+
+        def robustness_closure(
+            tier: str,
+            budget: int | None = None,
+            selector: str | None = None,
+            reducer: str = "first",
+        ) -> float | None:
+            if repair_robustness.empty or robustness_n is None:
+                return None
+            focus = repair_robustness[
+                (repair_robustness["repair_tier"] == tier)
+                & (repair_robustness["N"] == robustness_n)
+            ]
+            if budget is not None and "repair_budget" in focus.columns:
+                focus = focus[focus["repair_budget"] == budget]
+            if selector is not None:
+                focus = focus[focus["selector"] == selector]
+            if focus.empty:
+                return None
+            values = pd.to_numeric(focus["mean_gap_closure_across_splits"], errors="coerce").dropna()
+            if values.empty:
+                return None
+            if reducer == "max":
+                return float(values.max())
+            if reducer == "min":
+                return float(values.min())
+            return float(values.iloc[0])
+
+        deployable32_closure = robustness_closure("deployable_no_leak", 32, "pilot_calibrated")
+        support32_closure = robustness_closure("support_covered", 32, reducer="max")
+        support128_closure = robustness_closure("support_covered", 128, reducer="max")
+        oracle_closure = robustness_closure("oracle_upper_bound", 32, "repair_all_candidates_labeled_oracle")
+        split_seed_count = (
+            int(repair_robustness["split_seed"].nunique()) if not repair_robustness.empty and "split_seed" in repair_robustness else 0
+        )
+        calibration_overall = (
+            calibration_diagnostics[calibration_diagnostics["metric_scope"] == "overall"]
+            if not calibration_diagnostics.empty and "metric_scope" in calibration_diagnostics
+            else pd.DataFrame()
+        )
+        lcb_coverage = float(calibration_overall["lcb_coverage"].iloc[0]) if not calibration_overall.empty else None
+        hidden_block_pass = (
+            not unidentifiable_negative_control.empty
+            and "gate_action" in unidentifiable_negative_control
+            and bool((unidentifiable_negative_control["gate_action"] == "block_high_n").all())
+            and bool(unidentifiable_negative_control["gate_reason"].isin(["hidden_mode_unidentifiable", "tail_rank_failure"]).all())
+        )
+        final_robustness_pass = bool(
+            deployable32_closure is not None
+            and deployable32_closure >= 0.70
+            and support32_closure is not None
+            and support32_closure >= 0.80
+            and support128_closure is not None
+            and support128_closure >= 0.85
+            and oracle_closure is not None
+            and oracle_closure >= 0.95
+            and split_seed_count >= 5
+            and (lcb_coverage is None or lcb_coverage >= 0.88)
+            and hidden_block_pass
+        )
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and target_sweep_pass and synthetic_benchmark_pass and deployment_policy_pass and pilot_pass and pilot_budget_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap, multi-target identity-sweep, benchmark-style synthetic task-suite stress, and deployment-gate policy simulation succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": final_robustness_pass,
+            "partial": bool(not final_robustness_pass and not repair_robustness.empty),
+            "threshold": "nested final-test robustness must report at least five split seeds; deployable_no_leak pilot-label LCB repair at budget 32 must close >= 70% of the raw-to-oracle gap; support_covered repair must close >= 80% at budget 32 and >= 85% at budget 128; oracle upper bounds must close >= 95%; LCB coverage should be near the 90% conformal target; and the hidden-mode unidentifiable negative control must block high-N with a hidden_mode_unidentifiable or tail_rank_failure reason",
             "observed": {
+                "deployable_no_leak_budget32_gap_closure": deployable32_closure,
+                "support_covered_budget32_gap_closure": support32_closure,
+                "support_covered_budget128_gap_closure": support128_closure,
+                "oracle_upper_bound_gap_closure": oracle_closure,
+                "repair_split_seed_count": split_seed_count,
+                "lcb_coverage": lcb_coverage,
+                "hidden_mode_negative_control_blocks": hidden_block_pass,
+                "legacy_combined_repair_checks_pass": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and target_sweep_pass and synthetic_benchmark_pass and deployment_policy_pass and pilot_pass and pilot_budget_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
                 "targeted_hidden_property_nmax_gain": float(hidden_probe["mean_gain"].iloc[0]) if not hidden_probe.empty else None,
@@ -851,12 +936,14 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 and float(learned_policy_selector["learned_repair_policy_vs_learned_identity_gain_mean"].mean()) >= 0.18
                 and float(learned_policy_selector["learned_repair_policy_win_rate"].min()) >= 0.90
                 and float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].mean()) >= 0.55
+                and float(learned_policy_selector["learned_repair_policy_over_learned_identity_nonloss_rate"].min()) >= 0.50
+                and float(learned_policy_selector["learned_repair_policy_worst_learned_identity_loss"].max()) <= 0.18
                 and float(learned_policy_selector["learned_repair_policy_oracle_gap_mean"].max()) <= 0.15
                 and float(learned_repair_policy_summary.get("policy", {}).get("train_correlation", 0.0)) >= 0.80
                 and not learned_selection_stats.empty
                 and bool(learned_selection_stats["passes"].all())
             ),
-            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
+            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, minimum learned-identity non-loss rate >= 0.50, worst learned-identity seed loss <= 0.18, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
             "observed": {
                 "property_margin": float(prop_margin),
                 "identity_alignment_margin": float(identity_margin),
@@ -880,6 +967,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "learned_repair_policy_min_win_rate": float(learned_policy_selector["learned_repair_policy_win_rate"].min()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_mean_learned_identity_win_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].mean()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_min_learned_identity_win_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].min()) if not learned_policy_selector.empty else None,
+                "learned_repair_policy_mean_learned_identity_nonloss_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_nonloss_rate"].mean()) if not learned_policy_selector.empty else None,
+                "learned_repair_policy_min_learned_identity_nonloss_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_nonloss_rate"].min()) if not learned_policy_selector.empty else None,
+                "learned_repair_policy_max_learned_identity_loss": float(learned_policy_selector["learned_repair_policy_worst_learned_identity_loss"].max()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_max_oracle_gap": float(learned_policy_selector["learned_repair_policy_oracle_gap_mean"].max()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_train_correlation": float(learned_repair_policy_summary.get("policy", {}).get("train_correlation", 0.0)) if learned_repair_policy_summary else None,
                 "learned_selection_bootstrap_min_ci_margin": float((learned_selection_stats["bootstrap_ci_low"] - learned_selection_stats["threshold"]).min()) if not learned_selection_stats.empty else None,
@@ -890,6 +980,15 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
 
 def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
     strengths = evaluate_claim_strength(root) if root is not None else {}
+    c3_strength = strengths.get("C3", {})
+    if root is None:
+        c3_status = "supported"
+    elif c3_strength.get("passes"):
+        c3_status = "strongly_supported"
+    elif c3_strength.get("partial"):
+        c3_status = "partial"
+    else:
+        c3_status = "needs_more_evidence"
     return [
         {
             "id": "C1",
@@ -907,9 +1006,9 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
         },
         {
             "id": "C3",
-            "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
-            "status": _status(strengths.get("C3", {}).get("passes") if root is not None else None),
-            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, figure29, figure30, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, synthetic_benchmark_metrics.csv, deployment_policy_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
+            "claim": "Pilot-label calibrated lower-confidence selection reduces selected-tail hallucination in controlled support-covered regimes, with no-leak deployable evidence separated from support-covered probes and oracle upper bounds.",
+            "status": c3_status,
+            "evidence": "repair_final_test_metrics.csv, repair_robustness_by_split.csv, repair_model_selection.csv, calibration_diagnostics.csv, unidentifiable_negative_control.csv, figure10_repair_robustness.png, plus tiered legacy repair tables and figures",
             "strength": strengths.get("C3", {}),
         },
         {
@@ -930,6 +1029,12 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "claim": "The method establishes broad benchmark superiority over graph physics, latent, or diffusion world models.",
             "status": "unsupported",
             "evidence": "no broad benchmark suite is present",
+        },
+        {
+            "id": "C7",
+            "claim": "The repair method is universal or guarantees 100% recovery.",
+            "status": "unsupported",
+            "evidence": "hidden-mode negative controls show impossible cases must be blocked rather than recovered",
         },
     ]
 
@@ -953,6 +1058,70 @@ def _png_dimensions(path: Path) -> tuple[int, int]:
     width = int.from_bytes(data[16:20], "big")
     height = int.from_bytes(data[20:24], "big")
     return width, height
+
+
+def audit_repair_leakage(root: str | Path) -> list[str]:
+    """Return no-leak/tier labeling problems in generated repair artifacts."""
+
+    root = Path(root)
+    allowed_tiers = {"deployable_no_leak", "support_covered", "oracle_upper_bound"}
+    oracle_selectors = {"oracle", "repair_all_candidates_labeled_oracle"}
+    problems: list[str] = []
+    tables = root / "results" / "tables"
+
+    def as_bool(series: pd.Series) -> pd.Series:
+        if series.dtype == bool:
+            return series
+        return series.astype(str).str.lower().isin({"1", "true", "yes"})
+
+    for path in sorted(tables.glob("*.csv")):
+        try:
+            df = pd.read_csv(path)
+        except Exception as exc:  # pragma: no cover - surfaced by verification
+            problems.append(f"{path.relative_to(root)} could not be read for leakage audit: {exc}")
+            continue
+        if df.empty or "repair_tier" not in df.columns:
+            continue
+        rel = str(path.relative_to(root))
+        bad_tiers = sorted(set(str(value) for value in df["repair_tier"].dropna()) - allowed_tiers)
+        if bad_tiers:
+            problems.append(f"{rel} has unknown repair_tier values: {bad_tiers}")
+        if "uses_real_utility_features" in df.columns:
+            deployable_real = df[
+                (df["repair_tier"] == "deployable_no_leak")
+                & (as_bool(df["uses_real_utility_features"]))
+            ]
+            if not deployable_real.empty:
+                problems.append(f"{rel} marks deployable_no_leak rows as using real-utility features")
+        if "uses_hidden_features" in df.columns:
+            deployable_hidden = df[
+                (df["repair_tier"] == "deployable_no_leak")
+                & (as_bool(df["uses_hidden_features"]))
+            ]
+            if not deployable_hidden.empty:
+                problems.append(f"{rel} marks deployable_no_leak rows as using hidden features")
+        if "selector" in df.columns:
+            oracle_mislabeled = df[
+                (df["selector"].isin(oracle_selectors))
+                & (df["repair_tier"] != "oracle_upper_bound")
+            ]
+            if not oracle_mislabeled.empty:
+                problems.append(f"{rel} has oracle selector rows outside oracle_upper_bound")
+            deployable_oracle = df[
+                (df["repair_tier"] == "deployable_no_leak")
+                & (df["selector"].astype(str).str.contains("oracle|all_candidates_labeled", case=False, regex=True))
+            ]
+            if not deployable_oracle.empty:
+                problems.append(f"{rel} labels oracle-like selector rows as deployable_no_leak")
+    split_path = tables / "repair_condition_splits.csv"
+    if split_path.exists():
+        splits = pd.read_csv(split_path)
+        if {"split_seed", "condition_id", "split"}.issubset(splits.columns):
+            overlap = splits.groupby(["split_seed", "condition_id"])["split"].nunique()
+            bad = overlap[overlap > 1]
+            if not bad.empty:
+                problems.append("repair_condition_splits.csv assigns a condition to multiple splits")
+    return problems
 
 
 def verify_artifacts(root: str | Path) -> dict[str, object]:
@@ -993,6 +1162,7 @@ def verify_artifacts(root: str | Path) -> dict[str, object]:
             json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             problems.append(f"invalid json {rel}: {exc}")
+    problems.extend(audit_repair_leakage(root))
     return {"checked_count": len(checked), "problems": problems, "passes": not problems}
 
 
@@ -1015,7 +1185,9 @@ def write_artifact_manifest(root: str | Path) -> dict[str, object]:
             "results/learned_repair_policy_summary.json",
             "results/paper_claim_coverage.json",
             "results/pilot_calibration_summary.json",
+            "results/pilot_budget_summary.json",
             "results/leave_one_failure_summary.json",
+            "results/repair_model_selection.json",
             "results/verification_log.json",
             "results/claims_status.json",
             "results/claims_status.md",
@@ -1128,6 +1300,13 @@ PAPER_CLAIM_COVERAGE_ROWS = (
         "location_anchor_terms": ("benchmark", "graph physics", "latent", "diffusion"),
         "coverage_note": "Broad benchmark superiority is explicitly not claimed.",
     },
+    {
+        "claim_id": "C7",
+        "claim_role": "unsupported_boundary_nonclaim",
+        "paper_locations": "paper/limitations.md;docs/claims.md;docs/reviewer_attacks.md",
+        "location_anchor_terms": ("100%", "universal", "hidden-mode", "impossible"),
+        "coverage_note": "Universal or guaranteed repair is explicitly not claimed.",
+    },
 )
 
 
@@ -1165,8 +1344,13 @@ def paper_claim_coverage(
         claim = claim_by_id.get(claim_id, {})
         audit_status = str(claim.get("status", "not_claimed"))
         if role == "positive_paper_claim":
-            coverage_status = "covered_strongly" if audit_status == "strongly_supported" else "not_strongly_supported"
-            if coverage_status != "covered_strongly":
+            if audit_status == "strongly_supported":
+                coverage_status = "covered_strongly"
+            elif claim_id == "C3" and audit_status == "partial":
+                coverage_status = "covered_partially"
+            else:
+                coverage_status = "not_strongly_supported"
+            if coverage_status not in {"covered_strongly", "covered_partially"}:
                 problems.append(f"{claim_id}: positive paper claim is {audit_status}")
         else:
             coverage_status = "explicitly_not_claimed" if audit_status == "unsupported" else "boundary_status_problem"
@@ -1284,6 +1468,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Learned selection identity-vs-reward gain: {summary.get('learned_selection_identity_vs_reward_gain', 'unknown')}",
         f"- Learned repair-policy raw gain: {summary.get('learned_repair_policy_vs_raw_gain', 'unknown')}",
         f"- Learned repair-policy over learned-identity gain: {summary.get('learned_repair_policy_vs_learned_identity_gain', 'unknown')}",
+        f"- Learned repair-policy min learned-identity non-loss rate: {summary.get('learned_repair_policy_min_learned_identity_nonloss_rate', 'unknown')}",
+        f"- Learned repair-policy worst learned-identity seed loss: {summary.get('learned_repair_policy_max_learned_identity_loss', 'unknown')}",
         f"- Synthetic task-suite combined-vs-raw gain: {summary.get('synthetic_benchmark_combined_vs_raw_gain', 'unknown')}",
         f"- Synthetic task-suite observable-vs-raw gain: {summary.get('synthetic_benchmark_observable_vs_raw_gain', 'unknown')}",
         f"- Deployment policy corrupted gate-vs-raw gain: {summary.get('deployment_policy_corrupted_vs_raw_gain', summary.get('deployment_policy_vs_raw_gain', 'unknown'))}",
@@ -1384,8 +1570,13 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
     weak_supported = [
         f"{claim['id']}: {claim['status']}"
         for claim in claims
-        if claim["id"] in {"C1", "C2", "C3", "C4"} and claim["status"] != "strongly_supported"
+        if claim["id"] in {"C1", "C2", "C4"} and claim["status"] != "strongly_supported"
     ]
+    weak_supported.extend(
+        f"{claim['id']}: {claim['status']}"
+        for claim in claims
+        if claim["id"] == "C3" and claim["status"] not in {"strongly_supported", "partial"}
+    )
     payload = {
         "claims": claims,
         "forbidden_supported_overclaims": problems,
@@ -1510,7 +1701,9 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"and identity-over-reward gain {summary_payload.get('learned_selection_identity_vs_reward_gain', 'unknown')}.",
             "- Learned repair-policy artifact: figure31_learned_repair_policy_transfer.png and learned_repair_policy_metrics.csv. "
             f"Policy-vs-raw gain {summary_payload.get('learned_repair_policy_vs_raw_gain', 'unknown')} "
-            f"and policy-vs-learned-identity gain {summary_payload.get('learned_repair_policy_vs_learned_identity_gain', 'unknown')}.",
+            f"and policy-vs-learned-identity gain {summary_payload.get('learned_repair_policy_vs_learned_identity_gain', 'unknown')}; "
+            f"minimum learned-identity non-loss rate {summary_payload.get('learned_repair_policy_min_learned_identity_nonloss_rate', 'unknown')} "
+            f"and worst learned-identity seed loss {summary_payload.get('learned_repair_policy_max_learned_identity_loss', 'unknown')}.",
             "- Synthetic task-suite artifact: figure29_synthetic_benchmark_suite.png and synthetic_benchmark_metrics.csv. "
             f"Combined-vs-raw gain {summary_payload.get('synthetic_benchmark_combined_vs_raw_gain', 'unknown')} "
             f"and minimum combined variant utility {summary_payload.get('synthetic_benchmark_combined_min_variant_utility', 'unknown')}.",

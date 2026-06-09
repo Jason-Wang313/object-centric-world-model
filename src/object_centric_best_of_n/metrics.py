@@ -14,6 +14,153 @@ from .repair import GATE_ACTIONS, conservative_selected_tail_stop_rule
 
 MODEL_FAMILY_PROXY_SELECTORS = ("raw", "latent_global_proxy", "relational_slot_proxy", "diffusion_score_proxy")
 
+REPAIR_TIERS = ("deployable_no_leak", "support_covered", "oracle_upper_bound")
+
+SELECTOR_REPAIR_METADATA: dict[str, dict[str, object]] = {
+    "raw": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "none",
+    },
+    "identity_consistent": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "fixed_predeclared",
+    },
+    "property_calibrated": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "fixed_predeclared",
+    },
+    "pilot_calibrated": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "pilot_train_dev",
+    },
+    "learned_reward": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "heldout_train",
+    },
+    "learned_identity_reward": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "heldout_train",
+    },
+    "learned_repair_policy": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "pilot_train_dev",
+    },
+    "random": {
+        "repair_tier": "deployable_no_leak",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": False,
+        "hyperparameter_source": "none",
+    },
+    "targeted_probe": {
+        "repair_tier": "support_covered",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "fixed_predeclared",
+    },
+    "observable_repair": {
+        "repair_tier": "support_covered",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "fixed_predeclared",
+    },
+    "noisy_probe_repair": {
+        "repair_tier": "support_covered",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "fixed_predeclared",
+    },
+    "combined_repair": {
+        "repair_tier": "oracle_upper_bound",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "fixed_predeclared",
+    },
+    "oracle": {
+        "repair_tier": "oracle_upper_bound",
+        "uses_real_utility_features": True,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "eval_oracle",
+    },
+    "repair_all_candidates_labeled_oracle": {
+        "repair_tier": "oracle_upper_bound",
+        "uses_real_utility_features": True,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "all_eval_candidates_labeled",
+    },
+    "latent_global_proxy": {
+        "repair_tier": "support_covered",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "toy_proxy_fixed",
+    },
+    "relational_slot_proxy": {
+        "repair_tier": "support_covered",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "toy_proxy_fixed",
+    },
+    "diffusion_score_proxy": {
+        "repair_tier": "support_covered",
+        "uses_real_utility_features": False,
+        "uses_hidden_features": True,
+        "hyperparameter_source": "toy_proxy_fixed",
+    },
+}
+
+
+def selector_repair_metadata(selector: str) -> dict[str, object]:
+    """Return leakage/tier metadata for a selector name."""
+
+    return dict(
+        SELECTOR_REPAIR_METADATA.get(
+            str(selector),
+            {
+                "repair_tier": "support_covered",
+                "uses_real_utility_features": False,
+                "uses_hidden_features": False,
+                "hyperparameter_source": "unspecified",
+            },
+        )
+    )
+
+
+def add_repair_metadata(
+    df: pd.DataFrame,
+    split_seed: int | None = None,
+    final_test: bool | int | None = None,
+) -> pd.DataFrame:
+    """Attach auditable no-leak metadata columns to selector result tables."""
+
+    if df.empty or "selector" not in df.columns:
+        return df
+    out = df.copy()
+    metadata = [selector_repair_metadata(selector) for selector in out["selector"]]
+    for key in ("repair_tier", "uses_real_utility_features", "uses_hidden_features", "hyperparameter_source"):
+        out[key] = [item[key] for item in metadata]
+    if "split_seed" not in out.columns:
+        out["split_seed"] = -1 if split_seed is None else int(split_seed)
+    elif split_seed is not None:
+        out["split_seed"] = int(split_seed)
+    if "final_test" not in out.columns:
+        out["final_test"] = int(bool(final_test)) if final_test is not None else 0
+    elif final_test is not None:
+        out["final_test"] = int(bool(final_test))
+    return out
+
 
 def mean_ci(values: Iterable[float], z: float = 1.96) -> tuple[float, float, float]:
     arr = np.asarray(list(values), dtype=float)
@@ -49,6 +196,7 @@ def selection_record(
 ) -> dict[str, float | int | str]:
     raw_scores = np.asarray([candidate.score for candidate in candidates], dtype=float)
     raw_utilities = np.asarray([candidate.real_utility for candidate in candidates], dtype=float)
+    metadata = selector_repair_metadata(selector)
     return {
         "experiment": experiment,
         "scenario": scenario,
@@ -71,6 +219,12 @@ def selection_record(
         "regret": float(np.max(raw_utilities) - selected.real_utility),
         "oracle_gap": float(np.max(raw_utilities) - selected.real_utility),
         "upper_tail_rank_correlation": upper_tail_rank_correlation(candidates),
+        "repair_tier": str(metadata["repair_tier"]),
+        "uses_real_utility_features": bool(metadata["uses_real_utility_features"]),
+        "uses_hidden_features": bool(metadata["uses_hidden_features"]),
+        "hyperparameter_source": str(metadata["hyperparameter_source"]),
+        "split_seed": -1,
+        "final_test": 0,
     }
 
 
@@ -454,6 +608,133 @@ def negative_control_summary(main_metrics: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def gap_closure(selected_utility: float, raw_utility: float, oracle_utility: float) -> float:
+    """Fraction of raw-to-oracle gap closed by a selector."""
+
+    denominator = float(oracle_utility - raw_utility)
+    if abs(denominator) < 1e-12:
+        return float("nan")
+    return float((float(selected_utility) - float(raw_utility)) / denominator)
+
+
+def repair_robustness_by_split(final_test_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate final-test repair gap closure across nested split seeds."""
+
+    if final_test_df.empty:
+        return pd.DataFrame()
+    df = final_test_df.copy()
+    if "gap_closure" not in df.columns:
+        if {"selected_real_utility", "raw_selected_real_utility", "oracle_selected_real_utility"}.issubset(df.columns):
+            df["gap_closure"] = [
+                gap_closure(selected, raw, oracle)
+                for selected, raw, oracle in zip(
+                    df["selected_real_utility"],
+                    df["raw_selected_real_utility"],
+                    df["oracle_selected_real_utility"],
+                )
+            ]
+        else:
+            return pd.DataFrame()
+    if "repair_budget" not in df.columns:
+        df["repair_budget"] = -1
+    group_cols = ["split_seed", "repair_tier", "selector", "repair_budget", "N"]
+    rows: list[dict[str, float | int | str]] = []
+    for keys, group in df.groupby(group_cols, sort=True):
+        values = pd.to_numeric(group["gap_closure"], errors="coerce").dropna()
+        if values.empty:
+            continue
+        mean, low, high = mean_ci(values)
+        row = dict(zip(group_cols, keys))
+        row.update(
+            {
+                "n_conditions": int(group["condition_id"].nunique()) if "condition_id" in group.columns else int(group.shape[0]),
+                "split_gap_closure_mean": mean,
+                "split_gap_closure_median": float(values.median()),
+                "split_gap_closure_ci_low": low,
+                "split_gap_closure_ci_high": high,
+                "split_gap_closure_min_condition": float(values.min()),
+            }
+        )
+        for col in ("uses_real_utility_features", "uses_hidden_features", "hyperparameter_source", "final_test"):
+            if col in group.columns:
+                row[col] = group[col].iloc[0]
+        rows.append(row)
+    split_df = pd.DataFrame(rows)
+    if split_df.empty:
+        return split_df
+    aggregate_cols = ["repair_tier", "selector", "repair_budget", "N"]
+    aggregate_rows: list[dict[str, float | int | str]] = []
+    for keys, group in split_df.groupby(aggregate_cols, sort=True):
+        split_values = pd.to_numeric(group["split_gap_closure_mean"], errors="coerce").dropna()
+        if split_values.empty:
+            continue
+        mean, low, high = mean_ci(split_values)
+        worst_q = float(split_values.quantile(0.25))
+        aggregate_rows.append(
+            {
+                **dict(zip(aggregate_cols, keys)),
+                "n_split_seeds": int(group["split_seed"].nunique()),
+                "mean_gap_closure_across_splits": mean,
+                "median_gap_closure_across_splits": float(split_values.median()),
+                "gap_closure_ci_low_across_splits": low,
+                "gap_closure_ci_high_across_splits": high,
+                "min_split_gap_closure": float(split_values.min()),
+                "worst_quartile_gap_closure": worst_q,
+            }
+        )
+    aggregate = pd.DataFrame(aggregate_rows)
+    return split_df.merge(aggregate, on=aggregate_cols, how="left")
+
+
+def calibration_diagnostics_summary(candidate_df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize lower-confidence-bound coverage and gate blocking diagnostics."""
+
+    if candidate_df.empty:
+        return pd.DataFrame()
+    df = candidate_df.copy()
+    if "lcb_covered" not in df.columns and {"real_utility", "lcb_utility"}.issubset(df.columns):
+        df["lcb_covered"] = df["real_utility"] >= df["lcb_utility"]
+    if "selected_tail" not in df.columns:
+        df["selected_tail"] = 0
+    rows: list[dict[str, float | int | str]] = []
+
+    def append_scope(scope: str, group: pd.DataFrame, risk_bin: str = "all") -> None:
+        if group.empty or "lcb_covered" not in group.columns:
+            return
+        coverage = float(pd.to_numeric(group["lcb_covered"], errors="coerce").mean())
+        regret = (
+            float(pd.to_numeric(group["adaptive_gate_regret"], errors="coerce").mean())
+            if "adaptive_gate_regret" in group.columns
+            else float("nan")
+        )
+        block_accuracy = (
+            float(pd.to_numeric(group["block_accuracy"], errors="coerce").mean())
+            if "block_accuracy" in group.columns
+            else float("nan")
+        )
+        row = {
+            "metric_scope": scope,
+            "risk_bin": risk_bin,
+            "repair_tier": str(group["repair_tier"].iloc[0]) if "repair_tier" in group.columns else "deployable_no_leak",
+            "n_rows": int(group.shape[0]),
+            "lcb_coverage": coverage,
+            "selected_tail_lcb_coverage": coverage if scope == "selected_tail" else float("nan"),
+            "violation_rate": float(1.0 - coverage),
+            "adaptive_gate_regret": regret,
+            "block_accuracy": block_accuracy,
+        }
+        if "split_seed" in group.columns:
+            row["split_seed"] = int(group["split_seed"].iloc[0]) if group["split_seed"].nunique() == 1 else -1
+        rows.append(row)
+
+    append_scope("overall", df)
+    append_scope("selected_tail", df[df["selected_tail"].astype(bool)])
+    if "risk_bin" in df.columns:
+        for risk_bin, group in df.groupby("risk_bin", sort=True):
+            append_scope("risk_bin", group, risk_bin=str(risk_bin))
+    return pd.DataFrame(rows)
+
+
 def ood_summary(ood_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate OOD synthetic rows and attach combined-vs-raw paired gains."""
 
@@ -830,6 +1111,12 @@ def learned_repair_policy_summary(policy_seed_df: pd.DataFrame) -> pd.DataFrame:
             identity_pair["policy"] - identity_pair["identity"] if not identity_pair.empty else pd.Series(dtype=float)
         )
         pilot_gains = pilot_pair["policy"] - pilot_pair["pilot"] if not pilot_pair.empty else pd.Series(dtype=float)
+        identity_nonloss_rate = (
+            float(np.mean(identity_gains >= -1e-12)) if len(identity_gains) else float("nan")
+        )
+        worst_identity_loss = (
+            float(max(0.0, -float(identity_gains.min()))) if len(identity_gains) else float("nan")
+        )
         for _, row in group.iterrows():
             selector_seed = seed_group[seed_group["selector"] == row["selector"]]
             out = row.copy()
@@ -846,6 +1133,8 @@ def learned_repair_policy_summary(policy_seed_df: pd.DataFrame) -> pd.DataFrame:
             out["learned_repair_policy_over_learned_identity_win_rate"] = (
                 float(np.mean(identity_gains > 1e-12)) if len(identity_gains) else float("nan")
             )
+            out["learned_repair_policy_over_learned_identity_nonloss_rate"] = identity_nonloss_rate
+            out["learned_repair_policy_worst_learned_identity_loss"] = worst_identity_loss
             out["learned_repair_policy_over_pilot_win_rate"] = (
                 float(np.mean(pilot_gains > 1e-12)) if len(pilot_gains) else float("nan")
             )

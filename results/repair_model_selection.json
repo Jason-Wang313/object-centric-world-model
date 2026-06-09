@@ -1,0 +1,688 @@
+{
+  "mode": "full",
+  "split_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "pilot_budgets": [
+    0,
+    8,
+    32,
+    128
+  ],
+  "grid": [
+    {
+      "config_id": "ridge_lcb_no_penalty",
+      "ridge": 0.002,
+      "uncertainty_penalty": 0.0,
+      "conformal_confidence": 0.9,
+      "gate_threshold": 0.0,
+      "feature_set": "pilot_observable_v1"
+    },
+    {
+      "config_id": "ridge_lcb_mild_penalty",
+      "ridge": 0.002,
+      "uncertainty_penalty": 0.18,
+      "conformal_confidence": 0.9,
+      "gate_threshold": 0.0,
+      "feature_set": "pilot_observable_v1"
+    },
+    {
+      "config_id": "ridge_lcb_strong_penalty",
+      "ridge": 0.005,
+      "uncertainty_penalty": 0.32,
+      "conformal_confidence": 0.9,
+      "gate_threshold": 0.0,
+      "feature_set": "pilot_observable_v1"
+    }
+  ],
+  "support_selector_grid": [
+    "observable_repair",
+    "targeted_probe"
+  ],
+  "selected_configs": [
+    {
+      "split_seed": 0,
+      "N": 32,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.4742833589533931,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9051511325480432
+    },
+    {
+      "split_seed": 0,
+      "N": 32,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.8887455689056508,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9051511325480432
+    },
+    {
+      "split_seed": 0,
+      "N": 32,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9056497378847869,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9051511325480432
+    },
+    {
+      "split_seed": 0,
+      "N": 32,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.924948986513977,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9051511325480432
+    },
+    {
+      "split_seed": 0,
+      "N": 64,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.44476102043632043,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9143451694890049
+    },
+    {
+      "split_seed": 0,
+      "N": 64,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9393159614041703,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9143451694890049
+    },
+    {
+      "split_seed": 0,
+      "N": 64,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9272332909824884,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9143451694890049
+    },
+    {
+      "split_seed": 0,
+      "N": 64,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.919645809965565,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9143451694890049
+    },
+    {
+      "split_seed": 1,
+      "N": 32,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.8899583839497152,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8809745915143101
+    },
+    {
+      "split_seed": 1,
+      "N": 32,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.89058325308616,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8809745915143101
+    },
+    {
+      "split_seed": 1,
+      "N": 32,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9329853216433168,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8809745915143101
+    },
+    {
+      "split_seed": 1,
+      "N": 32,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9567781955483263,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8809745915143101
+    },
+    {
+      "split_seed": 1,
+      "N": 64,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.7350906996618689,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9314242921337527
+    },
+    {
+      "split_seed": 1,
+      "N": 64,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.8773935941292846,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9314242921337527
+    },
+    {
+      "split_seed": 1,
+      "N": 64,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9233600001015358,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9314242921337527
+    },
+    {
+      "split_seed": 1,
+      "N": 64,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9334199807916371,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9314242921337527
+    },
+    {
+      "split_seed": 2,
+      "N": 32,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.5189619708298889,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8679810412587402
+    },
+    {
+      "split_seed": 2,
+      "N": 32,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.8357034932116516,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8679810412587402
+    },
+    {
+      "split_seed": 2,
+      "N": 32,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.8694491983447842,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8679810412587402
+    },
+    {
+      "split_seed": 2,
+      "N": 32,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.6254732020828738,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.8679810412587402
+    },
+    {
+      "split_seed": 2,
+      "N": 64,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.6702167548503639,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9213351410218112
+    },
+    {
+      "split_seed": 2,
+      "N": 64,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.7774982625663874,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9213351410218112
+    },
+    {
+      "split_seed": 2,
+      "N": 64,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.8427086747840896,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9213351410218112
+    },
+    {
+      "split_seed": 2,
+      "N": 64,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9034596569339154,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9213351410218112
+    },
+    {
+      "split_seed": 3,
+      "N": 32,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9307354391519946,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9084680194390738
+    },
+    {
+      "split_seed": 3,
+      "N": 32,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9005033347103124,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9084680194390738
+    },
+    {
+      "split_seed": 3,
+      "N": 32,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9200972878437826,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9084680194390738
+    },
+    {
+      "split_seed": 3,
+      "N": 32,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9023423803334092,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9084680194390738
+    },
+    {
+      "split_seed": 3,
+      "N": 64,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.5290217507360785,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9174300704105667
+    },
+    {
+      "split_seed": 3,
+      "N": 64,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.944732231498675,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9174300704105667
+    },
+    {
+      "split_seed": 3,
+      "N": 64,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.27550029477846844,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9174300704105667
+    },
+    {
+      "split_seed": 3,
+      "N": 64,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.34253321972847367,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9174300704105667
+    },
+    {
+      "split_seed": 4,
+      "N": 32,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9391583052347868,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9204962502396971
+    },
+    {
+      "split_seed": 4,
+      "N": 32,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9273573243152847,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9204962502396971
+    },
+    {
+      "split_seed": 4,
+      "N": 32,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9266349070851362,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9204962502396971
+    },
+    {
+      "split_seed": 4,
+      "N": 32,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9188196755805359,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9204962502396971
+    },
+    {
+      "split_seed": 4,
+      "N": 64,
+      "repair_budget": 0,
+      "deployable_config": {
+        "config_id": "ridge_lcb_mild_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.18,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9248304039457264,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9041805611120863
+    },
+    {
+      "split_seed": 4,
+      "N": 64,
+      "repair_budget": 8,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.9126376150668222,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9041805611120863
+    },
+    {
+      "split_seed": 4,
+      "N": 64,
+      "repair_budget": 32,
+      "deployable_config": {
+        "config_id": "ridge_lcb_strong_penalty",
+        "ridge": 0.005,
+        "uncertainty_penalty": 0.32,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.45472115952551917,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9041805611120863
+    },
+    {
+      "split_seed": 4,
+      "N": 64,
+      "repair_budget": 128,
+      "deployable_config": {
+        "config_id": "ridge_lcb_no_penalty",
+        "ridge": 0.002,
+        "uncertainty_penalty": 0.0,
+        "conformal_confidence": 0.9,
+        "gate_threshold": 0.0,
+        "feature_set": "pilot_observable_v1"
+      },
+      "deployable_dev_gap_closure_mean": 0.894531626505647,
+      "support_selector": "observable_repair",
+      "support_dev_gap_closure_mean": 0.9041805611120863
+    }
+  ]
+}

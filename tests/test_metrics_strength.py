@@ -2,10 +2,12 @@ import pandas as pd
 
 from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
+    calibration_diagnostics_summary,
     counterfactual_target_summary,
     deployment_policy_summary,
     domain_randomization_summary,
     extreme_object_count_summary,
+    gap_closure,
     learned_repair_policy_summary,
     learned_selection_summary,
     model_family_proxy_summary,
@@ -18,6 +20,7 @@ from object_centric_best_of_n.metrics import (
     pilot_budget_summary,
     probe_cost_summary,
     repair_ablation_summary,
+    repair_robustness_by_split,
     score_calibration_table,
     seed_block_robustness,
     sensitivity_summary,
@@ -63,6 +66,7 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert paired.loc[paired["selector"] == "combined_repair", "mean_gain"].iloc[0] == 0.7
     stress = stress_summary(df)
     assert "combined_vs_raw_gain_mean" in stress.columns
+    assert abs(gap_closure(0.8, 0.2, 1.0) - 0.75) < 1e-12
     main = aggregate_seed_metrics(df)
     ablation = repair_ablation_summary(main, paired)
     assert "combined_vs_best_single_gain" in ablation.columns
@@ -199,6 +203,12 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert learned_repair_policy[
         learned_repair_policy["selector"] == "learned_repair_policy"
     ]["learned_repair_policy_over_learned_identity_win_rate"].iloc[0] == 1.0
+    assert learned_repair_policy[
+        learned_repair_policy["selector"] == "learned_repair_policy"
+    ]["learned_repair_policy_over_learned_identity_nonloss_rate"].iloc[0] == 1.0
+    assert learned_repair_policy[
+        learned_repair_policy["selector"] == "learned_repair_policy"
+    ]["learned_repair_policy_worst_learned_identity_loss"].iloc[0] == 0.0
     synthetic_benchmark_df = pd.DataFrame(
         [
             {
@@ -251,6 +261,40 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert deployment_policy[
         deployment_policy["selector"] == "gate_policy"
     ]["deployment_policy_win_rate"].iloc[0] == 1.0
+    final_test = pd.DataFrame(
+        [
+            {
+                "split_seed": split_seed,
+                "condition_id": f"c{condition}",
+                "repair_tier": "deployable_no_leak",
+                "selector": "pilot_calibrated",
+                "repair_budget": 32,
+                "N": 16,
+                "gap_closure": 0.7 + 0.01 * split_seed,
+                "uses_real_utility_features": False,
+                "uses_hidden_features": False,
+                "hyperparameter_source": "dev_condition_grid",
+                "final_test": 1,
+            }
+            for split_seed in range(5)
+            for condition in range(3)
+        ]
+    )
+    robustness = repair_robustness_by_split(final_test)
+    assert robustness["n_split_seeds"].iloc[0] == 5
+    assert "worst_quartile_gap_closure" in robustness.columns
+    calibration_diag = calibration_diagnostics_summary(
+        pd.DataFrame(
+            {
+                "repair_tier": ["deployable_no_leak", "deployable_no_leak"],
+                "real_utility": [0.8, 0.3],
+                "lcb_utility": [0.7, 0.4],
+                "selected_tail": [1, 0],
+                "risk_bin": ["low", "high"],
+            }
+        )
+    )
+    assert set(calibration_diag["metric_scope"]) == {"overall", "selected_tail", "risk_bin"}
     pilot = pilot_calibration_summary(df)
     assert "pilot_vs_raw_gain_mean" in pilot.columns
     assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0

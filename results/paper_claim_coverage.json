@@ -28,10 +28,10 @@
       "paper_locations": "paper/abstract.md;paper/method.md;paper/experiments.md",
       "location_anchor_terms": "repair|identity|probe|calibration|selector",
       "coverage_note": "Object-specific repair improvements are positive paper claims.",
-      "audit_status": "strongly_supported",
-      "coverage_status": "covered_strongly",
+      "audit_status": "partial",
+      "coverage_status": "covered_partially",
       "locations_verified": true,
-      "claim_text": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting."
+      "claim_text": "Pilot-label calibrated lower-confidence selection reduces selected-tail hallucination in controlled support-covered regimes, with no-leak deployable evidence separated from support-covered probes and oracle upper bounds."
     },
     {
       "claim_id": "C4",
@@ -65,6 +65,17 @@
       "coverage_status": "explicitly_not_claimed",
       "locations_verified": true,
       "claim_text": "The method establishes broad benchmark superiority over graph physics, latent, or diffusion world models."
+    },
+    {
+      "claim_id": "C7",
+      "claim_role": "unsupported_boundary_nonclaim",
+      "paper_locations": "paper/limitations.md;docs/claims.md;docs/reviewer_attacks.md",
+      "location_anchor_terms": "100%|universal|hidden-mode|impossible",
+      "coverage_note": "Universal or guaranteed repair is explicitly not claimed.",
+      "audit_status": "unsupported",
+      "coverage_status": "explicitly_not_claimed",
+      "locations_verified": true,
+      "claim_text": "The repair method is universal or guarantees 100% recovery."
     }
   ],
   "problems": [],
@@ -77,6 +88,7 @@
   ],
   "boundary_nonclaims": [
     "C5",
-    "C6"
+    "C6",
+    "C7"
   ]
 }

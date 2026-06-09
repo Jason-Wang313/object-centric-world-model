@@ -22,7 +22,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. Full-minus-no-mass property gain 0.1229166666666666.
 - Learned domain-shift artifact: figure23_learned_domain_shift.png and learned_domain_shift.csv. Minimum shifted property margin 0.125 and identity margin 0.4458333333333333.
 - Learned selection transfer artifact: figure28_learned_selection_transfer.png and learned_selection_metrics.csv. Identity+reward learned selector raw gain 0.6583388223801652 and identity-over-reward gain 0.3596642896057789.
-- Learned repair-policy artifact: figure31_learned_repair_policy_transfer.png and learned_repair_policy_metrics.csv. Policy-vs-raw gain 0.8234771981724383 and policy-vs-learned-identity gain 0.2252909624035247.
+- Learned repair-policy artifact: figure31_learned_repair_policy_transfer.png and learned_repair_policy_metrics.csv. Policy-vs-raw gain 0.8234771981724383 and policy-vs-learned-identity gain 0.2252909624035247; minimum learned-identity non-loss rate 0.65625 and worst learned-identity seed loss 0.1424497166038502.
 - Synthetic task-suite artifact: figure29_synthetic_benchmark_suite.png and synthetic_benchmark_metrics.csv. Combined-vs-raw gain 0.8161407808398964 and minimum combined variant utility 0.7999228162650984.
 - Deployment-policy artifact: figure30_deployment_gate_policy.png and deployment_policy_metrics.csv. Corrupted gate-vs-raw gain 0.7883015801574633 and corrupted gate-vs-stop-early gain 0.5368058036226959.
 - OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. Dense corrupted OOD combined-vs-raw gain 0.8411636120707556.
@@ -31,7 +31,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. Combined-vs-raw gain 0.816906396281512.
 - Target-identity sweep artifact: figure27_target_identity_sweep.png and target_identity_sweep_metrics.csv. Combined-vs-raw gain 0.8102272022985341, with minimum target utility 0.7955217976711665.
 - Pilot-label calibration artifact: figure20_pilot_calibration.png, pilot_calibration_metrics.csv, and pilot_calibration_summary.json. Held-out calibrated-vs-raw gain 0.8192029444060406.
-- Pilot-label budget artifact: figure26_pilot_label_budget.png, pilot_budget_metrics.csv, and pilot_budget_summary.json. Mature-budget gain 0.8302670022712365 and largest-budget gain 0.8247172225365372.
+- Pilot-label budget artifact: figure26_pilot_label_budget.png, pilot_budget_metrics.csv, and pilot_budget_summary.json. Mature-budget gain 0.8331483971245207 and largest-budget gain 0.8331483971245207.
 - Leave-one-failure-out artifact: figure21_leave_one_failure_out.png, leave_one_failure_metrics.csv, and leave_one_failure_summary.json. Held-out-family calibrated-vs-raw gain 0.7758011252035516.
 - Noisy-probe artifact: figure22_noisy_probe_reliability.png and noisy_probe_metrics.csv. Reliable-probe gain 0.8667438725697415.
 - Probe-cost artifact: figure25_probe_cost_sensitivity.png and probe_cost_metrics.csv. Low-cost combined-vs-raw gain 0.77494187977645 and max-cost gain 0.51744187977645.
@@ -50,6 +50,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 
 ## Artifact Inventory
 ### tables
+- results\tables\calibration_diagnostics.csv
 - results\tables\counterfactual_target_metrics.csv
 - results\tables\counterfactual_target_seed_metrics.csv
 - results\tables\deployment_policy_metrics.csv
@@ -61,6 +62,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\extreme_object_count_seed_metrics.csv
 - results\tables\learned_ablation.csv
 - results\tables\learned_domain_shift.csv
+- results\tables\learned_generalization_diagnostics.csv
 - results\tables\learned_learning_curve.csv
 - results\tables\learned_metrics.csv
 - results\tables\learned_repair_policy_metrics.csv
@@ -87,7 +89,11 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\probe_cost_metrics.csv
 - results\tables\probe_cost_seed_metrics.csv
 - results\tables\repair_ablation.csv
+- results\tables\repair_condition_splits.csv
+- results\tables\repair_final_test_metrics.csv
 - results\tables\repair_metrics.csv
+- results\tables\repair_model_selection.csv
+- results\tables\repair_robustness_by_split.csv
 - results\tables\score_calibration.csv
 - results\tables\score_calibration_candidates.csv
 - results\tables\seed_block_robustness.csv
@@ -101,7 +107,9 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\synthetic_benchmark_seed_metrics.csv
 - results\tables\target_identity_sweep_metrics.csv
 - results\tables\target_identity_sweep_seed_metrics.csv
+- results\tables\unidentifiable_negative_control.csv
 ### figures
+- figures\figure10_repair_robustness.png
 - figures\figure10_score_calibration.png
 - figures\figure11_score_noise_sensitivity.png
 - figures\figure12_negative_control.png

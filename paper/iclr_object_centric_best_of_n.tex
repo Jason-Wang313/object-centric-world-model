@@ -1,0 +1,235 @@
+\documentclass[10pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{xcolor}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\setlist[itemize]{leftmargin=1.4em,itemsep=0.2em,topsep=0.2em}
+\setlength{\parskip}{0.35em}
+\setlength{\parindent}{0pt}
+
+\title{\vspace{-1.0em}When Best-of-N Object-Centric World Models Select the Wrong Object}
+\author{Anonymous Authors}
+\date{ICLR submission draft}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Best-of-N inference is often used as a simple way to improve model-based control: sample more imagined futures and execute the one with the highest model score. We study a narrower failure mode that appears when those futures are object-centric. In controlled 2D manipulation scenes, candidates contain slots, object identities, hidden properties, trajectories, and scores. If the score rewards plausible object-level futures while real utility depends on the true target object, increasing $N$ can amplify binding errors: the selected object score rises while selected real utility stagnates or falls.
+
+We make three contributions. First, we give an exact finite, tie-aware law for the expected utility selected by score-based Best-of-N inference, and validate it by Monte Carlo. Second, we instantiate the law with object-centric candidate populations that expose target swaps, merge/split errors, occlusion identity drift, and hidden-property mistakes. Third, we evaluate object-specific repair signals under an explicit claim audit. The evidence separates deployable no-leak pilot-label calibration, support-covered simulator/probe diagnostics, and oracle upper bounds. The strongest audited repair claim is deliberately partial: at budget 32, deployable no-leak lower-confidence selection closes 68.4\% of the raw-to-oracle gap, just below the predeclared 70\% strong threshold, while support-covered repair closes 91.9\% and oracle upper bounds close 100\%. A hidden-mode negative control blocks high-$N$ selection when observables cannot identify the utility mode. The paper is therefore a controlled synthetic study of selected-tail object binding, not a real-robot or broad benchmark claim.
+\end{abstract}
+
+\section{Introduction}
+
+Object-centric world models promise predictions organized around persistent entities rather than undifferentiated pixels or latent vectors. That organization is useful only if the selected future binds the right object. Best-of-N inference sharpens this requirement. As $N$ grows, the selector concentrates on the upper tail of the model score distribution, exactly where plausible but wrong object bindings can become overrepresented.
+
+This paper asks what happens when object bindings are wrong in the selected tail. A candidate future can look coherent in slot space while swapping the target with a distractor, preserving a trajectory under the wrong identity, merging two objects into one slot, or assuming an incorrect hidden mass. The model score can prefer the candidate because the predicted object state is internally plausible. The controller can still fail because the real utility is evaluated on the true target object.
+
+The central point is not that Best-of-N is intrinsically harmful. If score and utility are aligned, drawing more candidates is useful. The point is that Best-of-N is a tail operator: it magnifies whatever the score makes easy to select. In object-centric control, the selected tail can be dominated by candidates that are visually and dynamically plausible but semantically misbound.
+
+We build a CPU-first controlled testbed around this idea. The study has a mathematical layer, a synthetic object-centric layer, a small semi-learned object model, and a claim audit. The finite law predicts selected utility from a scored population. The object-centric generator turns the law into concrete binding failures. Repair selectors test whether identity consistency, hidden-property calibration, diagnostic probes, observable repair scores, and pilot-label lower-confidence bounds reduce selected-tail hallucination. The audit prevents the repair story from depending on evaluation labels or hidden truth features.
+
+Our contributions are:
+\begin{itemize}
+  \item an exact finite, tie-aware Best-of-N selected-utility law for arbitrary scored candidate populations;
+  \item controlled object-centric evidence that high-$N$ selection can raise selected score while lowering selected real utility through binding failures;
+  \item tiered repair evidence that separates deployable no-leak calibration, support-covered diagnostic proxies, and oracle upper bounds;
+  \item a CPU NumPy semi-learned object-centric artifact with transition, hidden-property, reward, identity-alignment, learned selection, and conservative learned repair-policy checks;
+  \item executable claim auditing that marks unsupported claims, including real-robot validation, broad benchmark superiority, and universal repair, as unsupported.
+\end{itemize}
+
+\section{Selected-Utility Law}
+
+Let $\mathcal{C}=\{c_i\}_{i=1}^{M}$ be a finite candidate population. Each candidate has a score $s_i$ and a real utility $u_i$. A Best-of-N selector samples $N$ candidates independently from a base distribution over $\mathcal{C}$ and returns one of the candidates with maximal score. Ties are broken uniformly within the maximal-score tie group.
+
+Group candidates by distinct score values $g=1,\ldots,G$ sorted from high to low. Let $p_g$ be the base probability mass of group $g$, $q_g=\sum_{h>g} p_h$ be the probability mass of lower-scoring groups, and $\bar{u}_g$ be the expected utility within group $g$ under the tie-breaking distribution. The probability that the selected candidate lies in group $g$ is
+\begin{equation}
+  \Pr[\hat{g}=g] = (p_g + q_g)^N - q_g^N.
+\end{equation}
+The expected selected utility is therefore
+\begin{equation}
+  \mathbb{E}[u_{\mathrm{sel}}(N)] =
+  \sum_{g=1}^{G} \left((p_g+q_g)^N - q_g^N\right)\bar{u}_g.
+\end{equation}
+
+This expression is intentionally model-agnostic. Object-centric structure enters through the definition of $(s_i,u_i)$. A candidate can score well because its slots are smooth, its predicted object properties are plausible, or its trajectory is dynamically coherent. It can still have low utility if the selected future is bound to the wrong object.
+
+\section{Controlled Object-Centric Setting}
+
+The synthetic scenes are 2D manipulation settings with multiple objects. Candidate futures contain predicted slots, object identities, hidden-property estimates, trajectories, an object score, and real utility measured against the true target object. Failure families include target swaps, merge/split errors, occlusion-induced identity drift, hidden-property mistakes, and combined corrupted raw scenes. Good-scene controls test whether the same high-$N$ collapse appears when binding pressure is low.
+
+The learned artifact is deliberately small: a CPU NumPy model trained on generated slot trajectories. It learns linear transition, hidden-property, identity-alignment, and reward predictors from slot and slot-pair features. The goal is not to claim a modern object-centric architecture. The goal is to verify that object-level information can be learned and used in the same controlled setting, including held-out dense, occluded, crossing, mixed object-count, learned selection, and learned repair-policy panels.
+
+\section{Repair Tiers and Leakage Control}
+
+Repair evidence is separated into three tiers:
+\begin{itemize}
+  \item \textbf{Deployable no-leak}: generated futures, model scores, generated uncertainty features, and pilot labels only. These rows cannot use evaluation real utility, all-candidate labels, oracle residuals, or hidden truth features.
+  \item \textbf{Support-covered}: simulator-visible diagnostic or probe proxies that do not directly use evaluation real utility, but still rely on controlled-environment support.
+  \item \textbf{Oracle upper bound}: all-candidate labeled selectors, hidden-truth features, or evaluation real-utility access. These rows are interpretive upper bounds, not deployment evidence.
+\end{itemize}
+
+Nested repair evaluation splits whole conditions, not candidates from the same condition, into pilot train, pilot calibration, dev, and final-test sets. A small fixed grid over ridge strength, uncertainty penalty, conformal confidence, and gate thresholds is selected on dev conditions only. Final-test robustness is reported across five split seeds. Result tables carry tier, real-utility-feature usage, hidden-feature usage, hyperparameter source, split seed, and final-test flags.
+
+The conservative gate also includes an adversarial negative control: paired candidates can have identical observable/generated features but different hidden real utility. No selector using those observables can guarantee recovery. In this setting the adaptive gate must block high-$N$ selection with a hidden-mode or tail-rank failure reason.
+
+\section{Experiments}
+
+The experiments are designed around one question: does score-selected sampling improve control, or does it select a misleading object-centric tail? We evaluate raw Best-of-N, repair selectors, learned selectors, stress panels, and audits. The primary $N$ values are $\{1,2,4,8,16,32,64\}$.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/figure1_selected_tail_binding_failure.png}
+  \caption{Selected-tail binding failure. In corrupted object-centric scenes, high-$N$ selection raises model score while selected real utility falls because the selected candidate is often bound to the wrong object.}
+  \label{fig:tail}
+\end{figure}
+
+\subsection{Selected-tail failure}
+
+The exact law matches Monte Carlo selected utility with mean absolute error $4.63\times 10^{-4}$. In corrupted object-centric scenes, raw high-$N$ selection increases selected object score by 0.576 while selected real utility drops by 0.364. The selected-tail identity error reaches 1.0 in the audited main failure panel. Score calibration shows the top raw-score bin has an object-real gap of 1.095 and identity error of 0.941. Good-scene controls avoid the same collapse: raw high-$N$ utility is 0.655 with identity error 0.125, and the good-minus-corrupted raw high-$N$ utility gap is 0.608.
+
+The failure is not confined to one scene template. Dense OOD, extreme 10/12-object, target-identity sweep, counterfactual target-swap, domain-randomized, and benchmark-style synthetic task-suite panels all reproduce raw selected-tail collapse under corrupted conditions. For example, the synthetic task-suite raw mean utility is 0.019 with identity error 0.982.
+
+\subsection{Repair evidence}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/figure10_repair_robustness.png}
+  \caption{Nested final-test repair robustness across split seeds. Deployable no-leak, support-covered, and oracle rows are plotted separately so reviewer-visible claims cannot mix deployment evidence with upper-bound evidence.}
+  \label{fig:repair-robustness}
+\end{figure}
+
+\begin{table}[t]
+  \centering
+  \caption{Audited repair tiers. Gap closure is measured relative to raw and oracle selected real utility on held-out final-test conditions.}
+  \label{tab:repair}
+  \begin{tabular}{lccc}
+    \toprule
+    Evidence tier & Budget & Mean gap closure & Claim use \\
+    \midrule
+    Deployable no-leak & 32 & 68.4\% & partial deployment evidence \\
+    Deployable no-leak & 128 & 80.2\% & stronger budgeted evidence \\
+    Support-covered & 32 & 91.9\% & controlled supported evidence \\
+    Support-covered & 128 & 91.9\% & controlled supported evidence \\
+    Oracle upper bound & -- & 100.0\% & non-deployable upper bound \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Legacy combined repair is strong in the controlled stack: at $N=64$, combined repair improves selected utility over raw by 0.880 with win rate 1.0, and observable-only repair achieves the same raw-to-repair gain in the main raw panel. However, the nested no-leak final-test audit is stricter. Deployable no-leak pilot-label lower-confidence selection at budget 32 closes 68.4\% of the raw-to-oracle gap, just below the predeclared 70\% threshold for a strong claim. The audit therefore marks the main repair claim as partial. This is the intended behavior: the paper reports useful no-leak evidence without upgrading it beyond its threshold.
+
+Support-covered repair clears the stronger controlled threshold, closing 91.9\% of the gap at budgets 32 and 128. Oracle upper bounds close 100\%. Calibration diagnostics report overall lower-confidence-bound coverage of 95.8\%, with selected-tail coverage of 87.0\%. The hidden-mode negative control blocks high-$N$ selection in all five split seeds, so the system refuses cases where observables cannot identify the utility mode.
+
+\subsection{Learned object-centric evidence}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/figure7_learned_object_model.png}
+  \caption{CPU NumPy learned object-centric artifact. The learned model is used as controlled synthetic evidence for transition, hidden-property, reward, and identity-alignment prediction, not as a broad benchmark model.}
+  \label{fig:learned}
+\end{figure}
+
+The CPU NumPy model improves property accuracy to 0.996 versus a 0.75 baseline, identity-alignment accuracy to 0.988 versus a 0.5 baseline, and transition MSE to 0.007 of the constant-transition baseline. Reward correlation is 0.953. Held-out domain-shift checks retain a minimum property margin of 0.125, minimum identity margin of 0.446, and minimum reward correlation of 0.916.
+
+Learned Best-of-N selection also benefits from identity information. The learned identity+reward selector improves mean utility over raw by 0.658 and over reward-only selection by 0.360. A conservative learned repair policy trained from observable diagnostics plus learned heads reaches mean utility 0.846, improves over raw by 0.823, improves over learned identity+reward by 0.225, and keeps worst learned-identity seed loss bounded at 0.142. These are still synthetic transfer results, not evidence of external robotic performance.
+
+\subsection{Stress and deployment-style checks}
+
+The stress panels ask whether the main observation survives perturbations that a reviewer would naturally try. Combined repair retains mean selected utility 0.849 in the high-$N$ stress panel, 0.877 in dense OOD stress, 0.870 in extreme object-count stress, and 0.835 in the benchmark-style synthetic task suite. Domain-randomized combined repair improves over raw by 0.834. Target-identity sweep combined repair improves over raw by 0.810. Probe-cost sensitivity remains positive even when diagnostic actions are charged; the max-cost combined-vs-raw gain is 0.517.
+
+A deployment-gate simulation compares raw high-$N$, raw stop-early fallback, conservative gate-selected repair/probe actions, and oracle. On corrupted scenarios, the gate improves over raw by 0.788 and over stop-early by 0.537, with minimum win rate 0.938. This is a policy simulation inside the controlled generator; it is useful as failure-detection evidence, not as deployed robotics evidence.
+
+\section{Discussion}
+
+The results support a simple view: Best-of-N is not inherently reliable or unreliable. It is a selection amplifier. When score and utility agree, the amplifier helps. When score rewards object-centric plausibility while utility requires correct target binding, the amplifier can select the wrong tail. That failure is mathematically predictable from the finite scored population and experimentally visible in controlled object-centric candidates.
+
+The repair results are deliberately tiered. Older combined-repair panels show large controlled gains, but the stricter nested final-test audit asks a different question: what remains when deployment-like rows cannot use hidden truth or evaluation real utility? The answer is useful but bounded. At modest pilot budget, no-leak repair nearly clears the strong threshold but does not clear it. At larger pilot budget it improves substantially. Support-covered and oracle tiers show what is possible when more diagnostic support or forbidden information is available.
+
+This distinction is important for review. The paper does not need to claim that a small synthetic repair stack solves object-centric control. Its cleaner contribution is to isolate a selected-tail failure mode, give a law that predicts it, and demonstrate an audit discipline that prevents repair evidence from leaking across tiers.
+
+\section{Limitations}
+
+All scenes are synthetic and small relative to real manipulation. The added dense-object, extreme object-count, domain-randomized, target-swap, target-sweep, benchmark-style synthetic, deployment-gate, pilot-calibration, noisy-probe, probe-cost, nested final-test, and hidden-mode panels broaden the controlled evidence but do not make it a real-robot study.
+
+The learned model is a CPU NumPy semi-learned artifact, not a modern large-scale object-centric model. The toy model-family proxy diagnostics do not establish superiority over graph physics, latent dynamics, diffusion world models, or external benchmarks. The repair selectors use controlled generator diagnostics, and support-covered rows rely on simulator-visible proxies. Oracle rows are non-deployable by definition.
+
+Finally, no method using identical observable features can guarantee recovery when hidden modes change real utility. The negative control makes this explicit: the correct behavior is to block high-$N$ selection, not to promise universal repair.
+
+\section{Conclusion}
+
+Best-of-N inference over object-centric world-model futures can fail by selecting the most plausible wrong object. The exact finite law explains selected utility as a property of the score/utility population; the controlled experiments show how binding failures enter that population; the repair audit separates deployable, support-covered, and oracle evidence. The result is a narrow but useful message: selected-tail object binding deserves first-class evaluation before Best-of-N sampling is treated as a generic control improvement.
+
+\begin{table}[t]
+  \centering
+  \caption{Claim audit summary. Positive claims are kept inside their audited support; boundary claims remain unsupported and explicit.}
+  \label{tab:claims}
+  \begin{tabular}{lll}
+    \toprule
+    ID & Claim family & Audit status \\
+    \midrule
+    C1 & finite tie-aware Best-of-N law & strongly supported \\
+    C2 & controlled selected-tail binding failure & strongly supported \\
+    C3 & tiered repair evidence & partial \\
+    C4 & CPU NumPy learned object-centric evidence & strongly supported \\
+    C5 & real-robot validation & unsupported \\
+    C6 & broad benchmark superiority & unsupported \\
+    C7 & universal or 100\% repair & unsupported \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section*{Reproducibility Statement}
+
+The repository contains CPU-first scripts for smoke, full, and claim-audit runs. The full run writes result tables, figures, claim-status files, and deterministic artifact hashes. The current audited run passes the claim audit with C3 marked partial and all unsupported boundary claims left unsupported.
+
+\section*{References}
+
+\begin{thebibliography}{9}
+
+\bibitem{battaglia2018relational}
+Peter W. Battaglia, Jessica B. Hamrick, Victor Bapst, Alvaro Sanchez-Gonzalez, Vinicius Zambaldi, Mateusz Malinowski, Andrea Tacchetti, David Raposo, Adam Santoro, Ryan Faulkner, Caglar Gulcehre, Francis Song, Andrew Ballard, Justin Gilmer, George Dahl, Ashish Vaswani, Kelsey Allen, Charles Nash, Victoria Langston, Chris Dyer, Nicolas Heess, Daan Wierstra, Pushmeet Kohli, Matt Botvinick, Oriol Vinyals, Yujia Li, and Razvan Pascanu.
+\newblock Relational inductive biases, deep learning, and graph networks.
+\newblock \emph{arXiv:1806.01261}, 2018.
+
+\bibitem{burgess2019monet}
+Christopher P. Burgess, Loic Matthey, Nicholas Watters, Rishabh Kabra, Irina Higgins, Matt Botvinick, and Alexander Lerchner.
+\newblock MONet: Unsupervised scene decomposition and representation.
+\newblock \emph{arXiv:1901.11390}, 2019.
+
+\bibitem{greff2019multi}
+Klaus Greff, Raphael Lopez Kaufman, Rishabh Kabra, Nick Watters, Christopher Burgess, Daniel Zoran, Loic Matthey, Matthew Botvinick, and Alexander Lerchner.
+\newblock Multi-object representation learning with iterative variational inference.
+\newblock \emph{ICML}, 2019.
+
+\bibitem{hafner2019dream}
+Danijar Hafner, Timothy Lillicrap, Ian Fischer, Ruben Villegas, David Ha, Honglak Lee, and James Davidson.
+\newblock Learning latent dynamics for planning from pixels.
+\newblock \emph{ICML}, 2019.
+
+\bibitem{ho2020denoising}
+Jonathan Ho, Ajay Jain, and Pieter Abbeel.
+\newblock Denoising diffusion probabilistic models.
+\newblock \emph{NeurIPS}, 2020.
+
+\bibitem{schrittwieser2020mastering}
+Julian Schrittwieser, Ioannis Antonoglou, Thomas Hubert, Karen Simonyan, Laurent Sifre, Simon Schmitt, Arthur Guez, Edward Lockhart, Demis Hassabis, Thore Graepel, Timothy Lillicrap, and David Silver.
+\newblock Mastering Atari, Go, chess and shogi by planning with a learned model.
+\newblock \emph{Nature}, 2020.
+
+\end{thebibliography}
+
+\end{document}

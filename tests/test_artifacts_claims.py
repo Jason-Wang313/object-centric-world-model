@@ -1,7 +1,10 @@
 import json
 from pathlib import Path
 
+import pandas as pd
+
 from object_centric_best_of_n.audit import (
+    audit_repair_leakage,
     claim_inventory,
     paper_claim_coverage,
     scan_forbidden_overclaims,
@@ -85,6 +88,13 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/noisy_probe_metrics.csv",
         "results/tables/probe_cost_seed_metrics.csv",
         "results/tables/probe_cost_metrics.csv",
+        "results/tables/repair_final_test_metrics.csv",
+        "results/tables/repair_robustness_by_split.csv",
+        "results/tables/repair_condition_splits.csv",
+        "results/tables/repair_model_selection.csv",
+        "results/tables/calibration_diagnostics.csv",
+        "results/tables/unidentifiable_negative_control.csv",
+        "results/tables/learned_generalization_diagnostics.csv",
         "results/tables/model_family_proxy_seed_metrics.csv",
         "results/tables/model_family_proxy_metrics.csv",
         "results/tables/paper_claim_coverage.csv",
@@ -96,6 +106,7 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/pilot_calibration_summary.json",
         "results/pilot_budget_summary.json",
         "results/leave_one_failure_summary.json",
+        "results/repair_model_selection.json",
         "results/verification_log.json",
         "results/artifact_manifest.json",
         "results/claims_status.md",
@@ -111,6 +122,7 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "figures/figure8_repair_ablation.png",
         "figures/figure9_seed_block_robustness.png",
         "figures/figure10_score_calibration.png",
+        "figures/figure10_repair_robustness.png",
         "figures/figure11_score_noise_sensitivity.png",
         "figures/figure12_negative_control.png",
         "figures/figure13_learned_ablation.png",
@@ -146,15 +158,26 @@ def test_claim_audit_keeps_forbidden_claims_unsupported():
     if status_path.exists():
         payload = json.loads(status_path.read_text(encoding="utf-8"))
         core = {claim["id"]: claim["status"] for claim in payload["claims"] if claim["id"] in {"C1", "C2", "C3", "C4"}}
-        assert all(status == "strongly_supported" for status in core.values())
+        assert all(core[claim_id] == "strongly_supported" for claim_id in ["C1", "C2", "C4"])
+        assert core["C3"] in {"strongly_supported", "partial"}
         unsupported = {claim["claim"]: claim["status"] for claim in payload["claims"] if "real robot" in claim["claim"].lower() or "benchmark" in claim["claim"].lower()}
         assert unsupported
         assert all(status == "unsupported" for status in unsupported.values())
+        universal = [claim for claim in payload["claims"] if "100% recovery" in claim["claim"].lower()]
+        assert universal and all(claim["status"] == "unsupported" for claim in universal)
         coverage = payload["paper_claim_coverage"]
         assert coverage["passes"], coverage["problems"]
         positive = [row for row in coverage["rows"] if row["claim_role"] == "positive_paper_claim"]
         assert {row["claim_id"] for row in positive} == {"C1", "C2", "C3", "C4"}
-        assert all(row["coverage_status"] == "covered_strongly" for row in positive)
+        assert all(
+            row["coverage_status"] == "covered_strongly"
+            for row in positive
+            if row["claim_id"] != "C3"
+        )
+        assert next(row for row in positive if row["claim_id"] == "C3")["coverage_status"] in {
+            "covered_strongly",
+            "covered_partially",
+        }
         assert all(row["locations_verified"] for row in coverage["rows"])
 
 
@@ -163,10 +186,41 @@ def test_paper_claim_coverage_separates_boundaries_from_claims():
     coverage = paper_claim_coverage(claims, root=ROOT, text_overclaims=[])
     assert coverage["passes"], coverage["problems"]
     rows = {row["claim_id"]: row for row in coverage["rows"]}
-    assert all(rows[claim_id]["coverage_status"] == "covered_strongly" for claim_id in ["C1", "C2", "C3", "C4"])
+    assert all(rows[claim_id]["coverage_status"] == "covered_strongly" for claim_id in ["C1", "C2", "C4"])
+    assert rows["C3"]["coverage_status"] in {"covered_strongly", "covered_partially"}
     assert rows["C5"]["coverage_status"] == "explicitly_not_claimed"
     assert rows["C6"]["coverage_status"] == "explicitly_not_claimed"
+    assert rows["C7"]["coverage_status"] == "explicitly_not_claimed"
     assert all(row["locations_verified"] for row in rows.values())
+
+
+def test_repair_tiers_splits_and_hidden_mode_controls_are_audited():
+    assert audit_repair_leakage(ROOT) == []
+
+    final = pd.read_csv(ROOT / "results/tables/repair_final_test_metrics.csv")
+    deployable = final[final["repair_tier"] == "deployable_no_leak"]
+    assert not deployable["uses_real_utility_features"].astype(bool).any()
+    assert not deployable["uses_hidden_features"].astype(bool).any()
+
+    oracle_like = final[final["selector"].str.contains("oracle|all_candidates_labeled", regex=True)]
+    assert not oracle_like.empty
+    assert set(oracle_like["repair_tier"]) == {"oracle_upper_bound"}
+
+    splits = pd.read_csv(ROOT / "results/tables/repair_condition_splits.csv")
+    assert splits.groupby(["split_seed", "condition_id"])["split"].nunique().max() == 1
+
+    robustness = pd.read_csv(ROOT / "results/tables/repair_robustness_by_split.csv")
+    assert robustness["split_seed"].nunique() >= 5
+    deployable_32 = robustness[
+        (robustness["selector"] == "pilot_calibrated")
+        & (robustness["repair_budget"] == 32)
+    ]
+    assert not deployable_32.empty
+    assert "worst_quartile_gap_closure" in deployable_32.columns
+
+    hidden = pd.read_csv(ROOT / "results/tables/unidentifiable_negative_control.csv")
+    assert set(hidden["gate_action"]) == {"block_high_n"}
+    assert set(hidden["gate_reason"]).issubset({"hidden_mode_unidentifiable", "tail_rank_failure"})
 
 
 def test_learned_repair_policy_summary_records_conservative_blend():
