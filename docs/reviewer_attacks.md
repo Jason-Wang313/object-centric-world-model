@@ -28,6 +28,10 @@ Response: `negative_control.csv` compares the good non-corrupted setting with co
 
 Response: `ood_metrics.csv` evaluates dense 6- and 8-object variants, including a dense good control and dense corrupted scenes. The audit requires dense corrupted scenes to collapse under raw selection and recover under combined repair.
 
+## Attack: The scenarios are hand-picked.
+
+Response: `domain_randomization_metrics.csv` evaluates a held-out randomized synthetic domain with varied object counts, occlusion, crossing, and hidden-property flags. The audit requires raw selection to remain unsafe while observable and combined repair recover utility on this randomized panel.
+
 ## Attack: Repairs only beat weak selector baselines.
 
 Response: `model_family_proxy_metrics.csv` adds controlled toy proxy selectors with latent-global, relational-slot, and diffusion-score scoring rules. The audit requires combined repair to keep a positive scenario-wise margin over the best proxy while staying close to oracle. This is a diagnostic panel, not evidence for broad benchmark superiority.

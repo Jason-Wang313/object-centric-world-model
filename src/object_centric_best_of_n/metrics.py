@@ -475,6 +475,53 @@ def ood_summary(ood_seed_df: pd.DataFrame) -> pd.DataFrame:
     return main.merge(combined, on=["experiment", "scenario", "N"], how="left")
 
 
+def domain_randomization_summary(domain_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate held-out domain-randomized synthetic stress rows."""
+
+    if domain_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(domain_seed_df)
+    paired = paired_selector_effects(domain_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        combined = group[group["selector"] == "combined_repair"]
+        observable = group[group["selector"] == "observable_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        combined_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "combined_repair")
+        ]
+        observable_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "observable_repair")
+        ]
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["domain_combined_vs_raw_gain_mean"] = combined_utility - raw_utility
+            out["domain_observable_vs_raw_gain_mean"] = observable_utility - raw_utility
+            out["domain_combined_oracle_gap_mean"] = oracle_utility - combined_utility
+            out["domain_observable_oracle_gap_mean"] = oracle_utility - observable_utility
+            out["domain_combined_win_rate"] = (
+                float(combined_pair["win_rate"].iloc[0]) if not combined_pair.empty else float("nan")
+            )
+            out["domain_observable_win_rate"] = (
+                float(observable_pair["win_rate"].iloc[0]) if not observable_pair.empty else float("nan")
+            )
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate toy model-family proxy selectors against combined repair.
 

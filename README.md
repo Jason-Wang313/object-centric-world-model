@@ -27,6 +27,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
 - Negative controls for the non-corrupted setting and learned feature ablations.
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.
+- Held-out domain-randomized synthetic stress with varied object counts and corruption flags.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
 - A bootstrap statistical audit for the main failure, repair, OOD, and toy-proxy effects.
 
@@ -57,6 +58,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_ablation.csv`
 - `results/tables/ood_seed_metrics.csv`
 - `results/tables/ood_metrics.csv`
+- `results/tables/domain_randomization_seed_metrics.csv`
+- `results/tables/domain_randomization_metrics.csv`
 - `results/tables/model_family_proxy_seed_metrics.csv`
 - `results/tables/model_family_proxy_metrics.csv`
 - `results/tables/statistical_audit.csv`
@@ -83,6 +86,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure15_model_family_proxies.png`
 - `figures/figure16_statistical_audit.png`
 - `figures/figure17_observable_repair.png`
+- `figures/figure18_domain_randomization.png`
 
 ## Claim Boundaries
 

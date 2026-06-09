@@ -19,6 +19,7 @@ from object_centric_best_of_n.learned_model import train_and_evaluate
 from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     deployment_gate_from_metrics,
+    domain_randomization_summary,
     exact_law_prediction_error,
     model_family_proxy_summary,
     negative_control_summary,
@@ -70,6 +71,7 @@ MODEL_FAMILY_SELECTORS = [
     "combined_repair",
     "oracle",
 ]
+DOMAIN_RANDOMIZATION_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -261,6 +263,72 @@ def _run_model_family_panel(
     return pd.DataFrame(rows)
 
 
+def _domain_randomized_scene(seed: int):
+    rng = np.random.default_rng(220_000 + seed)
+    n_objects = int(rng.integers(3, 10))
+    occlusion = bool(rng.random() < 0.65)
+    hidden_property = bool(rng.random() < 0.70)
+    crossing = bool(rng.random() < 0.65)
+    if not (occlusion or hidden_property or crossing):
+        hidden_property = True
+    if hidden_property and (occlusion or crossing):
+        scenario = "raw"
+    elif occlusion:
+        scenario = "occlusion"
+    elif hidden_property:
+        scenario = "hidden_property"
+    elif crossing:
+        scenario = "swap"
+    else:
+        scenario = "merge_split"
+    scene = make_scene(
+        seed=220_000 + seed,
+        n_objects=n_objects,
+        occlusion=occlusion,
+        hidden_property=hidden_property,
+        crossing=crossing,
+    )
+    return scene, scenario, n_objects, occlusion, hidden_property, crossing
+
+
+def _run_domain_randomization_panel(
+    generator: ObjectCentricFutureGenerator,
+    domain_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in domain_seeds:
+        scene, generator_scenario, n_objects, occlusion, hidden_property, crossing = _domain_randomized_scene(seed)
+        candidates = generator.generate_candidates(
+            scene,
+            n=n,
+            scenario=generator_scenario,
+            seed=199_999 + seed * 613 + n_objects,
+        )
+        for selector_name in DOMAIN_RANDOMIZATION_SELECTORS:
+            selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+            record = selection_record(
+                "P_domain_randomized_stress",
+                "domain_randomized",
+                selector_name,
+                n,
+                seed,
+                selected,
+                candidates,
+            )
+            record.update(
+                {
+                    "n_objects": n_objects,
+                    "occlusion_flag": int(occlusion),
+                    "hidden_property_flag": int(hidden_property),
+                    "crossing_flag": int(crossing),
+                    "generator_scenario": generator_scenario,
+                }
+            )
+            rows.append(record)
+    return pd.DataFrame(rows)
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -332,6 +400,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     family_seeds = list(range(4)) if mode == "smoke" else list(range(16))
     family_seed_df = _run_model_family_panel(generator, family_seeds, n=max(ns))
     family_metrics = model_family_proxy_summary(family_seed_df)
+    domain_seeds = list(range(6)) if mode == "smoke" else list(range(48))
+    domain_seed_df = _run_domain_randomization_panel(generator, domain_seeds, n=max(ns))
+    domain_metrics = domain_randomization_summary(domain_seed_df)
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
@@ -364,6 +435,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     ood_metrics.to_csv(tables / "ood_metrics.csv", index=False)
     family_seed_df.to_csv(tables / "model_family_proxy_seed_metrics.csv", index=False)
     family_metrics.to_csv(tables / "model_family_proxy_metrics.csv", index=False)
+    domain_seed_df.to_csv(tables / "domain_randomization_seed_metrics.csv", index=False)
+    domain_metrics.to_csv(tables / "domain_randomization_metrics.csv", index=False)
     statistical_metrics.to_csv(tables / "statistical_audit.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
@@ -389,6 +462,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         family_df=family_metrics,
         statistical_df=statistical_metrics,
         observable_df=observable_metrics,
+        domain_df=domain_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -436,6 +510,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         (family_metrics["selector"] == "combined_repair")
         & (family_metrics["scenario"].isin(MODEL_FAMILY_SCENARIOS))
     ]
+    domain_combined = domain_metrics[domain_metrics["selector"] == "combined_repair"]
+    domain_observable = domain_metrics[domain_metrics["selector"] == "observable_repair"]
+    domain_raw = domain_metrics[domain_metrics["selector"] == "raw"]
     statistical_pass_margin = None
     if not statistical_metrics.empty:
         statistical_pass_margin = float(
@@ -460,6 +537,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_stress_rows": int(stress_seed_df.shape[0]),
         "n_ood_rows": int(ood_seed_df.shape[0]),
         "n_model_family_proxy_rows": int(family_seed_df.shape[0]),
+        "n_domain_randomization_rows": int(domain_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -491,6 +569,12 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
         "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
         "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,
+        "domain_randomized_raw_utility": float(domain_raw["selected_real_utility_mean"].iloc[0]) if not domain_raw.empty else None,
+        "domain_randomized_combined_utility": float(domain_combined["selected_real_utility_mean"].iloc[0]) if not domain_combined.empty else None,
+        "domain_randomized_observable_utility": float(domain_observable["selected_real_utility_mean"].iloc[0]) if not domain_observable.empty else None,
+        "domain_randomized_combined_vs_raw_gain": float(domain_combined["domain_combined_vs_raw_gain_mean"].iloc[0]) if not domain_combined.empty else None,
+        "domain_randomized_observable_vs_raw_gain": float(domain_observable["domain_observable_vs_raw_gain_mean"].iloc[0]) if not domain_observable.empty else None,
+        "domain_randomized_combined_win_rate": float(domain_combined["domain_combined_win_rate"].iloc[0]) if not domain_combined.empty else None,
         "statistical_audit_all_pass": bool(statistical_metrics["passes"].all()) if not statistical_metrics.empty else None,
         "statistical_audit_min_ci_margin": statistical_pass_margin,
         "learned_metrics": learned_row,

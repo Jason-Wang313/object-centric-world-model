@@ -2,6 +2,7 @@ import pandas as pd
 
 from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
+    domain_randomization_summary,
     model_family_proxy_summary,
     negative_control_summary,
     observable_repair_summary,
@@ -84,6 +85,8 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "corrupted_mean" in set(negative["contrast"])
     ood = ood_summary(df)
     assert "combined_vs_raw_gain_mean" in ood.columns
+    domain = domain_randomization_summary(df)
+    assert "domain_combined_vs_raw_gain_mean" in domain.columns
     family = model_family_proxy_summary(
         pd.DataFrame(
             rows

@@ -20,6 +20,7 @@ This digest is generated from the current result artifacts.
 - Learned full-minus-kinematic-pair identity accuracy: 0.0760416666666666
 - OOD combined mean selected utility: 0.876852645124664
 - OOD combined-vs-raw gain: 0.8411636120707556
+- Domain-randomized combined-vs-raw gain: 0.8343878574844603
 - Toy proxy combined-vs-best-proxy gain: 0.5504614056934154
 - Bootstrap audit minimum CI margin: 0.08294730684862575
 
