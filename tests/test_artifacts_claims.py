@@ -43,6 +43,8 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/learned_domain_shift.csv",
         "results/tables/learned_selection_seed_metrics.csv",
         "results/tables/learned_selection_metrics.csv",
+        "results/tables/learned_repair_policy_seed_metrics.csv",
+        "results/tables/learned_repair_policy_metrics.csv",
         "results/tables/synthetic_benchmark_seed_metrics.csv",
         "results/tables/synthetic_benchmark_metrics.csv",
         "results/tables/deployment_policy_seed_metrics.csv",
@@ -86,6 +88,7 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/statistical_audit.csv",
         "results/run_summary.json",
         "results/learned_object_model_summary.json",
+        "results/learned_repair_policy_summary.json",
         "results/pilot_calibration_summary.json",
         "results/pilot_budget_summary.json",
         "results/leave_one_failure_summary.json",
@@ -124,6 +127,7 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "figures/figure28_learned_selection_transfer.png",
         "figures/figure29_synthetic_benchmark_suite.png",
         "figures/figure30_deployment_gate_policy.png",
+        "figures/figure31_learned_repair_policy_transfer.png",
     ]
     missing = [rel for rel in required if not (ROOT / rel).exists()]
     assert not missing

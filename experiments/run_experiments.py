@@ -24,9 +24,10 @@ from object_centric_best_of_n.metrics import (
     domain_randomization_summary,
     exact_law_prediction_error,
     extreme_object_count_summary,
+    learned_repair_policy_summary,
+    learned_selection_summary,
     model_family_proxy_summary,
     negative_control_summary,
-    learned_selection_summary,
     observable_repair_summary,
     ood_summary,
     paired_selector_effects,
@@ -50,6 +51,8 @@ from object_centric_best_of_n.repair import (
     combined_repair_score,
     conservative_selected_tail_stop_rule,
     fit_pilot_calibrator,
+    observable_repair_score,
+    pilot_calibration_features,
     pilot_calibrated_score,
     property_posterior_update,
     property_prior_from_candidate,
@@ -107,6 +110,17 @@ LEARNED_SELECTION_SELECTORS = [
     "learned_identity_reward",
     "observable_repair",
     "combined_repair",
+    "oracle",
+]
+LEARNED_REPAIR_POLICY_SELECTORS = [
+    "raw",
+    "learned_reward",
+    "learned_identity_reward",
+    "pilot_calibrated",
+    "learned_repair_policy",
+    "observable_repair",
+    "combined_repair",
+    "random",
     "oracle",
 ]
 SYNTHETIC_BENCHMARK_VARIANTS = [
@@ -641,6 +655,242 @@ def _run_learned_selection_panel(
                 )
                 rows.append(record)
     return pd.DataFrame(rows)
+
+
+LEARNED_REPAIR_POLICY_FEATURE_NAMES = [
+    *[f"pilot_{name}" for name in [
+        "raw_score",
+        "identity_consistency",
+        "slot_support",
+        "target_slot_confidence",
+        "target_id_match",
+        "one_minus_identity_instability",
+        "one_minus_merge_evidence",
+        "one_minus_property_entropy",
+        "one_minus_property_surprise",
+        "hidden_mass_estimate",
+        "property_prior_heavy",
+        "slot_count_scaled",
+    ]],
+    "learned_reward",
+    "learned_identity_alignment",
+    "learned_property_confidence",
+    "observable_repair_score",
+    "learned_identity_times_observable",
+]
+
+
+def _learned_repair_policy_features(
+    candidate,
+    learned_scores: dict[str, np.ndarray],
+    candidate_index: int,
+    observable_score: float,
+) -> np.ndarray:
+    learned_reward = float(learned_scores["learned_reward"][candidate_index])
+    learned_identity = float(learned_scores["learned_identity_alignment"][candidate_index])
+    learned_property = float(learned_scores["learned_property_confidence"][candidate_index])
+    return np.concatenate(
+        [
+            pilot_calibration_features(candidate),
+            np.asarray(
+                [
+                    learned_reward,
+                    learned_identity,
+                    learned_property,
+                    float(observable_score),
+                    learned_identity * float(observable_score),
+                ],
+                dtype=float,
+            ),
+        ]
+    )
+
+
+def _fit_learned_repair_policy(
+    generator: ObjectCentricFutureGenerator,
+    learned_model,
+    train_seeds: list[int],
+    n: int,
+) -> dict[str, object]:
+    rows: list[np.ndarray] = []
+    labels: list[float] = []
+    for seed in train_seeds:
+        for scenario in STRESS_SCENARIOS:
+            scene = _scene_for_scenario(690_000 + seed, scenario)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=scenario,
+                seed=701_111 + seed * 977 + len(scenario),
+            )
+            learned_scores = learned_candidate_scores(learned_model, candidates, scene)
+            observable_scores = np.asarray(
+                [
+                    observable_repair_score(candidate, scene, seed=seed + n)
+                    for candidate in candidates
+                ],
+                dtype=float,
+            )
+            for idx, candidate in enumerate(candidates):
+                rows.append(
+                    _learned_repair_policy_features(
+                        candidate,
+                        learned_scores,
+                        idx,
+                        float(observable_scores[idx]),
+                    )
+                )
+                labels.append(float(candidate.real_utility))
+    x = np.vstack(rows)
+    y = np.asarray(labels, dtype=float)
+    feature_mean = np.mean(x, axis=0)
+    feature_scale = np.std(x, axis=0)
+    feature_scale = np.where(feature_scale < 1e-8, 1.0, feature_scale)
+    z = (x - feature_mean) / feature_scale
+    design = np.column_stack([np.ones(z.shape[0]), z])
+    ridge = 4e-3
+    penalty = np.eye(design.shape[1]) * ridge
+    penalty[0, 0] = 0.0
+    weights = np.linalg.solve(design.T @ design + penalty, design.T @ y)
+    train_pred = np.clip(design @ weights, 0.0, 1.0)
+    train_corr = 0.0
+    if np.std(train_pred) > 1e-12 and np.std(y) > 1e-12:
+        train_corr = float(np.corrcoef(train_pred, y)[0, 1])
+    return {
+        "feature_names": LEARNED_REPAIR_POLICY_FEATURE_NAMES,
+        "feature_mean": feature_mean.tolist(),
+        "feature_scale": feature_scale.tolist(),
+        "weights": weights.tolist(),
+        "ridge": ridge,
+        "n_train_candidates": int(len(labels)),
+        "train_mae": float(np.mean(np.abs(train_pred - y))),
+        "train_correlation": train_corr,
+    }
+
+
+def _predict_learned_repair_policy(
+    candidates,
+    learned_scores: dict[str, np.ndarray],
+    observable_scores: np.ndarray,
+    policy: dict[str, object],
+) -> np.ndarray:
+    weights = np.asarray(policy["weights"], dtype=float)
+    feature_mean = np.asarray(policy["feature_mean"], dtype=float)
+    feature_scale = np.asarray(policy["feature_scale"], dtype=float)
+    rows = [
+        _learned_repair_policy_features(candidate, learned_scores, idx, float(observable_scores[idx]))
+        for idx, candidate in enumerate(candidates)
+    ]
+    x = np.vstack(rows)
+    z = (x - feature_mean) / feature_scale
+    return np.clip(weights[0] + z @ weights[1:], 0.0, 1.0)
+
+
+def _run_learned_repair_policy_panel(
+    generator: ObjectCentricFutureGenerator,
+    learned_model,
+    pilot_calibrator: dict[str, object],
+    train_seeds: list[int],
+    eval_seeds: list[int],
+    n: int,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    policy = _fit_learned_repair_policy(generator, learned_model, train_seeds=train_seeds, n=n)
+    rows: list[dict[str, float | int | str]] = []
+    for seed in eval_seeds:
+        for (
+            variant_label,
+            n_objects,
+            occlusion,
+            hidden_property,
+            crossing,
+            generator_scenario,
+            target_id,
+        ) in SYNTHETIC_BENCHMARK_VARIANTS:
+            scene = make_scene(
+                seed=720_000 + seed * 2_003 + target_id * 37 + n_objects,
+                n_objects=n_objects,
+                occlusion=occlusion,
+                hidden_property=hidden_property,
+                crossing=crossing,
+            )
+            if target_id != scene.target_id:
+                scene = retarget_scene(scene, target_id=target_id)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=generator_scenario,
+                seed=731_000 + seed * 991 + len(variant_label),
+            )
+            learned_scores = learned_candidate_scores(learned_model, candidates, scene)
+            observable_scores = np.asarray(
+                [
+                    observable_repair_score(candidate, scene, seed=seed + n)
+                    for candidate in candidates
+                ],
+                dtype=float,
+            )
+            policy_scores = _predict_learned_repair_policy(candidates, learned_scores, observable_scores, policy)
+            pilot_scores = np.asarray(
+                [pilot_calibrated_score(candidate, pilot_calibrator) for candidate in candidates],
+                dtype=float,
+            )
+            for selector_name in LEARNED_REPAIR_POLICY_SELECTORS:
+                if selector_name in {"learned_reward", "learned_identity_reward"}:
+                    selected = _select_by_scores_with_label(
+                        candidates,
+                        learned_scores[selector_name],
+                        seed=seed + n + len(variant_label),
+                        label=selector_name,
+                    )
+                elif selector_name == "pilot_calibrated":
+                    selected = _select_by_scores_with_label(
+                        candidates,
+                        pilot_scores,
+                        seed=seed + n + len(variant_label),
+                        label=selector_name,
+                    )
+                elif selector_name == "learned_repair_policy":
+                    selected = _select_by_scores_with_label(
+                        candidates,
+                        policy_scores,
+                        seed=seed + n + len(variant_label),
+                        label=selector_name,
+                    )
+                else:
+                    selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                record = selection_record(
+                    "AB_learned_repair_policy_transfer",
+                    variant_label,
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "suite_variant": variant_label,
+                        "n_objects": int(n_objects),
+                        "occlusion_flag": int(occlusion),
+                        "hidden_property_flag": int(hidden_property),
+                        "crossing_flag": int(crossing),
+                        "generator_scenario": generator_scenario,
+                        "target_id": int(scene.target_id),
+                        "learned_reward_mean": float(np.mean(learned_scores["learned_reward"])),
+                        "learned_identity_alignment_mean": float(
+                            np.mean(learned_scores["learned_identity_alignment"])
+                        ),
+                        "learned_property_confidence_mean": float(
+                            np.mean(learned_scores["learned_property_confidence"])
+                        ),
+                        "learned_repair_policy_score_mean": float(np.mean(policy_scores)),
+                        "learned_repair_policy_train_candidates": int(policy["n_train_candidates"]),
+                        "learned_repair_policy_train_mae": float(policy["train_mae"]),
+                        "learned_repair_policy_train_correlation": float(policy["train_correlation"]),
+                    }
+                )
+                rows.append(record)
+    return pd.DataFrame(rows), policy
 
 
 def _run_synthetic_benchmark_panel(
@@ -1285,6 +1535,17 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         n=max(ns),
     )
     learned_selection_metrics = learned_selection_summary(learned_selection_seed_df)
+    learned_repair_policy_train_seeds = list(range(4)) if mode == "smoke" else list(range(32))
+    learned_repair_policy_eval_seeds = list(range(4)) if mode == "smoke" else list(range(32))
+    learned_repair_policy_seed_df, learned_repair_policy = _run_learned_repair_policy_panel(
+        generator,
+        learned_model,
+        pilot_calibrator,
+        train_seeds=learned_repair_policy_train_seeds,
+        eval_seeds=learned_repair_policy_eval_seeds,
+        n=max(ns),
+    )
+    learned_repair_policy_metrics = learned_repair_policy_summary(learned_repair_policy_seed_df)
     synthetic_benchmark_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     synthetic_benchmark_seed_df = _run_synthetic_benchmark_panel(
         generator,
@@ -1306,6 +1567,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         noisy_probe_seed_df=noisy_probe_seed_df,
         probe_cost_seed_df=probe_cost_seed_df,
         learned_selection_seed_df=learned_selection_seed_df,
+        learned_repair_policy_seed_df=learned_repair_policy_seed_df,
         synthetic_benchmark_seed_df=synthetic_benchmark_seed_df,
         deployment_policy_seed_df=deployment_policy_seed_df,
         bootstrap_reps=bootstrap_reps,
@@ -1357,8 +1619,21 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     probe_cost_metrics.to_csv(tables / "probe_cost_metrics.csv", index=False)
     learned_selection_seed_df.to_csv(tables / "learned_selection_seed_metrics.csv", index=False)
     learned_selection_metrics.to_csv(tables / "learned_selection_metrics.csv", index=False)
+    learned_repair_policy_seed_df.to_csv(tables / "learned_repair_policy_seed_metrics.csv", index=False)
+    learned_repair_policy_metrics.to_csv(tables / "learned_repair_policy_metrics.csv", index=False)
     synthetic_benchmark_seed_df.to_csv(tables / "synthetic_benchmark_seed_metrics.csv", index=False)
     synthetic_benchmark_metrics.to_csv(tables / "synthetic_benchmark_metrics.csv", index=False)
+    learned_repair_policy_summary_payload = {
+        "mode": mode,
+        "train_seeds": learned_repair_policy_train_seeds,
+        "eval_seeds": learned_repair_policy_eval_seeds,
+        "n_eval_rows": int(learned_repair_policy_seed_df.shape[0]),
+        "policy": learned_repair_policy,
+    }
+    (results / "learned_repair_policy_summary.json").write_text(
+        json.dumps(learned_repair_policy_summary_payload, indent=2),
+        encoding="utf-8",
+    )
     pilot_summary = {
         "mode": mode,
         "train_seeds": pilot_train_seeds,
@@ -1417,6 +1692,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         probe_cost_df=probe_cost_metrics,
         learned_domain_shift_df=learned_domain_shift,
         learned_selection_df=learned_selection_metrics,
+        learned_repair_policy_df=learned_repair_policy_metrics,
         synthetic_benchmark_df=synthetic_benchmark_metrics,
         deployment_policy_df=deployment_policy_metrics,
     )
@@ -1477,6 +1753,16 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     learned_selection_reward = learned_selection_metrics[learned_selection_metrics["selector"] == "learned_reward"]
     learned_selection_identity = learned_selection_metrics[
         learned_selection_metrics["selector"] == "learned_identity_reward"
+    ]
+    learned_repair_policy_raw = learned_repair_policy_metrics[learned_repair_policy_metrics["selector"] == "raw"]
+    learned_repair_policy_learned_identity = learned_repair_policy_metrics[
+        learned_repair_policy_metrics["selector"] == "learned_identity_reward"
+    ]
+    learned_repair_policy_policy = learned_repair_policy_metrics[
+        learned_repair_policy_metrics["selector"] == "learned_repair_policy"
+    ]
+    learned_repair_policy_pilot = learned_repair_policy_metrics[
+        learned_repair_policy_metrics["selector"] == "pilot_calibrated"
     ]
     synthetic_benchmark_raw = synthetic_benchmark_metrics[synthetic_benchmark_metrics["selector"] == "raw"]
     synthetic_benchmark_combined = synthetic_benchmark_metrics[
@@ -1598,6 +1884,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_noisy_probe_rows": int(noisy_probe_seed_df.shape[0]),
         "n_probe_cost_rows": int(probe_cost_seed_df.shape[0]),
         "n_learned_selection_rows": int(learned_selection_seed_df.shape[0]),
+        "n_learned_repair_policy_rows": int(learned_repair_policy_seed_df.shape[0]),
         "n_synthetic_benchmark_rows": int(synthetic_benchmark_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
@@ -1648,6 +1935,18 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "learned_selection_identity_vs_raw_gain": float(learned_selection_identity["learned_identity_vs_raw_gain_mean"].mean()) if not learned_selection_identity.empty else None,
         "learned_selection_identity_vs_reward_gain": float(learned_selection_identity["learned_identity_vs_reward_gain_mean"].mean()) if not learned_selection_identity.empty else None,
         "learned_selection_identity_min_win_rate": float(learned_selection_identity["learned_identity_win_rate"].min()) if not learned_selection_identity.empty else None,
+        "learned_repair_policy_raw_mean_utility": float(learned_repair_policy_raw["selected_real_utility_mean"].mean()) if not learned_repair_policy_raw.empty else None,
+        "learned_repair_policy_learned_identity_mean_utility": float(learned_repair_policy_learned_identity["selected_real_utility_mean"].mean()) if not learned_repair_policy_learned_identity.empty else None,
+        "learned_repair_policy_mean_utility": float(learned_repair_policy_policy["selected_real_utility_mean"].mean()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_min_variant_utility": float(learned_repair_policy_policy["selected_real_utility_mean"].min()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_vs_raw_gain": float(learned_repair_policy_policy["learned_repair_policy_vs_raw_gain_mean"].mean()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_vs_learned_identity_gain": float(learned_repair_policy_policy["learned_repair_policy_vs_learned_identity_gain_mean"].mean()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_vs_pilot_gain": float(learned_repair_policy_policy["learned_repair_policy_vs_pilot_gain_mean"].mean()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_min_win_rate": float(learned_repair_policy_policy["learned_repair_policy_win_rate"].min()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_min_learned_identity_win_rate": float(learned_repair_policy_policy["learned_repair_policy_over_learned_identity_win_rate"].min()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_pilot_mean_utility": float(learned_repair_policy_pilot["selected_real_utility_mean"].mean()) if not learned_repair_policy_pilot.empty else None,
+        "learned_repair_policy_train_correlation": float(learned_repair_policy["train_correlation"]),
+        "learned_repair_policy_train_mae": float(learned_repair_policy["train_mae"]),
         "synthetic_benchmark_raw_mean_utility": float(synthetic_benchmark_raw["selected_real_utility_mean"].mean()) if not synthetic_benchmark_raw.empty else None,
         "synthetic_benchmark_raw_mean_identity_error": float(synthetic_benchmark_raw["identity_error_mean"].mean()) if not synthetic_benchmark_raw.empty else None,
         "synthetic_benchmark_combined_mean_utility": float(synthetic_benchmark_combined["selected_real_utility_mean"].mean()) if not synthetic_benchmark_combined.empty else None,

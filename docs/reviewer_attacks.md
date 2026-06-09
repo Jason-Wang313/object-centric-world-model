@@ -76,6 +76,10 @@ Response: `learned_ablation.csv` removes object-relevant features such as the ma
 
 Response: `learned_selection_metrics.csv` uses the CPU NumPy reward and identity-alignment heads to score held-out candidate futures under Best-of-N selection. The reward-only learned selector is reported separately, and the audit requires the identity+reward learned selector to beat raw selection, beat reward-only selection, satisfy paired win-rate thresholds, and pass bootstrap lower-bound checks. This remains controlled synthetic transfer evidence, not a benchmark claim.
 
+## Attack: The learned model is disconnected from the repair stack.
+
+Response: `learned_repair_policy_metrics.csv` trains a small ridge repair policy from observable candidate diagnostics plus CPU learned reward, identity-alignment, and hidden-property confidence heads, then evaluates it on held-out benchmark-style synthetic variants. The audit requires the learned repair policy to beat both raw selection and the learned identity+reward selector with bootstrap lower-bound checks, while remaining close to oracle.
+
 ## Attack: Oracle rows make repairs look weak or strong.
 
 Response: Oracle rows are upper bounds for interpreting regret and oracle gap. Repair claims are based on controlled improvements over raw and random selectors, not equality to oracle in every setting.

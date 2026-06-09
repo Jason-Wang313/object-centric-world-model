@@ -148,18 +148,18 @@ Strength: {
     "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
     "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
     "model_family_max_combined_oracle_gap": 0.1058960383796072,
-    "bootstrap_repair_min_ci_margin": 0.1716973318133445
+    "bootstrap_repair_min_ci_margin": 0.1690988115705207
   }
 }
 
 ## C4: strongly_supported
 A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories.
 
-Evidence: learned_object_model_summary.json, learned_metrics.csv, learned_learning_curve.csv, learned_ablation.csv, learned_domain_shift.csv, learned_selection_metrics.csv, and figure28_learned_selection_transfer.png
+Evidence: learned_object_model_summary.json, learned_metrics.csv, learned_learning_curve.csv, learned_ablation.csv, learned_domain_shift.csv, learned_selection_metrics.csv, learned_repair_policy_metrics.csv, figure28_learned_selection_transfer.png, and figure31_learned_repair_policy_transfer.png
 
 Strength: {
   "passes": true,
-  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, and the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and bootstrap lower bounds passing",
+  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.72, min variant utility >= 0.65, raw gain >= 0.55, gain over learned identity+reward >= 0.12, raw win rates passing, mean learned-identity win rate >= 0.50, oracle gap <= 0.28, train correlation >= 0.80, and bootstrap lower bounds passing",
   "observed": {
     "property_margin": 0.24583333333333335,
     "identity_alignment_margin": 0.48750000000000004,
@@ -176,7 +176,16 @@ Strength: {
     "learned_selection_identity_vs_raw_gain": 0.6583388223801652,
     "learned_selection_identity_vs_reward_gain": 0.35966428960577884,
     "learned_selection_identity_min_win_rate": 0.78125,
-    "learned_selection_bootstrap_min_ci_margin": 0.1899799847395831
+    "learned_repair_policy_mean_utility": 0.8415137654981076,
+    "learned_repair_policy_min_variant_utility": 0.8162228455914597,
+    "learned_repair_policy_vs_raw_gain": 0.8192017391308719,
+    "learned_repair_policy_vs_learned_identity_gain": 0.22101550336195816,
+    "learned_repair_policy_min_win_rate": 1.0,
+    "learned_repair_policy_mean_learned_identity_win_rate": 0.6026785714285714,
+    "learned_repair_policy_min_learned_identity_win_rate": 0.1875,
+    "learned_repair_policy_max_oracle_gap": 0.101150263658343,
+    "learned_repair_policy_train_correlation": 0.984585387941474,
+    "learned_selection_bootstrap_min_ci_margin": 0.08061652641809
   }
 }
 
@@ -195,6 +204,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 85 required artifacts.
+Artifact verification checked 89 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

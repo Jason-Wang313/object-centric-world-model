@@ -6,6 +6,7 @@ from object_centric_best_of_n.metrics import (
     deployment_policy_summary,
     domain_randomization_summary,
     extreme_object_count_summary,
+    learned_repair_policy_summary,
     learned_selection_summary,
     model_family_proxy_summary,
     negative_control_summary,
@@ -161,6 +162,43 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert learned_selection[
         learned_selection["selector"] == "learned_identity_reward"
     ]["learned_identity_vs_reward_gain_mean"].iloc[0] > 0.0
+    learned_repair_policy_df = pd.DataFrame(
+        [
+            {
+                **row,
+                "experiment": "AB_learned_repair_policy_transfer",
+                "selector": selector,
+                "selected_real_utility": utility,
+                "learned_reward_mean": 0.4,
+                "learned_identity_alignment_mean": 0.6,
+                "learned_property_confidence_mean": 0.8,
+                "learned_repair_policy_score_mean": 0.75,
+                "learned_repair_policy_train_candidates": 64,
+                "learned_repair_policy_train_mae": 0.05,
+                "learned_repair_policy_train_correlation": 0.9,
+                "suite_variant": row["scenario"],
+                "target_id": row["seed"] % 2,
+            }
+            for row in rows
+            if row["selector"] == "raw"
+            for selector, utility in [
+                ("raw", 0.2),
+                ("learned_reward", 0.42),
+                ("learned_identity_reward", 0.55),
+                ("pilot_calibrated", 0.82),
+                ("learned_repair_policy", 0.9),
+                ("observable_repair", 0.88),
+                ("combined_repair", 0.92),
+                ("random", 0.25),
+                ("oracle", 0.95),
+            ]
+        ]
+    )
+    learned_repair_policy = learned_repair_policy_summary(learned_repair_policy_df)
+    assert "learned_repair_policy_vs_raw_gain_mean" in learned_repair_policy.columns
+    assert learned_repair_policy[
+        learned_repair_policy["selector"] == "learned_repair_policy"
+    ]["learned_repair_policy_over_learned_identity_win_rate"].iloc[0] == 1.0
     synthetic_benchmark_df = pd.DataFrame(
         [
             {
@@ -297,6 +335,7 @@ def test_paired_effects_and_stress_summary_are_computed():
         noisy_probe_seed_df=noisy_df,
         probe_cost_seed_df=probe_cost_df,
         learned_selection_seed_df=learned_selection_df,
+        learned_repair_policy_seed_df=learned_repair_policy_df,
         synthetic_benchmark_seed_df=synthetic_benchmark_df,
         deployment_policy_seed_df=deployment_policy_df,
         bootstrap_reps=50,
@@ -312,6 +351,8 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "target_sweep_observable_repair_gain" in set(stats["effect_id"])
     assert "learned_selection_identity_gain" in set(stats["effect_id"])
     assert "learned_selection_identity_over_reward_gain" in set(stats["effect_id"])
+    assert "learned_repair_policy_gain" in set(stats["effect_id"])
+    assert "learned_repair_policy_over_learned_identity_gain" in set(stats["effect_id"])
     assert "synthetic_benchmark_combined_repair_gain" in set(stats["effect_id"])
     assert "synthetic_benchmark_observable_repair_gain" in set(stats["effect_id"])
     assert "deployment_policy_gate_gain" in set(stats["effect_id"])

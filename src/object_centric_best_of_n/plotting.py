@@ -651,6 +651,50 @@ def figure30_deployment_gate_policy(deployment_policy: pd.DataFrame, out: Path) 
     _save(fig, out / "figure30_deployment_gate_policy.png")
 
 
+def figure31_learned_repair_policy_transfer(learned_repair_policy: pd.DataFrame, out: Path) -> None:
+    if learned_repair_policy.empty:
+        return
+    selectors = [
+        "raw",
+        "learned_identity_reward",
+        "pilot_calibrated",
+        "learned_repair_policy",
+        "observable_repair",
+        "combined_repair",
+        "oracle",
+    ]
+    df = learned_repair_policy[
+        (learned_repair_policy["selector"].isin(selectors))
+        & (learned_repair_policy["N"] == learned_repair_policy["N"].max())
+    ]
+    if df.empty:
+        return
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(10.2, 5.0))
+    pivot.plot(
+        kind="bar",
+        ax=ax,
+        color=["#b23b3b", "#d1963a", "#7b6ca8", "#3c7c5a", "#6f8f3c", "#2f8068", "#2f6f9f"],
+    )
+    ax.set_xlabel("held-out synthetic benchmark variant")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Learned repair-policy transfer")
+    ax.set_ylim(0.0, 1.02)
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(
+        ["raw", "learned identity+reward", "pilot calibrated", "learned repair policy", "observable repair", "combined repair", "oracle"],
+        frameon=False,
+        fontsize=8,
+        ncol=2,
+    )
+    _save(fig, out / "figure31_learned_repair_policy_transfer.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -679,6 +723,7 @@ def write_all_figures(
     probe_cost_df: pd.DataFrame | None = None,
     learned_domain_shift_df: pd.DataFrame | None = None,
     learned_selection_df: pd.DataFrame | None = None,
+    learned_repair_policy_df: pd.DataFrame | None = None,
     synthetic_benchmark_df: pd.DataFrame | None = None,
     deployment_policy_df: pd.DataFrame | None = None,
 ) -> None:
@@ -734,6 +779,8 @@ def write_all_figures(
         figure27_target_identity_sweep(target_sweep_df, out)
     if learned_selection_df is not None:
         figure28_learned_selection_transfer(learned_selection_df, out)
+    if learned_repair_policy_df is not None:
+        figure31_learned_repair_policy_transfer(learned_repair_policy_df, out)
     if synthetic_benchmark_df is not None:
         figure29_synthetic_benchmark_suite(synthetic_benchmark_df, out)
     if deployment_policy_df is not None:

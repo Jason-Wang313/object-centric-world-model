@@ -23,6 +23,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
 - Held-out learned domain-shift checks for dense, occluded, crossing, and mixed object-count synthetic variants.
 - Learned selection transfer, where the CPU NumPy reward and identity-alignment heads score held-out candidate futures.
+- Learned repair-policy transfer, where observable diagnostics plus CPU learned heads train a small repair selector and test it on held-out synthetic benchmark variants.
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
@@ -41,7 +42,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
 - Diagnostic probe-cost sensitivity, reporting net utility after charging probe actions.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, synthetic task-suite, deployment-gate policy, counterfactual target, target-identity sweep, learned selection transfer, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, synthetic task-suite, deployment-gate policy, counterfactual target, target-identity sweep, learned selection transfer, learned repair-policy transfer, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -57,6 +58,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_domain_shift.csv`
 - `results/tables/learned_selection_seed_metrics.csv`
 - `results/tables/learned_selection_metrics.csv`
+- `results/tables/learned_repair_policy_seed_metrics.csv`
+- `results/tables/learned_repair_policy_metrics.csv`
 - `results/tables/synthetic_benchmark_seed_metrics.csv`
 - `results/tables/synthetic_benchmark_metrics.csv`
 - `results/tables/deployment_policy_seed_metrics.csv`
@@ -101,6 +104,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_learning_curve.csv`
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
+- `results/learned_repair_policy_summary.json`
 - `results/pilot_calibration_summary.json`
 - `results/pilot_budget_summary.json`
 - `results/leave_one_failure_summary.json`
@@ -137,6 +141,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure28_learned_selection_transfer.png`
 - `figures/figure29_synthetic_benchmark_suite.png`
 - `figures/figure30_deployment_gate_policy.png`
+- `figures/figure31_learned_repair_policy_transfer.png`
 
 ## Claim Boundaries
 

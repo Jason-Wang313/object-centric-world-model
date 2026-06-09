@@ -776,6 +776,97 @@ def learned_selection_summary(learned_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def learned_repair_policy_summary(policy_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate learned repair-policy transfer rows."""
+
+    if policy_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(policy_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        learned_identity = group[group["selector"] == "learned_identity_reward"]
+        pilot = group[group["selector"] == "pilot_calibrated"]
+        policy = group[group["selector"] == "learned_repair_policy"]
+        observable = group[group["selector"] == "observable_repair"]
+        combined = group[group["selector"] == "combined_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        identity_utility = (
+            float(learned_identity["selected_real_utility_mean"].iloc[0])
+            if not learned_identity.empty
+            else float("nan")
+        )
+        pilot_utility = float(pilot["selected_real_utility_mean"].iloc[0]) if not pilot.empty else float("nan")
+        policy_utility = float(policy["selected_real_utility_mean"].iloc[0]) if not policy.empty else float("nan")
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        seed_group = policy_seed_df[
+            (policy_seed_df["scenario"] == group["scenario"].iloc[0])
+            & (policy_seed_df["N"] == group["N"].iloc[0])
+        ]
+        raw_seed = seed_group[seed_group["selector"] == "raw"][["seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "raw"}
+        )
+        identity_seed = seed_group[seed_group["selector"] == "learned_identity_reward"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "identity"})
+        pilot_seed = seed_group[seed_group["selector"] == "pilot_calibrated"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "pilot"})
+        policy_seed = seed_group[seed_group["selector"] == "learned_repair_policy"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "policy"})
+        raw_pair = policy_seed.merge(raw_seed, on="seed", how="inner")
+        identity_pair = policy_seed.merge(identity_seed, on="seed", how="inner")
+        pilot_pair = policy_seed.merge(pilot_seed, on="seed", how="inner")
+        raw_gains = raw_pair["policy"] - raw_pair["raw"] if not raw_pair.empty else pd.Series(dtype=float)
+        identity_gains = (
+            identity_pair["policy"] - identity_pair["identity"] if not identity_pair.empty else pd.Series(dtype=float)
+        )
+        pilot_gains = pilot_pair["policy"] - pilot_pair["pilot"] if not pilot_pair.empty else pd.Series(dtype=float)
+        for _, row in group.iterrows():
+            selector_seed = seed_group[seed_group["selector"] == row["selector"]]
+            out = row.copy()
+            out["suite_variant"] = row["scenario"]
+            out["learned_repair_policy_vs_raw_gain_mean"] = policy_utility - raw_utility
+            out["learned_repair_policy_vs_learned_identity_gain_mean"] = policy_utility - identity_utility
+            out["learned_repair_policy_vs_pilot_gain_mean"] = policy_utility - pilot_utility
+            out["learned_repair_policy_observable_gap_mean"] = observable_utility - policy_utility
+            out["learned_repair_policy_combined_gap_mean"] = combined_utility - policy_utility
+            out["learned_repair_policy_oracle_gap_mean"] = oracle_utility - policy_utility
+            out["learned_repair_policy_win_rate"] = (
+                float(np.mean(raw_gains > 1e-12)) if len(raw_gains) else float("nan")
+            )
+            out["learned_repair_policy_over_learned_identity_win_rate"] = (
+                float(np.mean(identity_gains > 1e-12)) if len(identity_gains) else float("nan")
+            )
+            out["learned_repair_policy_over_pilot_win_rate"] = (
+                float(np.mean(pilot_gains > 1e-12)) if len(pilot_gains) else float("nan")
+            )
+            if not selector_seed.empty and "learned_repair_policy_train_correlation" in selector_seed:
+                out["learned_repair_policy_train_correlation_mean"] = float(
+                    selector_seed["learned_repair_policy_train_correlation"].mean()
+                )
+                out["learned_repair_policy_train_mae_mean"] = float(
+                    selector_seed["learned_repair_policy_train_mae"].mean()
+                )
+                out["learned_repair_policy_train_candidates_mean"] = float(
+                    selector_seed["learned_repair_policy_train_candidates"].mean()
+                )
+            else:
+                out["learned_repair_policy_train_correlation_mean"] = float("nan")
+                out["learned_repair_policy_train_mae_mean"] = float("nan")
+                out["learned_repair_policy_train_candidates_mean"] = float("nan")
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def synthetic_benchmark_summary(benchmark_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate the benchmark-style controlled synthetic task suite."""
 
@@ -1224,6 +1315,7 @@ def statistical_audit(
     noisy_probe_seed_df: pd.DataFrame | None = None,
     probe_cost_seed_df: pd.DataFrame | None = None,
     learned_selection_seed_df: pd.DataFrame | None = None,
+    learned_repair_policy_seed_df: pd.DataFrame | None = None,
     synthetic_benchmark_seed_df: pd.DataFrame | None = None,
     deployment_policy_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
@@ -1561,6 +1653,37 @@ def statistical_audit(
             "Learned identity+reward selector selected-utility gain over learned reward-only selector.",
             identity_merged["learned"] - identity_merged["reward"],
             threshold=0.12,
+        )
+
+    if learned_repair_policy_seed_df is not None and not learned_repair_policy_seed_df.empty:
+        n_max = int(learned_repair_policy_seed_df["N"].max())
+        base = learned_repair_policy_seed_df[
+            (learned_repair_policy_seed_df["selector"] == "raw")
+            & (learned_repair_policy_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "baseline"})
+        learned_identity = learned_repair_policy_seed_df[
+            (learned_repair_policy_seed_df["selector"] == "learned_identity_reward")
+            & (learned_repair_policy_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "learned_identity"}
+        )
+        policy = learned_repair_policy_seed_df[
+            (learned_repair_policy_seed_df["selector"] == "learned_repair_policy")
+            & (learned_repair_policy_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "policy"})
+        raw_merged = policy.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "learned_repair_policy_gain",
+            "Learned repair-policy selected-utility gain over raw on benchmark-style held-out variants.",
+            raw_merged["policy"] - raw_merged["baseline"],
+            threshold=0.50,
+        )
+        identity_merged = policy.merge(learned_identity, on=["scenario", "seed"], how="inner")
+        add_row(
+            "learned_repair_policy_over_learned_identity_gain",
+            "Learned repair-policy selected-utility gain over the learned identity+reward selector.",
+            identity_merged["policy"] - identity_merged["learned_identity"],
+            threshold=0.10,
         )
 
     if synthetic_benchmark_seed_df is not None and not synthetic_benchmark_seed_df.empty:
