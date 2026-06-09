@@ -366,6 +366,27 @@ def figure19_counterfactual_target(counterfactual: pd.DataFrame, out: Path) -> N
     _save(fig, out / "figure19_counterfactual_target.png")
 
 
+def figure20_pilot_calibration(pilot: pd.DataFrame, out: Path) -> None:
+    if pilot.empty:
+        return
+    selectors = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "oracle"]
+    df = pilot[(pilot["selector"].isin(selectors)) & (pilot["N"] == pilot["N"].max())]
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.0, 4.6))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#4d8f9f", "#6f8f3c", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("held-out pilot-label evaluation")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Pilot-label calibrated selector")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure20_pilot_calibration.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -385,6 +406,7 @@ def write_all_figures(
     observable_df: pd.DataFrame | None = None,
     domain_df: pd.DataFrame | None = None,
     counterfactual_df: pd.DataFrame | None = None,
+    pilot_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -420,3 +442,5 @@ def write_all_figures(
         figure18_domain_randomization(domain_df, out)
     if counterfactual_df is not None:
         figure19_counterfactual_target(counterfactual_df, out)
+    if pilot_df is not None:
+        figure20_pilot_calibration(pilot_df, out)

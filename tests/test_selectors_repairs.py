@@ -4,6 +4,9 @@ from object_centric_best_of_n.repair import (
     GATE_ACTIONS,
     brute_force_slot_alignment,
     conservative_selected_tail_stop_rule,
+    fit_pilot_calibrator,
+    pilot_calibrated_score,
+    pilot_calibration_features,
     property_posterior_update,
     targeted_diagnostic_probe,
 )
@@ -45,3 +48,12 @@ def test_deployment_gate_vocabulary():
     )
     assert action in GATE_ACTIONS
     assert action == "block_high_n"
+
+
+def test_pilot_calibrator_scores_candidates_from_named_features():
+    _, candidates = _candidates()
+    calibrator = fit_pilot_calibrator(candidates, ridge=1e-3)
+    score = pilot_calibrated_score(candidates[0], calibrator)
+    assert len(calibrator["feature_names"]) == len(pilot_calibration_features(candidates[0]))
+    assert 0.0 <= score <= 1.0
+    assert calibrator["n_train_candidates"] == len(candidates)

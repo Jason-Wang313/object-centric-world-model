@@ -20,6 +20,21 @@ GATE_ACTIONS = {
     "block_high_n",
 }
 
+PILOT_CALIBRATION_FEATURES = (
+    "raw_object_score",
+    "identity_consistency",
+    "slot_support",
+    "target_slot_confidence",
+    "predicted_target_matches_query",
+    "one_minus_identity_instability",
+    "one_minus_merge_evidence",
+    "one_minus_property_entropy",
+    "one_minus_property_surprise",
+    "hidden_mass_estimate",
+    "property_prior_heavy",
+    "slot_count_scaled",
+)
+
 
 def temporal_identity_consistency(candidate: Candidate) -> float:
     """Score whether the candidate maintains one target identity over time."""
@@ -28,6 +43,85 @@ def temporal_identity_consistency(candidate: Candidate) -> float:
     slot_support = float(candidate.diagnostics.get("slot_support", 0.5))
     merge_evidence = float(candidate.diagnostics.get("merge_evidence", 0.5))
     return float(np.clip(0.62 * (1.0 - instability) + 0.28 * slot_support + 0.10 * (1.0 - merge_evidence), 0.0, 1.0))
+
+
+def pilot_calibration_features(candidate: Candidate) -> np.ndarray:
+    """Observable candidate features used by the pilot-label calibrator."""
+
+    target_confidences = [
+        float(slot.confidence)
+        for slot in candidate.slots
+        if slot.predicted_obj_id == candidate.target_id and not slot.merged_ids
+    ]
+    target_slot_confidence = max(target_confidences) if target_confidences else 0.0
+    identity_instability = float(candidate.diagnostics.get("identity_instability", 0.5))
+    merge_evidence = float(candidate.diagnostics.get("merge_evidence", 0.5))
+    property_surprise = float(candidate.diagnostics.get("property_surprise", candidate.property_entropy))
+    slot_support = float(candidate.diagnostics.get("slot_support", 0.5))
+    return np.asarray(
+        [
+            float(candidate.score),
+            temporal_identity_consistency(candidate),
+            slot_support,
+            target_slot_confidence,
+            float(candidate.predicted_target_id == candidate.target_id),
+            1.0 - identity_instability,
+            1.0 - merge_evidence,
+            1.0 - float(candidate.property_entropy),
+            1.0 - property_surprise,
+            float(candidate.hidden_property_estimate),
+            property_prior_from_candidate(candidate),
+            min(1.0, len(candidate.slots) / 8.0),
+        ],
+        dtype=float,
+    )
+
+
+def fit_pilot_calibrator(
+    candidates: Iterable[Candidate],
+    ridge: float = 1e-3,
+) -> dict[str, object]:
+    """Fit a tiny ridge utility calibrator from pilot-labeled candidates."""
+
+    candidate_list = list(candidates)
+    if not candidate_list:
+        raise ValueError("pilot candidates must be non-empty")
+    x = np.vstack([pilot_calibration_features(candidate) for candidate in candidate_list])
+    y = np.asarray([candidate.real_utility for candidate in candidate_list], dtype=float)
+    feature_mean = np.mean(x, axis=0)
+    feature_scale = np.std(x, axis=0)
+    feature_scale = np.where(feature_scale < 1e-8, 1.0, feature_scale)
+    z = (x - feature_mean) / feature_scale
+    design = np.column_stack([np.ones(z.shape[0]), z])
+    penalty = np.eye(design.shape[1]) * float(ridge)
+    penalty[0, 0] = 0.0
+    weights = np.linalg.solve(design.T @ design + penalty, design.T @ y)
+    train_pred = np.clip(design @ weights, 0.0, 1.0)
+    train_corr = 0.0
+    if np.std(train_pred) > 1e-12 and np.std(y) > 1e-12:
+        train_corr = float(np.corrcoef(train_pred, y)[0, 1])
+    return {
+        "feature_names": list(PILOT_CALIBRATION_FEATURES),
+        "feature_mean": feature_mean.tolist(),
+        "feature_scale": feature_scale.tolist(),
+        "weights": weights.tolist(),
+        "ridge": float(ridge),
+        "n_train_candidates": int(len(candidate_list)),
+        "train_mae": float(np.mean(np.abs(train_pred - y))),
+        "train_correlation": train_corr,
+    }
+
+
+def pilot_calibrated_score(candidate: Candidate, calibrator: dict[str, object]) -> float:
+    """Predict real utility from pilot-calibrated observable features."""
+
+    weights = np.asarray(calibrator["weights"], dtype=float)
+    feature_mean = np.asarray(calibrator["feature_mean"], dtype=float)
+    feature_scale = np.asarray(calibrator["feature_scale"], dtype=float)
+    x = pilot_calibration_features(candidate)
+    z = (x - feature_mean) / feature_scale
+    score = float(weights[0] + np.dot(weights[1:], z))
+    return float(np.clip(score, 0.0, 1.0))
 
 
 def brute_force_slot_alignment(

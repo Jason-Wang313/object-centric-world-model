@@ -569,6 +569,45 @@ def counterfactual_target_summary(counter_seed_df: pd.DataFrame) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
+def pilot_calibration_summary(pilot_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate held-out pilot-label calibration rows."""
+
+    if pilot_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(pilot_seed_df)
+    paired = paired_selector_effects(pilot_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        pilot = group[group["selector"] == "pilot_calibrated"]
+        observable = group[group["selector"] == "observable_repair"]
+        combined = group[group["selector"] == "combined_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        pilot_utility = float(pilot["selected_real_utility_mean"].iloc[0]) if not pilot.empty else float("nan")
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        pilot_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "pilot_calibrated")
+        ]
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["pilot_vs_raw_gain_mean"] = pilot_utility - raw_utility
+            out["pilot_vs_observable_gain_mean"] = pilot_utility - observable_utility
+            out["pilot_vs_combined_gap_mean"] = combined_utility - pilot_utility
+            out["pilot_oracle_gap_mean"] = oracle_utility - pilot_utility
+            out["pilot_win_rate"] = float(pilot_pair["win_rate"].iloc[0]) if not pilot_pair.empty else float("nan")
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate toy model-family proxy selectors against combined repair.
 
@@ -609,6 +648,7 @@ def statistical_audit(
     ood_seed_df: pd.DataFrame | None = None,
     family_seed_df: pd.DataFrame | None = None,
     counterfactual_seed_df: pd.DataFrame | None = None,
+    pilot_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -762,6 +802,22 @@ def statistical_audit(
             "counterfactual_observable_repair_gain",
             "Retargeted true-object stress observable-only repair selected-utility gain over raw.",
             observable_merged["observable"] - observable_merged["baseline"],
+            threshold=0.45,
+        )
+
+    if pilot_seed_df is not None and not pilot_seed_df.empty:
+        n_max = int(pilot_seed_df["N"].max())
+        base = pilot_seed_df[(pilot_seed_df["selector"] == "raw") & (pilot_seed_df["N"] == n_max)][
+            ["scenario", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "baseline"})
+        pilot = pilot_seed_df[
+            (pilot_seed_df["selector"] == "pilot_calibrated") & (pilot_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "pilot"})
+        merged = pilot.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "pilot_calibrated_repair_gain",
+            "Held-out pilot-label calibrated selector selected-utility gain over raw.",
+            merged["pilot"] - merged["baseline"],
             threshold=0.45,
         )
 

@@ -12,6 +12,10 @@ Response: Correct. Claims are limited to controlled synthetic and semi-learned C
 
 Response: Correct for the strongest controlled stack: it uses diagnostic signals such as identity instability, merge evidence, property entropy, and targeted probe observations. The upgraded run also reports `observable_repair_metrics.csv`, where an observable-only repair score uses slot diagnostics and probe posterior information without comparing to the scene's true hidden property. This is still a synthetic mechanism study, not a deployment claim.
 
+## Attack: The deployment gate says to collect pilot labels, but labels are not tested.
+
+Response: `pilot_calibration_metrics.csv` evaluates a held-out selector trained from pilot-labeled candidates using observable object features. The train seeds are separate from the held-out raw, randomized-domain, and target-swap evaluation seeds; the audit requires calibrated selected utility, paired raw gain, win rate, oracle gap, and bootstrap lower-bound checks before counting the evidence.
+
 ## Attack: The repair result could be a seed fluke.
 
 Response: The upgraded run reports paired per-seed gains in `paired_effects.csv`, nonparametric bootstrap intervals in `statistical_audit.csv`, repair ablations in `repair_ablation.csv`, seed-block robustness in `seed_block_robustness.csv`, and a separate high-N stress panel in `stress_metrics.csv`. The claim audit requires positive paired raw-to-repair gain, high win rate, targeted hidden-property gain, ablation dominance, seed-block robustness, bootstrap lower-bound checks, and stress utility before marking the repair claim strongly supported.

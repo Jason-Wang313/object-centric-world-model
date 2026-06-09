@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 32.343s; strict claim audit passed; counterfactual target-swap raw utility 0.0 and combined utility 0.8515667335888697)
-- bash scripts/run_all.sh: pass (full experiment runtime 152.982s; 16 main seeds, 48 domain-randomized seeds, 48 counterfactual target seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, bootstrap statistical audit, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, domain-randomization checks, counterfactual target-swap checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
-- pytest: pass (15 passed in 14.36s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 42.704s; strict claim audit passed; pilot-calibrated held-out gain 0.8320271408001559)
+- bash scripts/run_all.sh: pass (full experiment runtime 200.884s; 16 main seeds, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 pilot calibration eval seeds, 864 pilot calibration rows, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, bootstrap statistical audit, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, domain-randomization checks, counterfactual target-swap checks, pilot-calibration checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
+- pytest: pass (16 passed in 13.33s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -23,6 +23,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. Dense corrupted OOD combined-vs-raw gain 0.8411636120707556.
 - Domain-randomized artifact: figure18_domain_randomization.png and domain_randomization_metrics.csv. Combined-vs-raw gain 0.8343878574844603.
 - Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. Combined-vs-raw gain 0.816906396281512.
+- Pilot-label calibration artifact: figure20_pilot_calibration.png, pilot_calibration_metrics.csv, and pilot_calibration_summary.json. Held-out calibrated-vs-raw gain 0.8192029444060406.
 - Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. Combined-vs-best-proxy gain 0.5504614056934154.
 - Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. Minimum bootstrap CI margin 0.08294730684862575.
 
@@ -31,8 +32,8 @@ The repo reuses the finite Best-of-N law pattern only. It changes the scientific
 The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.
 
 ## Remaining Weaknesses
-- Synthetic scenes remain controlled, though the default run now uses 16 main seeds, 32 stress seeds, and held-out domain-randomized synthetic stress.
-- Observable-only repair reduces direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.
+- Synthetic scenes remain controlled, though the default run now uses 16 main seeds, 32 stress seeds, held-out domain-randomized stress, and held-out pilot-label calibration.
+- Observable-only and pilot-calibrated repair reduce direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.
 - No real-robot or broad benchmark evidence is claimed.
 
 ## Artifact Inventory
@@ -53,6 +54,8 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\ood_metrics.csv
 - results\tables\ood_seed_metrics.csv
 - results\tables\paired_effects.csv
+- results\tables\pilot_calibration_metrics.csv
+- results\tables\pilot_calibration_seed_metrics.csv
 - results\tables\repair_ablation.csv
 - results\tables\repair_metrics.csv
 - results\tables\score_calibration.csv
@@ -76,6 +79,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure18_domain_randomization.png
 - figures\figure19_counterfactual_target.png
 - figures\figure1_selected_tail_binding_failure.png
+- figures\figure20_pilot_calibration.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png
 - figures\figure4_targeted_probe_before_after.png
@@ -104,5 +108,6 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 ### json
 - results/run_summary.json
 - results/learned_object_model_summary.json
+- results/pilot_calibration_summary.json
 - results/claims_status.json
 - results/verification_log.json

@@ -9,6 +9,7 @@ from object_centric_best_of_n.metrics import (
     observable_repair_summary,
     ood_summary,
     paired_selector_effects,
+    pilot_calibration_summary,
     repair_ablation_summary,
     score_calibration_table,
     seed_block_robustness,
@@ -45,6 +46,7 @@ def test_paired_effects_and_stress_summary_are_computed():
         rows.append({**rows[-1], "selector": "identity_consistent", "selected_real_utility": 0.6, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "combined_repair", "selected_real_utility": 0.9, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "observable_repair", "selected_real_utility": 0.85, "identity_error": 0.0})
+        rows.append({**rows[-1], "selector": "pilot_calibrated", "selected_real_utility": 0.82, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "oracle", "selected_real_utility": 0.95, "identity_error": 0.0})
     df = pd.DataFrame(rows)
     paired = paired_selector_effects(df)
@@ -91,6 +93,9 @@ def test_paired_effects_and_stress_summary_are_computed():
     counter = counterfactual_target_summary(df)
     assert "counterfactual_combined_vs_raw_gain_mean" in counter.columns
     assert counter[counter["selector"] == "combined_repair"]["counterfactual_combined_win_rate"].iloc[0] == 1.0
+    pilot = pilot_calibration_summary(df)
+    assert "pilot_vs_raw_gain_mean" in pilot.columns
+    assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0
     family = model_family_proxy_summary(
         pd.DataFrame(
             rows
@@ -115,7 +120,9 @@ def test_paired_effects_and_stress_summary_are_computed():
                 {**rows[0], "selector": "diffusion_score_proxy", "selected_real_utility": 0.25},
             ]
         ),
+        pilot_seed_df=df,
         bootstrap_reps=50,
     )
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
     assert "combined_repair_raw_gain" in set(stats["effect_id"])
+    assert "pilot_calibrated_repair_gain" in set(stats["effect_id"])

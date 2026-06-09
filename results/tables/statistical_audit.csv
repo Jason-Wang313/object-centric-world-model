@@ -9,3 +9,4 @@ ood_observable_repair_gain,Dense OOD corrupted-scene observable-only repair sele
 model_family_proxy_gain,Combined repair selected-utility gain over the best toy model-family proxy.,0.5457898784677047,0.48119565049537,0.6116788406841736,0.2,lower,80,True
 counterfactual_combined_repair_gain,Retargeted true-object stress combined repair selected-utility gain over raw.,0.816906396281512,0.8033821352295935,0.8300710841816604,0.5,lower,48,True
 counterfactual_observable_repair_gain,Retargeted true-object stress observable-only repair selected-utility gain over raw.,0.8118514080123783,0.7965755161921603,0.8267299680444506,0.45,lower,48,True
+pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8050928891106796,0.8318752871321331,0.45,lower,144,True

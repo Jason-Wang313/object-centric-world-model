@@ -44,11 +44,11 @@ Strength: {
 ## C3: strongly_supported
 Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.
 
-Evidence: figure2, figure4, figure19, paired_effects.csv, stress_metrics.csv, and counterfactual_target_metrics.csv
+Evidence: figure2, figure4, figure19, figure20, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, and pilot_calibration_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
   "observed": {
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
@@ -80,6 +80,12 @@ Strength: {
     "counterfactual_combined_vs_raw_gain": 0.816906396281512,
     "counterfactual_observable_vs_raw_gain": 0.8118514080123783,
     "counterfactual_combined_win_rate": 1.0,
+    "pilot_calibrated_mean_utility": 0.827787343785161,
+    "pilot_calibrated_min_utility": 0.7851225988354029,
+    "pilot_calibrated_vs_raw_gain": 0.8192029444060406,
+    "pilot_calibrated_min_win_rate": 1.0,
+    "pilot_calibrated_max_oracle_gap": 0.1327885883263263,
+    "pilot_train_correlation": 0.983367982746434,
     "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
     "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
     "model_family_max_combined_oracle_gap": 0.1058960383796072,
@@ -120,6 +126,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 50 required artifacts.
+Artifact verification checked 54 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

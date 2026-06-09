@@ -27,6 +27,7 @@ from object_centric_best_of_n.metrics import (
     observable_repair_summary,
     ood_summary,
     paired_selector_effects,
+    pilot_calibration_summary,
     repair_ablation_summary,
     score_calibration_table,
     selection_record,
@@ -37,7 +38,7 @@ from object_centric_best_of_n.metrics import (
 )
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
 from object_centric_best_of_n.plotting import write_all_figures
-from object_centric_best_of_n.repair import combined_repair_score
+from object_centric_best_of_n.repair import combined_repair_score, fit_pilot_calibrator, pilot_calibrated_score
 from object_centric_best_of_n.selection import SELECTORS
 from object_centric_best_of_n.theory import law_validation_row
 
@@ -74,6 +75,7 @@ MODEL_FAMILY_SELECTORS = [
 ]
 DOMAIN_RANDOMIZATION_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 COUNTERFACTUAL_TARGET_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
+PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -117,6 +119,14 @@ def _choose_by_scores(candidates, scores: np.ndarray, seed: int):
     tied = np.flatnonzero(np.isclose(scores, max_score))
     rng = np.random.default_rng(seed)
     return candidates[int(rng.choice(tied))]
+
+
+def _select_by_scores_with_label(candidates, scores: np.ndarray, seed: int, label: str):
+    max_score = float(np.max(scores))
+    tied = np.flatnonzero(np.isclose(scores, max_score))
+    rng = np.random.default_rng(seed)
+    chosen = candidates[int(rng.choice(tied))]
+    return chosen.with_score(max_score, label)
 
 
 def _diagnostic(candidate, name: str, default: float = 0.0) -> float:
@@ -374,6 +384,108 @@ def _run_counterfactual_target_panel(
     return pd.DataFrame(rows)
 
 
+def _pilot_training_candidates(
+    generator: ObjectCentricFutureGenerator,
+    train_seeds: list[int],
+    n: int,
+) -> list:
+    candidates = []
+    for seed in train_seeds:
+        for scenario in STRESS_SCENARIOS:
+            scene = _scene_for_scenario(300_000 + seed, scenario)
+            candidates.extend(
+                generator.generate_candidates(
+                    scene,
+                    n=n,
+                    scenario=scenario,
+                    seed=331_777 + seed * 997 + len(scenario),
+                )
+            )
+    return candidates
+
+
+def _run_pilot_calibration_panel(
+    generator: ObjectCentricFutureGenerator,
+    train_seeds: list[int],
+    eval_seeds: list[int],
+    n: int,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    train_candidates = _pilot_training_candidates(generator, train_seeds=train_seeds, n=n)
+    calibrator = fit_pilot_calibrator(train_candidates, ridge=2e-3)
+    rows: list[dict[str, float | int | str]] = []
+    for seed in eval_seeds:
+        domain_scene, domain_generator_scenario, n_objects, occlusion, hidden_property, crossing = _domain_randomized_scene(
+            40_000 + seed
+        )
+        eval_specs = [
+            (
+                "raw_heldout",
+                _scene_for_scenario(340_000 + seed, "raw"),
+                "raw",
+                {"n_objects": 4, "occlusion_flag": 1, "hidden_property_flag": 1, "crossing_flag": 1},
+            ),
+            (
+                "domain_randomized_heldout",
+                domain_scene,
+                domain_generator_scenario,
+                {
+                    "n_objects": n_objects,
+                    "occlusion_flag": int(occlusion),
+                    "hidden_property_flag": int(hidden_property),
+                    "crossing_flag": int(crossing),
+                },
+            ),
+            (
+                "target_id_1_heldout",
+                retarget_scene(
+                    make_scene(
+                        seed=360_000 + seed,
+                        n_objects=4,
+                        occlusion=True,
+                        hidden_property=True,
+                        crossing=True,
+                    ),
+                    target_id=1,
+                ),
+                "raw",
+                {"n_objects": 4, "occlusion_flag": 1, "hidden_property_flag": 1, "crossing_flag": 1},
+            ),
+        ]
+        for scenario_label, scene, generator_scenario, flags in eval_specs:
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=generator_scenario,
+                seed=349_999 + seed * 881 + len(scenario_label),
+            )
+            pilot_scores = np.asarray([pilot_calibrated_score(candidate, calibrator) for candidate in candidates])
+            for selector_name in PILOT_CALIBRATION_SELECTORS:
+                if selector_name == "pilot_calibrated":
+                    selected = _select_by_scores_with_label(candidates, pilot_scores, seed=seed + n, label=selector_name)
+                else:
+                    selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                record = selection_record(
+                    "R_pilot_label_calibration",
+                    scenario_label,
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "pilot_train_candidates": int(calibrator["n_train_candidates"]),
+                        "pilot_train_mae": float(calibrator["train_mae"]),
+                        "pilot_train_correlation": float(calibrator["train_correlation"]),
+                        "generator_scenario": generator_scenario,
+                        **flags,
+                    }
+                )
+                rows.append(record)
+    return pd.DataFrame(rows), calibrator
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -451,12 +563,22 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_seeds = list(range(6)) if mode == "smoke" else list(range(48))
     counter_seed_df = _run_counterfactual_target_panel(generator, counter_seeds, n=max(ns))
     counter_metrics = counterfactual_target_summary(counter_seed_df)
+    pilot_train_seeds = list(range(4)) if mode == "smoke" else list(range(32))
+    pilot_eval_seeds = list(range(4)) if mode == "smoke" else list(range(48))
+    pilot_seed_df, pilot_calibrator = _run_pilot_calibration_panel(
+        generator,
+        train_seeds=pilot_train_seeds,
+        eval_seeds=pilot_eval_seeds,
+        n=max(ns),
+    )
+    pilot_metrics = pilot_calibration_summary(pilot_seed_df)
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
         ood_seed_df=ood_seed_df,
         family_seed_df=family_seed_df,
         counterfactual_seed_df=counter_seed_df,
+        pilot_seed_df=pilot_seed_df,
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
@@ -488,6 +610,16 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     domain_metrics.to_csv(tables / "domain_randomization_metrics.csv", index=False)
     counter_seed_df.to_csv(tables / "counterfactual_target_seed_metrics.csv", index=False)
     counter_metrics.to_csv(tables / "counterfactual_target_metrics.csv", index=False)
+    pilot_seed_df.to_csv(tables / "pilot_calibration_seed_metrics.csv", index=False)
+    pilot_metrics.to_csv(tables / "pilot_calibration_metrics.csv", index=False)
+    pilot_summary = {
+        "mode": mode,
+        "train_seeds": pilot_train_seeds,
+        "eval_seeds": pilot_eval_seeds,
+        "n_eval_rows": int(pilot_seed_df.shape[0]),
+        "calibrator": pilot_calibrator,
+    }
+    (results / "pilot_calibration_summary.json").write_text(json.dumps(pilot_summary, indent=2), encoding="utf-8")
     statistical_metrics.to_csv(tables / "statistical_audit.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
@@ -515,6 +647,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         observable_df=observable_metrics,
         domain_df=domain_metrics,
         counterfactual_df=counter_metrics,
+        pilot_df=pilot_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -568,6 +701,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_combined = counter_metrics[counter_metrics["selector"] == "combined_repair"]
     counter_observable = counter_metrics[counter_metrics["selector"] == "observable_repair"]
     counter_raw = counter_metrics[counter_metrics["selector"] == "raw"]
+    pilot_calibrated = pilot_metrics[pilot_metrics["selector"] == "pilot_calibrated"]
+    pilot_raw = pilot_metrics[pilot_metrics["selector"] == "raw"]
     statistical_pass_margin = None
     if not statistical_metrics.empty:
         statistical_pass_margin = float(
@@ -594,6 +729,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_model_family_proxy_rows": int(family_seed_df.shape[0]),
         "n_domain_randomization_rows": int(domain_seed_df.shape[0]),
         "n_counterfactual_target_rows": int(counter_seed_df.shape[0]),
+        "n_pilot_calibration_rows": int(pilot_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -637,6 +773,13 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "counterfactual_combined_vs_raw_gain": float(counter_combined["counterfactual_combined_vs_raw_gain_mean"].iloc[0]) if not counter_combined.empty else None,
         "counterfactual_observable_vs_raw_gain": float(counter_observable["counterfactual_observable_vs_raw_gain_mean"].iloc[0]) if not counter_observable.empty else None,
         "counterfactual_combined_win_rate": float(counter_combined["counterfactual_combined_win_rate"].iloc[0]) if not counter_combined.empty else None,
+        "pilot_raw_mean_utility": float(pilot_raw["selected_real_utility_mean"].mean()) if not pilot_raw.empty else None,
+        "pilot_calibrated_mean_utility": float(pilot_calibrated["selected_real_utility_mean"].mean()) if not pilot_calibrated.empty else None,
+        "pilot_calibrated_vs_raw_gain": float(pilot_calibrated["pilot_vs_raw_gain_mean"].mean()) if not pilot_calibrated.empty else None,
+        "pilot_calibrated_min_win_rate": float(pilot_calibrated["pilot_win_rate"].min()) if not pilot_calibrated.empty else None,
+        "pilot_calibrated_max_oracle_gap": float(pilot_calibrated["pilot_oracle_gap_mean"].max()) if not pilot_calibrated.empty else None,
+        "pilot_calibration_train_mae": float(pilot_calibrator["train_mae"]),
+        "pilot_calibration_train_correlation": float(pilot_calibrator["train_correlation"]),
         "statistical_audit_all_pass": bool(statistical_metrics["passes"].all()) if not statistical_metrics.empty else None,
         "statistical_audit_min_ci_margin": statistical_pass_margin,
         "learned_metrics": learned_row,
