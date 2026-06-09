@@ -55,6 +55,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/leave_one_failure_metrics.csv": ("scenario", "selector", "pilot_vs_raw_gain_mean", "pilot_win_rate"),
     "results/tables/noisy_probe_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "probe_reliability"),
     "results/tables/noisy_probe_metrics.csv": ("scenario", "selector", "probe_reliability", "noisy_probe_vs_raw_gain_mean"),
+    "results/tables/probe_cost_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "probe_cost", "gross_selected_real_utility"),
+    "results/tables/probe_cost_metrics.csv": ("scenario", "selector", "probe_cost", "probe_cost_combined_vs_raw_gain_mean"),
     "results/tables/statistical_audit.csv": ("effect_id", "estimate", "bootstrap_ci_low", "bootstrap_ci_high", "threshold", "passes"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
@@ -84,6 +86,7 @@ REQUIRED_FIGURES = (
     "figures/figure22_noisy_probe_reliability.png",
     "figures/figure23_learned_domain_shift.png",
     "figures/figure24_extreme_object_count.png",
+    "figures/figure25_probe_cost_sensitivity.png",
 )
 
 REQUIRED_JSON = (
@@ -137,6 +140,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     pilot = _read_csv(tables / "pilot_calibration_metrics.csv")
     loso = _read_csv(tables / "leave_one_failure_metrics.csv")
     noisy_probe = _read_csv(tables / "noisy_probe_metrics.csv")
+    probe_cost = _read_csv(tables / "probe_cost_metrics.csv")
     statistical = _read_csv(tables / "statistical_audit.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
     pilot_summary = _read_json(root / "results" / "pilot_calibration_summary.json")
@@ -417,6 +421,46 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(noisy_probe_repair["noisy_probe_win_rate"].min()) >= 0.85
             and float(noisy_probe_repair["noisy_probe_oracle_gap_mean"].max()) <= 0.25
         )
+        low_cost_probe = (
+            probe_cost[
+                (probe_cost["probe_cost"] <= 0.10)
+                & (probe_cost["scenario"].isin(["hidden_property", "raw"]))
+            ]
+            if not probe_cost.empty
+            else pd.DataFrame()
+        )
+        probe_cost_combined = low_cost_probe[low_cost_probe["selector"] == "combined_repair"]
+        probe_cost_observable = low_cost_probe[low_cost_probe["selector"] == "observable_repair"]
+        probe_cost_targeted = low_cost_probe[
+            (low_cost_probe["selector"] == "targeted_probe")
+            & (low_cost_probe["scenario"] == "hidden_property")
+        ]
+        high_cost_probe = (
+            probe_cost[
+                (probe_cost["probe_cost"] >= 0.20)
+                & (probe_cost["scenario"].isin(["hidden_property", "raw"]))
+            ]
+            if not probe_cost.empty
+            else pd.DataFrame()
+        )
+        high_cost_combined = high_cost_probe[high_cost_probe["selector"] == "combined_repair"]
+        high_cost_observable = high_cost_probe[high_cost_probe["selector"] == "observable_repair"]
+        probe_cost_pass = (
+            not probe_cost_combined.empty
+            and not probe_cost_observable.empty
+            and not probe_cost_targeted.empty
+            and not high_cost_combined.empty
+            and not high_cost_observable.empty
+            and float(probe_cost_combined["selected_real_utility_mean"].mean()) >= 0.72
+            and float(probe_cost_observable["selected_real_utility_mean"].mean()) >= 0.70
+            and float(probe_cost_targeted["selected_real_utility_mean"].mean()) >= 0.55
+            and float(probe_cost_combined["probe_cost_combined_vs_raw_gain_mean"].mean()) >= 0.55
+            and float(probe_cost_observable["probe_cost_observable_vs_raw_gain_mean"].mean()) >= 0.50
+            and float(probe_cost_targeted["probe_cost_targeted_vs_raw_gain_mean"].mean()) >= 0.35
+            and float(probe_cost_combined["probe_cost_combined_win_rate"].min()) >= 0.85
+            and float(high_cost_combined["probe_cost_combined_vs_raw_gain_mean"].mean()) >= 0.35
+            and float(high_cost_observable["probe_cost_observable_vs_raw_gain_mean"].mean()) >= 0.30
+        )
         family_combined = (
             family[
                 (family["selector"] == "combined_repair")
@@ -448,6 +492,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                         "pilot_calibrated_repair_gain",
                         "leave_one_failure_pilot_gain",
                         "noisy_probe_repair_gain",
+                        "probe_cost_combined_repair_gain",
+                        "probe_cost_observable_repair_gain",
+                        "probe_cost_targeted_hidden_repair_gain",
                     ]
                 )
             ]
@@ -456,8 +503,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and pilot_pass and loso_pass and noisy_probe_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and pilot_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -510,6 +557,15 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "noisy_probe_mean_reliable_gain": float(noisy_probe_repair["noisy_probe_vs_raw_gain_mean"].mean()) if not noisy_probe_repair.empty else None,
                 "noisy_probe_min_reliable_win_rate": float(noisy_probe_repair["noisy_probe_win_rate"].min()) if not noisy_probe_repair.empty else None,
                 "noisy_probe_max_reliable_oracle_gap": float(noisy_probe_repair["noisy_probe_oracle_gap_mean"].max()) if not noisy_probe_repair.empty else None,
+                "probe_cost_low_cost_combined_mean_utility": float(probe_cost_combined["selected_real_utility_mean"].mean()) if not probe_cost_combined.empty else None,
+                "probe_cost_low_cost_observable_mean_utility": float(probe_cost_observable["selected_real_utility_mean"].mean()) if not probe_cost_observable.empty else None,
+                "probe_cost_low_cost_targeted_mean_utility": float(probe_cost_targeted["selected_real_utility_mean"].mean()) if not probe_cost_targeted.empty else None,
+                "probe_cost_low_cost_combined_gain": float(probe_cost_combined["probe_cost_combined_vs_raw_gain_mean"].mean()) if not probe_cost_combined.empty else None,
+                "probe_cost_low_cost_observable_gain": float(probe_cost_observable["probe_cost_observable_vs_raw_gain_mean"].mean()) if not probe_cost_observable.empty else None,
+                "probe_cost_low_cost_targeted_gain": float(probe_cost_targeted["probe_cost_targeted_vs_raw_gain_mean"].mean()) if not probe_cost_targeted.empty else None,
+                "probe_cost_min_combined_win_rate": float(probe_cost_combined["probe_cost_combined_win_rate"].min()) if not probe_cost_combined.empty else None,
+                "probe_cost_high_cost_combined_gain": float(high_cost_combined["probe_cost_combined_vs_raw_gain_mean"].mean()) if not high_cost_combined.empty else None,
+                "probe_cost_high_cost_observable_gain": float(high_cost_observable["probe_cost_observable_vs_raw_gain_mean"].mean()) if not high_cost_observable.empty else None,
                 "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
                 "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
                 "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,
@@ -585,7 +641,7 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C3",
             "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
             "status": _status(strengths.get("C3", {}).get("passes") if root is not None else None),
-            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, and extreme_object_count_metrics.csv",
+            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
             "strength": strengths.get("C3", {}),
         },
         {
@@ -792,6 +848,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Pilot-calibrated held-out gain: {summary.get('pilot_calibrated_vs_raw_gain', 'unknown')}",
         f"- Leave-one-failure pilot gain: {summary.get('leave_one_failure_pilot_vs_raw_gain', 'unknown')}",
         f"- Noisy-probe reliable gain: {summary.get('noisy_probe_mean_reliable_gain', 'unknown')}",
+        f"- Probe-cost low-cost combined-vs-raw gain: {summary.get('probe_cost_low_cost_combined_vs_raw_gain', 'unknown')}",
+        f"- Probe-cost max-cost combined-vs-raw gain: {summary.get('probe_cost_max_cost_combined_vs_raw_gain', 'unknown')}",
         f"- Toy proxy combined-vs-best-proxy gain: {summary.get('model_family_combined_vs_best_proxy_gain', 'unknown')}",
         f"- Bootstrap audit minimum CI margin: {summary.get('statistical_audit_min_ci_margin', 'unknown')}",
         "",
@@ -974,6 +1032,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Held-out-family calibrated-vs-raw gain {summary_payload.get('leave_one_failure_pilot_vs_raw_gain', 'unknown')}.",
             "- Noisy-probe artifact: figure22_noisy_probe_reliability.png and noisy_probe_metrics.csv. "
             f"Reliable-probe gain {summary_payload.get('noisy_probe_mean_reliable_gain', 'unknown')}.",
+            "- Probe-cost artifact: figure25_probe_cost_sensitivity.png and probe_cost_metrics.csv. "
+            f"Low-cost combined-vs-raw gain {summary_payload.get('probe_cost_low_cost_combined_vs_raw_gain', 'unknown')} and max-cost gain {summary_payload.get('probe_cost_max_cost_combined_vs_raw_gain', 'unknown')}.",
             "- Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. "
             f"Combined-vs-best-proxy gain {summary_payload.get('model_family_combined_vs_best_proxy_gain', 'unknown')}.",
             "- Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. "
@@ -984,8 +1044,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",
-            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, and noisy-probe reliability stress.",
-            "- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
+            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
+            "- Observable-only, pilot-calibrated, noisy-probe, and probe-cost repair reduce direct hidden-property truth alignment and free-probe assumptions, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",
             "## Artifact Inventory",

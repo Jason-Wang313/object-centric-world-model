@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 52.369s; strict claim audit passed; extreme object-count combined-vs-raw gain 0.7403197418948154; learned shift min property margin 0.125; learned shift min identity margin 0.4421874999999999; noisy-probe reliable gain 0.8110300082552486)
-- bash scripts/run_all.sh: pass (full experiment runtime 342.967s; 16 main seeds, learned domain-shift panel with min property margin 0.125 and min identity margin 0.4458333333333333, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 pilot calibration eval seeds, 864 pilot calibration rows, 40 leave-one-failure eval seeds per held-out family, 1200 leave-one-failure rows, 48 noisy-probe reliability seeds, 1440 noisy-probe rows, 16 OOD dense-object seeds, 24 extreme object-count seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, noisy-probe reliability panel, bootstrap statistical audit, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, learned domain-shift checks, OOD checks, extreme object-count checks, domain-randomization checks, counterfactual target-swap checks, pilot-calibration checks, leave-one-failure calibration checks, noisy-probe checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
-- pytest: pass (16 passed in 10.27s on post-audit run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 52.4s; strict claim audit passed; probe-cost low-cost combined gain 0.5751833583069893; probe-cost max-cost combined gain 0.31768335830698935; extreme object-count combined-vs-raw gain 0.7403197418948154)
+- bash scripts/run_all.sh: pass (full experiment runtime 476.606s; 16 main seeds, learned domain-shift panel with min property margin 0.125 and min identity margin 0.4458333333333333, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 pilot calibration eval seeds, 864 pilot calibration rows, 40 leave-one-failure eval seeds per held-out family, 1200 leave-one-failure rows, 48 noisy-probe reliability seeds, 1440 noisy-probe rows, 48 probe-cost seeds, 3360 probe-cost rows, 16 OOD dense-object seeds, 24 extreme object-count seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, bootstrap statistical audit, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, learned domain-shift checks, OOD checks, extreme object-count checks, domain-randomization checks, counterfactual target-swap checks, pilot-calibration checks, leave-one-failure calibration checks, noisy-probe checks, probe-cost checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
+- pytest: pass (16 passed in 14.99s on post-audit full run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -28,6 +28,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Pilot-label calibration artifact: figure20_pilot_calibration.png, pilot_calibration_metrics.csv, and pilot_calibration_summary.json. Held-out calibrated-vs-raw gain 0.8192029444060406.
 - Leave-one-failure-out artifact: figure21_leave_one_failure_out.png, leave_one_failure_metrics.csv, and leave_one_failure_summary.json. Held-out-family calibrated-vs-raw gain 0.7758011252035516.
 - Noisy-probe artifact: figure22_noisy_probe_reliability.png and noisy_probe_metrics.csv. Reliable-probe gain 0.8667438725697415.
+- Probe-cost artifact: figure25_probe_cost_sensitivity.png and probe_cost_metrics.csv. Low-cost combined-vs-raw gain 0.77494187977645 and max-cost gain 0.51744187977645.
 - Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. Combined-vs-best-proxy gain 0.5504614056934154.
 - Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. Minimum bootstrap CI margin 0.08294730684862575.
 
@@ -36,8 +37,8 @@ The repo reuses the finite Best-of-N law pattern only. It changes the scientific
 The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.
 
 ## Remaining Weaknesses
-- Synthetic scenes remain controlled, though the default run now uses 16 main seeds, 32 stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, and noisy-probe reliability stress.
-- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.
+- Synthetic scenes remain controlled, though the default run now uses 16 main seeds, 32 stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.
+- Observable-only, pilot-calibrated, noisy-probe, and probe-cost repair reduce direct hidden-property truth alignment and free-probe assumptions, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.
 - No real-robot or broad benchmark evidence is claimed.
 
 ## Artifact Inventory
@@ -67,6 +68,8 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\paired_effects.csv
 - results\tables\pilot_calibration_metrics.csv
 - results\tables\pilot_calibration_seed_metrics.csv
+- results\tables\probe_cost_metrics.csv
+- results\tables\probe_cost_seed_metrics.csv
 - results\tables\repair_ablation.csv
 - results\tables\repair_metrics.csv
 - results\tables\score_calibration.csv
@@ -95,6 +98,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure22_noisy_probe_reliability.png
 - figures\figure23_learned_domain_shift.png
 - figures\figure24_extreme_object_count.png
+- figures\figure25_probe_cost_sensitivity.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png
 - figures\figure4_targeted_probe_before_after.png

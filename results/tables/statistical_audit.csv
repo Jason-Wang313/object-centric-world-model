@@ -14,3 +14,6 @@ counterfactual_observable_repair_gain,Retargeted true-object stress observable-o
 pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8043605069796411,0.8321748501809711,0.45,lower,144,True
 leave_one_failure_pilot_gain,Leave-one-failure-out pilot-calibrated selected-utility gain over raw.,0.7758011252035515,0.7588950999991306,0.7907406339300532,0.4,lower,200,True
 noisy_probe_repair_gain,Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.,0.8667438725697416,0.8608191426897072,0.8724472350882777,0.45,lower,144,True
+probe_cost_combined_repair_gain,Probe-cost-adjusted combined_repair selected-utility gain over raw for cost <= 0.10.,0.7749418797764499,0.7602642281716021,0.7879778605742244,0.5,lower,384,True
+probe_cost_observable_repair_gain,Probe-cost-adjusted observable_repair selected-utility gain over raw for cost <= 0.10.,0.7740809550049456,0.7596414555080775,0.7875675259489097,0.45,lower,384,True
+probe_cost_targeted_hidden_repair_gain,Probe-cost-adjusted targeted_probe selected-utility gain over raw for cost <= 0.10.,0.7036355640826374,0.6735614049614848,0.7310309228849972,0.35,lower,192,True

@@ -34,8 +34,9 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Held-out pilot-label calibration for a learned utility selector trained from labeled object candidates.
 - Leave-one-failure-out pilot calibration, where each binding failure family is held out during pilot-calibrator training.
 - Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
+- Diagnostic probe-cost sensitivity, reporting net utility after charging probe actions.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, counterfactual target, pilot calibration, leave-one-failure calibration, noisy-probe repair, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, counterfactual target, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -77,6 +78,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/leave_one_failure_metrics.csv`
 - `results/tables/noisy_probe_seed_metrics.csv`
 - `results/tables/noisy_probe_metrics.csv`
+- `results/tables/probe_cost_seed_metrics.csv`
+- `results/tables/probe_cost_metrics.csv`
 - `results/tables/model_family_proxy_seed_metrics.csv`
 - `results/tables/model_family_proxy_metrics.csv`
 - `results/tables/statistical_audit.csv`
@@ -112,6 +115,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure22_noisy_probe_reliability.png`
 - `figures/figure23_learned_domain_shift.png`
 - `figures/figure24_extreme_object_count.png`
+- `figures/figure25_probe_cost_sensitivity.png`
 
 ## Claim Boundaries
 

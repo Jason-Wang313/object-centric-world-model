@@ -8,6 +8,6 @@ Second, we generate controlled object-centric candidates. Each candidate contain
 
 Third, we train a small NumPy object-centric model on generated slot trajectories. It learns linear transition, hidden-property, identity-alignment, and reward predictors from slot and slot-pair features, then is checked on held-out dense, occluded, crossing, and mixed object-count synthetic variants. This is a semi-learned artifact, not a broad benchmark model.
 
-Fourth, we compare selectors: raw score, identity-consistent score, property-calibrated score, targeted-probe repair, observable-only repair, combined repair, random selection, and oracle selection.
+Fourth, we compare selectors: raw score, identity-consistent score, property-calibrated score, targeted-probe repair, observable-only repair, combined repair, random selection, and oracle selection. Probe-cost sensitivity subtracts a fixed diagnostic-action cost from probe-using selectors before reporting net selected utility.
 
 Fifth, we aggregate paired seed gains, high-N stress rows, dense OOD rows, and extreme 10/12-object rows. The claim audit requires numeric margins before marking core claims strongly supported.

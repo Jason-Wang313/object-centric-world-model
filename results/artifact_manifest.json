@@ -1,10 +1,10 @@
 {
-  "artifact_count": 66,
+  "artifact_count": 69,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 2943,
-      "sha256": "b5636a36807eda0c57467a5f89097bc19ab1ca8ad208c5815521da10fa680e90"
+      "bytes": 3067,
+      "sha256": "0e1070ed3d6b1c61a50cee057288a9972c421726f9c5c15eb0cf1a7764b95706"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -38,8 +38,8 @@
     },
     {
       "path": "figures/figure16_statistical_audit.png",
-      "bytes": 157039,
-      "sha256": "4f15ed00f5800158fcf652239885dbb0d48d2e57ce9ccb4a337ceb8c6e7729c5"
+      "bytes": 178847,
+      "sha256": "4515ca2609a108b29f5c801a4f2307f6d71d6d39418204646d1ebc69e78f2e68"
     },
     {
       "path": "figures/figure17_observable_repair.png",
@@ -85,6 +85,11 @@
       "path": "figures/figure24_extreme_object_count.png",
       "bytes": 59328,
       "sha256": "e22c5188979656ea408d667249b4811e9c67e5e9fad5623ebb19124711a2786c"
+    },
+    {
+      "path": "figures/figure25_probe_cost_sensitivity.png",
+      "bytes": 79903,
+      "sha256": "96ae9734c9fdb2333117c5f28641904a6d887da2fe4e4930136648c2ea8be542"
     },
     {
       "path": "figures/figure2_repair_comparison.png",
@@ -143,8 +148,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 5569,
-      "sha256": "b68a5be686ff28a6b61fe0629649b0af8f465a65b0efab05ec0779b67b22d9a8"
+      "bytes": 6066,
+      "sha256": "12f0503bcf7974caba2106d6b0f68087786c790ec545d6324f0326c72e40472d"
     },
     {
       "path": "results/tables/counterfactual_target_metrics.csv",
@@ -272,6 +277,16 @@
       "sha256": "076ce8bce48c0205e47498847cf6deaeadafe6053c1194986e57f68d23de9f86"
     },
     {
+      "path": "results/tables/probe_cost_metrics.csv",
+      "bytes": 55001,
+      "sha256": "10ea4e3ea78f025f1a11135d29676a7a2da59b120bb5f8dc18aa462ceb65491a"
+    },
+    {
+      "path": "results/tables/probe_cost_seed_metrics.csv",
+      "bytes": 953336,
+      "sha256": "664eda9c2915978d3e618e810374ba414b846ba1c94c71363c08f5e3bba25c7f"
+    },
+    {
       "path": "results/tables/repair_ablation.csv",
       "bytes": 1055,
       "sha256": "4c5752e74aa1b37496ee04d6d91ae175f3e33bd996ae22bda0fd0224c8a8e39e"
@@ -313,8 +328,8 @@
     },
     {
       "path": "results/tables/statistical_audit.csv",
-      "bytes": 2781,
-      "sha256": "04eda7f66035dab6a8fd7805024d95ac9275c2ebcb448b8301ffe4a8a8d4a584"
+      "bytes": 3375,
+      "sha256": "6afb3aeaed5ec99227a16dd09e7c52b27a75e187bf6e57631ab089616f93c099"
     },
     {
       "path": "results/tables/stress_metrics.csv",
@@ -328,8 +343,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 1498,
-      "sha256": "cd1998283de1b405f9ccb0824e9ecef3de22b54673b9e03c670b553075c1d0a7"
+      "bytes": 1475,
+      "sha256": "67bb61b5043434caa31155512e6c20616747e5b842879d6af40fd5dfb7aa22be"
     }
   ]
 }

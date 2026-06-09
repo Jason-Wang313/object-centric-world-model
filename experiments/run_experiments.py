@@ -30,6 +30,7 @@ from object_centric_best_of_n.metrics import (
     paired_selector_effects,
     pilot_calibration_summary,
     noisy_probe_summary,
+    probe_cost_summary,
     repair_ablation_summary,
     score_calibration_table,
     selection_record,
@@ -94,6 +95,10 @@ COUNTERFACTUAL_TARGET_SELECTORS = ["raw", "observable_repair", "combined_repair"
 PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
 NOISY_PROBE_RELIABILITIES = [0.55, 0.65, 0.75, 0.85, 0.90]
 NOISY_PROBE_SELECTORS = ["raw", "noisy_probe_repair", "observable_repair", "combined_repair", "random", "oracle"]
+PROBE_COSTS = [0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.30]
+PROBE_COST_SCENARIOS = ["hidden_property", "raw"]
+PROBE_COST_SELECTORS = ["raw", "targeted_probe", "observable_repair", "combined_repair", "oracle"]
+PROBE_USING_SELECTORS = {"targeted_probe", "observable_repair", "combined_repair"}
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -693,6 +698,55 @@ def _run_noisy_probe_panel(
     return pd.DataFrame(rows)
 
 
+def _run_probe_cost_panel(
+    generator: ObjectCentricFutureGenerator,
+    probe_cost_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in probe_cost_seeds:
+        for scenario in PROBE_COST_SCENARIOS:
+            scene = _scene_for_scenario(510_000 + seed, scenario)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=scenario,
+                seed=509_003 + seed * 991 + len(scenario),
+            )
+            selected_by_selector = {
+                selector_name: SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                for selector_name in PROBE_COST_SELECTORS
+            }
+            for probe_cost in PROBE_COSTS:
+                for selector_name, selected in selected_by_selector.items():
+                    record = selection_record(
+                        "V_probe_cost_sensitivity",
+                        scenario,
+                        selector_name,
+                        n,
+                        seed,
+                        selected,
+                        candidates,
+                    )
+                    gross_utility = float(record["selected_real_utility"])
+                    incurred_cost = float(probe_cost) if selector_name in PROBE_USING_SELECTORS else 0.0
+                    net_utility = float(np.clip(gross_utility - incurred_cost, 0.0, 1.0))
+                    record.update(
+                        {
+                            "gross_selected_real_utility": gross_utility,
+                            "probe_cost": float(probe_cost),
+                            "incurred_probe_cost": incurred_cost,
+                            "selected_real_utility": net_utility,
+                            "object_real_gap": float(record["selected_object_score"] - net_utility),
+                            "regret": float(record["candidate_best_real_utility"] - net_utility),
+                            "oracle_gap": float(record["candidate_best_real_utility"] - net_utility),
+                            "probe_cost_applied": int(selector_name in PROBE_USING_SELECTORS),
+                        }
+                    )
+                    rows.append(record)
+    return pd.DataFrame(rows)
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -794,6 +848,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     probe_seeds = list(range(4)) if mode == "smoke" else list(range(48))
     noisy_probe_seed_df = _run_noisy_probe_panel(generator, probe_seeds=probe_seeds, n=max(ns))
     noisy_probe_metrics = noisy_probe_summary(noisy_probe_seed_df)
+    probe_cost_seeds = list(range(4)) if mode == "smoke" else list(range(48))
+    probe_cost_seed_df = _run_probe_cost_panel(generator, probe_cost_seeds=probe_cost_seeds, n=max(ns))
+    probe_cost_metrics = probe_cost_summary(probe_cost_seed_df)
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
@@ -804,6 +861,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         pilot_seed_df=pilot_seed_df,
         leave_one_failure_seed_df=loso_seed_df,
         noisy_probe_seed_df=noisy_probe_seed_df,
+        probe_cost_seed_df=probe_cost_seed_df,
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
@@ -843,6 +901,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     loso_metrics.to_csv(tables / "leave_one_failure_metrics.csv", index=False)
     noisy_probe_seed_df.to_csv(tables / "noisy_probe_seed_metrics.csv", index=False)
     noisy_probe_metrics.to_csv(tables / "noisy_probe_metrics.csv", index=False)
+    probe_cost_seed_df.to_csv(tables / "probe_cost_seed_metrics.csv", index=False)
+    probe_cost_metrics.to_csv(tables / "probe_cost_metrics.csv", index=False)
     pilot_summary = {
         "mode": mode,
         "train_seeds": pilot_train_seeds,
@@ -891,6 +951,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         pilot_df=pilot_metrics,
         leave_one_failure_df=loso_metrics,
         noisy_probe_df=noisy_probe_metrics,
+        probe_cost_df=probe_cost_metrics,
         learned_domain_shift_df=learned_domain_shift,
     )
     gate = deployment_gate_from_metrics(main)
@@ -969,6 +1030,20 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     loso_raw = loso_metrics[loso_metrics["selector"] == "raw"]
     noisy_probe_repair = noisy_probe_metrics[noisy_probe_metrics["selector"] == "noisy_probe_repair"]
     noisy_probe_focus = noisy_probe_repair[noisy_probe_repair["probe_reliability"] >= 0.75]
+    probe_cost_focus = probe_cost_metrics[
+        (probe_cost_metrics["probe_cost"] <= 0.10)
+        & (probe_cost_metrics["scenario"].isin(PROBE_COST_SCENARIOS))
+    ]
+    probe_cost_combined = probe_cost_focus[probe_cost_focus["selector"] == "combined_repair"]
+    probe_cost_observable = probe_cost_focus[probe_cost_focus["selector"] == "observable_repair"]
+    probe_cost_targeted = probe_cost_focus[
+        (probe_cost_focus["selector"] == "targeted_probe")
+        & (probe_cost_focus["scenario"] == "hidden_property")
+    ]
+    probe_cost_raw = probe_cost_focus[probe_cost_focus["selector"] == "raw"]
+    probe_cost_max = probe_cost_metrics[probe_cost_metrics["probe_cost"] == max(PROBE_COSTS)]
+    probe_cost_combined_max = probe_cost_max[probe_cost_max["selector"] == "combined_repair"]
+    probe_cost_observable_max = probe_cost_max[probe_cost_max["selector"] == "observable_repair"]
     statistical_pass_margin = None
     if not statistical_metrics.empty:
         statistical_pass_margin = float(
@@ -999,6 +1074,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_pilot_calibration_rows": int(pilot_seed_df.shape[0]),
         "n_leave_one_failure_rows": int(loso_seed_df.shape[0]),
         "n_noisy_probe_rows": int(noisy_probe_seed_df.shape[0]),
+        "n_probe_cost_rows": int(probe_cost_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -1069,6 +1145,13 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "noisy_probe_mean_reliable_gain": float(noisy_probe_focus["noisy_probe_vs_raw_gain_mean"].mean()) if not noisy_probe_focus.empty else None,
         "noisy_probe_min_reliable_win_rate": float(noisy_probe_focus["noisy_probe_win_rate"].min()) if not noisy_probe_focus.empty else None,
         "noisy_probe_max_reliable_oracle_gap": float(noisy_probe_focus["noisy_probe_oracle_gap_mean"].max()) if not noisy_probe_focus.empty else None,
+        "probe_cost_low_cost_combined_mean_utility": float(probe_cost_combined["selected_real_utility_mean"].mean()) if not probe_cost_combined.empty else None,
+        "probe_cost_low_cost_combined_vs_raw_gain": float(probe_cost_combined["probe_cost_combined_vs_raw_gain_mean"].mean()) if not probe_cost_combined.empty else None,
+        "probe_cost_low_cost_observable_vs_raw_gain": float(probe_cost_observable["probe_cost_observable_vs_raw_gain_mean"].mean()) if not probe_cost_observable.empty else None,
+        "probe_cost_low_cost_targeted_vs_raw_gain": float(probe_cost_targeted["probe_cost_targeted_vs_raw_gain_mean"].mean()) if not probe_cost_targeted.empty else None,
+        "probe_cost_max_cost_combined_vs_raw_gain": float(probe_cost_combined_max["probe_cost_combined_vs_raw_gain_mean"].mean()) if not probe_cost_combined_max.empty else None,
+        "probe_cost_max_cost_observable_vs_raw_gain": float(probe_cost_observable_max["probe_cost_observable_vs_raw_gain_mean"].mean()) if not probe_cost_observable_max.empty else None,
+        "probe_cost_low_cost_raw_mean_utility": float(probe_cost_raw["selected_real_utility_mean"].mean()) if not probe_cost_raw.empty else None,
         "statistical_audit_all_pass": bool(statistical_metrics["passes"].all()) if not statistical_metrics.empty else None,
         "statistical_audit_min_ci_margin": statistical_pass_margin,
         "learned_metrics": learned_row,

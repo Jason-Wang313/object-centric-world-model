@@ -744,6 +744,89 @@ def noisy_probe_summary(noisy_probe_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def probe_cost_summary(probe_cost_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate net utility after charging diagnostic-probe action costs."""
+
+    if probe_cost_seed_df.empty:
+        return pd.DataFrame()
+    group_cols = ["experiment", "scenario", "probe_cost", "selector", "N"]
+    value_cols = [
+        "selected_object_score",
+        "selected_real_utility",
+        "gross_selected_real_utility",
+        "incurred_probe_cost",
+        "identity_error",
+        "swap_rate",
+        "merge_split_rate",
+        "property_error",
+        "property_entropy",
+        "occlusion_error",
+        "object_real_gap",
+        "regret",
+        "oracle_gap",
+        "upper_tail_rank_correlation",
+    ]
+    aggregate_rows: list[dict[str, float | int | str]] = []
+    for keys, group in probe_cost_seed_df.groupby(group_cols, sort=True):
+        row = dict(zip(group_cols, keys))
+        row["n_seeds"] = int(group["seed"].nunique())
+        for col in value_cols:
+            mean, low, high = mean_ci(group[col])
+            row[f"{col}_mean"] = mean
+            row[f"{col}_ci_low"] = low
+            row[f"{col}_ci_high"] = high
+        aggregate_rows.append(row)
+    main = pd.DataFrame(aggregate_rows)
+
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "probe_cost", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        targeted = group[group["selector"] == "targeted_probe"]
+        observable = group[group["selector"] == "observable_repair"]
+        combined = group[group["selector"] == "combined_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        targeted_utility = (
+            float(targeted["selected_real_utility_mean"].iloc[0]) if not targeted.empty else float("nan")
+        )
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        seed_group = probe_cost_seed_df[
+            (probe_cost_seed_df["scenario"] == group["scenario"].iloc[0])
+            & (probe_cost_seed_df["probe_cost"] == group["probe_cost"].iloc[0])
+            & (probe_cost_seed_df["N"] == group["N"].iloc[0])
+        ]
+        raw_seed = seed_group[seed_group["selector"] == "raw"][["seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "raw"}
+        )
+        wins: dict[str, float] = {}
+        for selector in ["targeted_probe", "observable_repair", "combined_repair"]:
+            selector_seed = seed_group[seed_group["selector"] == selector][["seed", "selected_real_utility"]].rename(
+                columns={"selected_real_utility": selector}
+            )
+            merged = selector_seed.merge(raw_seed, on="seed", how="inner")
+            gains = merged[selector] - merged["raw"] if not merged.empty else pd.Series(dtype=float)
+            wins[selector] = float(np.mean(gains > 1e-12)) if len(gains) else float("nan")
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["probe_cost_targeted_vs_raw_gain_mean"] = targeted_utility - raw_utility
+            out["probe_cost_observable_vs_raw_gain_mean"] = observable_utility - raw_utility
+            out["probe_cost_combined_vs_raw_gain_mean"] = combined_utility - raw_utility
+            out["probe_cost_targeted_oracle_gap_mean"] = oracle_utility - targeted_utility
+            out["probe_cost_observable_oracle_gap_mean"] = oracle_utility - observable_utility
+            out["probe_cost_combined_oracle_gap_mean"] = oracle_utility - combined_utility
+            out["probe_cost_targeted_win_rate"] = wins["targeted_probe"]
+            out["probe_cost_observable_win_rate"] = wins["observable_repair"]
+            out["probe_cost_combined_win_rate"] = wins["combined_repair"]
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate toy model-family proxy selectors against combined repair.
 
@@ -788,6 +871,7 @@ def statistical_audit(
     pilot_seed_df: pd.DataFrame | None = None,
     leave_one_failure_seed_df: pd.DataFrame | None = None,
     noisy_probe_seed_df: pd.DataFrame | None = None,
+    probe_cost_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -1024,6 +1108,33 @@ def statistical_audit(
             merged["noisy"] - merged["baseline"],
             threshold=0.45,
         )
+
+    if probe_cost_seed_df is not None and not probe_cost_seed_df.empty:
+        n_max = int(probe_cost_seed_df["N"].max())
+        low_cost = probe_cost_seed_df[probe_cost_seed_df["probe_cost"] <= 0.10]
+        base = low_cost[(low_cost["selector"] == "raw") & (low_cost["N"] == n_max)][
+            ["scenario", "probe_cost", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "baseline"})
+        for selector, effect_id, threshold, scenario_filter in [
+            ("combined_repair", "probe_cost_combined_repair_gain", 0.50, None),
+            ("observable_repair", "probe_cost_observable_repair_gain", 0.45, None),
+            ("targeted_probe", "probe_cost_targeted_hidden_repair_gain", 0.35, "hidden_property"),
+        ]:
+            treatment_source = low_cost
+            base_source = base
+            if scenario_filter is not None:
+                treatment_source = treatment_source[treatment_source["scenario"] == scenario_filter]
+                base_source = base_source[base_source["scenario"] == scenario_filter]
+            treatment = treatment_source[(treatment_source["selector"] == selector) & (treatment_source["N"] == n_max)][
+                ["scenario", "probe_cost", "seed", "selected_real_utility"]
+            ].rename(columns={"selected_real_utility": "treatment"})
+            merged = treatment.merge(base_source, on=["scenario", "probe_cost", "seed"], how="inner")
+            add_row(
+                effect_id,
+                f"Probe-cost-adjusted {selector} selected-utility gain over raw for cost <= 0.10.",
+                merged["treatment"] - merged["baseline"],
+                threshold=threshold,
+            )
 
     return pd.DataFrame(rows)
 

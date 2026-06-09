@@ -12,6 +12,7 @@ from object_centric_best_of_n.metrics import (
     ood_summary,
     paired_selector_effects,
     pilot_calibration_summary,
+    probe_cost_summary,
     repair_ablation_summary,
     score_calibration_table,
     seed_block_robustness,
@@ -46,6 +47,7 @@ def test_paired_effects_and_stress_summary_are_computed():
             }
         )
         rows.append({**rows[-1], "selector": "identity_consistent", "selected_real_utility": 0.6, "identity_error": 0.0})
+        rows.append({**rows[-1], "selector": "targeted_probe", "selected_real_utility": 0.78, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "combined_repair", "selected_real_utility": 0.9, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "observable_repair", "selected_real_utility": 0.85, "identity_error": 0.0})
         rows.append({**rows[-1], "selector": "pilot_calibrated", "selected_real_utility": 0.82, "identity_error": 0.0})
@@ -124,6 +126,22 @@ def test_paired_effects_and_stress_summary_are_computed():
     noisy_df = pd.DataFrame([{**row, "probe_reliability": 0.75, "probe_noise_rate": 0.25} for row in noisy_rows])
     noisy_probe = noisy_probe_summary(noisy_df)
     assert noisy_probe[noisy_probe["selector"] == "noisy_probe_repair"]["noisy_probe_win_rate"].iloc[0] == 1.0
+    probe_cost_df = pd.DataFrame(
+        [
+            {
+                **row,
+                "probe_cost": 0.10,
+                "gross_selected_real_utility": row["selected_real_utility"] + (0.10 if row["selector"] in {"targeted_probe", "observable_repair", "combined_repair"} else 0.0),
+                "incurred_probe_cost": 0.10 if row["selector"] in {"targeted_probe", "observable_repair", "combined_repair"} else 0.0,
+                "probe_cost_applied": int(row["selector"] in {"targeted_probe", "observable_repair", "combined_repair"}),
+            }
+            for row in rows
+            if row["selector"] in {"raw", "targeted_probe", "observable_repair", "combined_repair", "oracle"}
+        ]
+    )
+    probe_cost = probe_cost_summary(probe_cost_df)
+    assert "probe_cost_combined_vs_raw_gain_mean" in probe_cost.columns
+    assert probe_cost[probe_cost["selector"] == "combined_repair"]["probe_cost_combined_win_rate"].iloc[0] == 1.0
     family = model_family_proxy_summary(
         pd.DataFrame(
             rows
@@ -152,6 +170,7 @@ def test_paired_effects_and_stress_summary_are_computed():
         pilot_seed_df=df,
         leave_one_failure_seed_df=df,
         noisy_probe_seed_df=noisy_df,
+        probe_cost_seed_df=probe_cost_df,
         bootstrap_reps=50,
     )
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
@@ -160,3 +179,5 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "leave_one_failure_pilot_gain" in set(stats["effect_id"])
     assert "noisy_probe_repair_gain" in set(stats["effect_id"])
     assert "extreme_object_combined_repair_gain" in set(stats["effect_id"])
+    assert "probe_cost_combined_repair_gain" in set(stats["effect_id"])
+    assert "probe_cost_targeted_hidden_repair_gain" in set(stats["effect_id"])

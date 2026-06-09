@@ -47,11 +47,11 @@ Strength: {
 ## C3: strongly_supported
 Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.
 
-Evidence: figure2, figure4, figure19, figure20, figure21, figure22, figure24, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, and extreme_object_count_metrics.csv
+Evidence: figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
   "observed": {
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
@@ -104,6 +104,15 @@ Strength: {
     "noisy_probe_mean_reliable_gain": 0.8667438725697415,
     "noisy_probe_min_reliable_win_rate": 1.0,
     "noisy_probe_max_reliable_oracle_gap": 0.0412941274911788,
+    "probe_cost_low_cost_combined_mean_utility": 0.8383342323500937,
+    "probe_cost_low_cost_observable_mean_utility": 0.8374733075785894,
+    "probe_cost_low_cost_targeted_mean_utility": 0.8304202692299248,
+    "probe_cost_low_cost_combined_gain": 0.77494187977645,
+    "probe_cost_low_cost_observable_gain": 0.7740809550049457,
+    "probe_cost_low_cost_targeted_gain": 0.7036355640826373,
+    "probe_cost_min_combined_win_rate": 1.0,
+    "probe_cost_high_cost_combined_gain": 0.5674418797764499,
+    "probe_cost_high_cost_observable_gain": 0.5665809550049457,
     "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
     "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
     "model_family_max_combined_oracle_gap": 0.1058960383796072,
@@ -148,6 +157,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 66 required artifacts.
+Artifact verification checked 69 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

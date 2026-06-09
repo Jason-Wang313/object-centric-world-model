@@ -474,6 +474,28 @@ def figure24_extreme_object_count(extreme: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure24_extreme_object_count.png")
 
 
+def figure25_probe_cost_sensitivity(probe_cost: pd.DataFrame, out: Path) -> None:
+    if probe_cost.empty:
+        return
+    selectors = ["raw", "targeted_probe", "observable_repair", "combined_repair", "oracle"]
+    df = probe_cost[(probe_cost["selector"].isin(selectors)) & (probe_cost["N"] == probe_cost["N"].max())]
+    fig, ax = plt.subplots(figsize=(9.0, 4.8))
+    for selector in selectors:
+        group = df[df["selector"] == selector].groupby("probe_cost", as_index=False)[
+            "selected_real_utility_mean"
+        ].mean()
+        if group.empty:
+            continue
+        ax.plot(group["probe_cost"], group["selected_real_utility_mean"], marker="o", linewidth=2, label=selector)
+    ax.set_xlabel("diagnostic probe cost")
+    ax.set_ylabel("net mean selected real utility")
+    ax.set_title("Probe-cost sensitivity")
+    ax.set_ylim(0.0, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure25_probe_cost_sensitivity.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -497,6 +519,7 @@ def write_all_figures(
     pilot_df: pd.DataFrame | None = None,
     leave_one_failure_df: pd.DataFrame | None = None,
     noisy_probe_df: pd.DataFrame | None = None,
+    probe_cost_df: pd.DataFrame | None = None,
     learned_domain_shift_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
@@ -543,3 +566,5 @@ def write_all_figures(
         figure23_learned_domain_shift(learned_domain_shift_df, out)
     if extreme_object_df is not None:
         figure24_extreme_object_count(extreme_object_df, out)
+    if probe_cost_df is not None:
+        figure25_probe_cost_sensitivity(probe_cost_df, out)
