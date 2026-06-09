@@ -21,6 +21,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A synthetic 2D object manipulation environment with visually similar target/distractor objects.
 - An object-centric future generator with slots, identities, hidden properties, trajectories, and failure diagnostics.
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
+- Held-out learned domain-shift checks for dense, occluded, crossing, and mixed object-count synthetic variants.
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
@@ -46,6 +47,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/main_metrics.csv`
 - `results/tables/seed_metrics.csv`
 - `results/tables/learned_metrics.csv`
+- `results/tables/learned_domain_shift.csv`
 - `results/tables/repair_metrics.csv`
 - `results/tables/paired_effects.csv`
 - `results/tables/repair_ablation.csv`
@@ -105,6 +107,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure20_pilot_calibration.png`
 - `figures/figure21_leave_one_failure_out.png`
 - `figures/figure22_noisy_probe_reliability.png`
+- `figures/figure23_learned_domain_shift.png`
 
 ## Claim Boundaries
 

@@ -25,6 +25,7 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/seed_metrics.csv": ("scenario", "selector", "N", "seed", "selected_real_utility"),
     "results/tables/learned_metrics.csv": ("property_accuracy", "identity_alignment_accuracy", "transition_mse"),
     "results/tables/learned_learning_curve.csv": ("train_scenes", "property_accuracy", "identity_alignment_accuracy"),
+    "results/tables/learned_domain_shift.csv": ("variant", "property_margin", "identity_margin", "transition_mse_ratio"),
     "results/tables/repair_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean"),
     "results/tables/paired_effects.csv": ("scenario", "selector", "N", "mean_gain", "win_rate"),
     "results/tables/repair_ablation.csv": ("scenario", "combined_vs_raw_gain", "combined_vs_best_single_gain"),
@@ -79,6 +80,7 @@ REQUIRED_FIGURES = (
     "figures/figure20_pilot_calibration.png",
     "figures/figure21_leave_one_failure_out.png",
     "figures/figure22_noisy_probe_reliability.png",
+    "figures/figure23_learned_domain_shift.png",
 )
 
 REQUIRED_JSON = (
@@ -123,6 +125,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     sensitivity = _read_csv(tables / "sensitivity_metrics.csv")
     negative_control = _read_csv(tables / "negative_control.csv")
     learned_ablation = _read_csv(tables / "learned_ablation.csv")
+    learned_shift = _read_csv(tables / "learned_domain_shift.csv")
     ood = _read_csv(tables / "ood_metrics.csv")
     family = _read_csv(tables / "model_family_proxy_metrics.csv")
     domain = _read_csv(tables / "domain_randomization_metrics.csv")
@@ -454,6 +457,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             learned_metrics["identity_alignment_accuracy"] - learned_metrics["random_identity_alignment_accuracy"]
         )
         transition_ratio = learned_metrics["transition_mse"] / learned_metrics["constant_transition_mse"]
+        shifted_learned = learned_shift[learned_shift["variant"] != "standard_test"] if not learned_shift.empty else pd.DataFrame()
         no_mass = learned_ablation[learned_ablation["ablation"] == "no_mass_sensor"] if not learned_ablation.empty else pd.DataFrame()
         kinematic_pair = (
             learned_ablation[learned_ablation["ablation"] == "kinematic_pair_identity"]
@@ -471,8 +475,13 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 and float(no_mass["full_minus_property_accuracy"].iloc[0]) >= 0.10
                 and not kinematic_pair.empty
                 and float(kinematic_pair["full_minus_identity_alignment_accuracy"].iloc[0]) >= 0.05
+                and not shifted_learned.empty
+                and float(shifted_learned["property_margin"].min()) >= 0.12
+                and float(shifted_learned["identity_margin"].min()) >= 0.15
+                and float(shifted_learned["transition_mse_ratio"].max()) <= 0.30
+                and float(shifted_learned["reward_correlation"].min()) >= 0.70
             ),
-            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, and learned feature ablations show object information matters",
+            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, and held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70",
             "observed": {
                 "property_margin": float(prop_margin),
                 "identity_alignment_margin": float(identity_margin),
@@ -480,6 +489,10 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "reward_correlation": float(learned_metrics["reward_correlation"]),
                 "full_minus_no_mass_property_accuracy": float(no_mass["full_minus_property_accuracy"].iloc[0]) if not no_mass.empty else None,
                 "full_minus_kinematic_pair_identity_accuracy": float(kinematic_pair["full_minus_identity_alignment_accuracy"].iloc[0]) if not kinematic_pair.empty else None,
+                "learned_shift_min_property_margin": float(shifted_learned["property_margin"].min()) if not shifted_learned.empty else None,
+                "learned_shift_min_identity_margin": float(shifted_learned["identity_margin"].min()) if not shifted_learned.empty else None,
+                "learned_shift_max_transition_ratio": float(shifted_learned["transition_mse_ratio"].max()) if not shifted_learned.empty else None,
+                "learned_shift_min_reward_correlation": float(shifted_learned["reward_correlation"].min()) if not shifted_learned.empty else None,
             },
         }
     return strengths
@@ -513,7 +526,7 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C4",
             "claim": "A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories.",
             "status": _status(strengths.get("C4", {}).get("passes") if root is not None else None),
-            "evidence": "learned_object_model_summary.json, learned_metrics.csv, and learned_learning_curve.csv",
+            "evidence": "learned_object_model_summary.json, learned_metrics.csv, learned_learning_curve.csv, learned_ablation.csv, and learned_domain_shift.csv",
             "strength": strengths.get("C4", {}),
         },
         {
@@ -702,6 +715,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Good-minus-corrupted raw high-N utility: {summary.get('good_minus_corrupted_raw_nmax_utility', 'unknown')}",
         f"- Learned full-minus-no-mass property accuracy: {summary.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}",
         f"- Learned full-minus-kinematic-pair identity accuracy: {summary.get('learned_full_minus_kinematic_pair_identity_accuracy', 'unknown')}",
+        f"- Learned shift min property margin: {summary.get('learned_shift_min_property_margin', 'unknown')}",
+        f"- Learned shift min identity margin: {summary.get('learned_shift_min_identity_margin', 'unknown')}",
         f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
         f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
         f"- Domain-randomized combined-vs-raw gain: {summary.get('domain_randomized_combined_vs_raw_gain', 'unknown')}",
@@ -875,6 +890,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Good-control raw high-N utility {summary_payload.get('good_control_raw_nmax_utility', 'unknown')}.",
             "- Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. "
             f"Full-minus-no-mass property gain {summary_payload.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}.",
+            "- Learned domain-shift artifact: figure23_learned_domain_shift.png and learned_domain_shift.csv. "
+            f"Minimum shifted property margin {summary_payload.get('learned_shift_min_property_margin', 'unknown')} and identity margin {summary_payload.get('learned_shift_min_identity_margin', 'unknown')}.",
             "- OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. "
             f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
             "- Domain-randomized artifact: figure18_domain_randomization.png and domain_randomization_metrics.csv. "
@@ -898,7 +915,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "",
             "## Remaining Weaknesses",
             f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, and noisy-probe reliability stress.",
-            "- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.",
+            "- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",
             "## Artifact Inventory",

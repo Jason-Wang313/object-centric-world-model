@@ -437,6 +437,22 @@ def figure22_noisy_probe_reliability(noisy_probe: pd.DataFrame, out: Path) -> No
     _save(fig, out / "figure22_noisy_probe_reliability.png")
 
 
+def figure23_learned_domain_shift(domain_shift: pd.DataFrame, out: Path) -> None:
+    if domain_shift.empty:
+        return
+    df = domain_shift.set_index("variant")[
+        ["property_margin", "identity_margin", "reward_correlation", "transition_mse_ratio"]
+    ]
+    fig, ax = plt.subplots(figsize=(9.2, 4.7))
+    df.plot(kind="bar", ax=ax, color=["#2f6f9f", "#3c7c5a", "#d1963a", "#707070"])
+    ax.set_xlabel("held-out learned test variant")
+    ax.set_ylabel("metric value")
+    ax.set_title("Learned object model domain-shift checks")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(["property margin", "identity margin", "reward corr.", "transition MSE ratio"], frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure23_learned_domain_shift.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -459,6 +475,7 @@ def write_all_figures(
     pilot_df: pd.DataFrame | None = None,
     leave_one_failure_df: pd.DataFrame | None = None,
     noisy_probe_df: pd.DataFrame | None = None,
+    learned_domain_shift_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -500,3 +517,5 @@ def write_all_figures(
         figure21_leave_one_failure_out(leave_one_failure_df, out)
     if noisy_probe_df is not None:
         figure22_noisy_probe_reliability(noisy_probe_df, out)
+    if learned_domain_shift_df is not None:
+        figure23_learned_domain_shift(learned_domain_shift_df, out)

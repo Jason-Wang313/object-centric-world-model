@@ -18,6 +18,8 @@ This digest is generated from the current result artifacts.
 - Good-minus-corrupted raw high-N utility: 0.608449149414918
 - Learned full-minus-no-mass property accuracy: 0.1229166666666666
 - Learned full-minus-kinematic-pair identity accuracy: 0.0760416666666666
+- Learned shift min property margin: 0.125
+- Learned shift min identity margin: 0.4458333333333333
 - OOD combined mean selected utility: 0.876852645124664
 - OOD combined-vs-raw gain: 0.8411636120707556
 - Domain-randomized combined-vs-raw gain: 0.8343878574844603

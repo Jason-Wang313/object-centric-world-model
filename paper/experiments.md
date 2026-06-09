@@ -14,6 +14,8 @@ Experiment F runs a high-N stress panel for raw, occlusion, hidden-property, swa
 
 Experiment G reports learned-model learning curves for hidden-property accuracy, identity-alignment accuracy, and transition MSE.
 
+Experiment G2 reports learned-model held-out domain-shift checks on dense, occluded, crossing, and mixed object-count synthetic variants.
+
 Experiment H reports repair ablations, comparing raw, the best single repair, the combined repair, and oracle.
 
 Experiment I reports seed-block robustness for the raw selected-tail failure and repair gain.

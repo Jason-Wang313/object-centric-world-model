@@ -106,18 +106,22 @@ Strength: {
 ## C4: strongly_supported
 A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories.
 
-Evidence: learned_object_model_summary.json, learned_metrics.csv, and learned_learning_curve.csv
+Evidence: learned_object_model_summary.json, learned_metrics.csv, learned_learning_curve.csv, learned_ablation.csv, and learned_domain_shift.csv
 
 Strength: {
   "passes": true,
-  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, and learned feature ablations show object information matters",
+  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, and held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70",
   "observed": {
     "property_margin": 0.24583333333333335,
     "identity_alignment_margin": 0.48750000000000004,
     "transition_mse_ratio": 0.007032264292782088,
     "reward_correlation": 0.953061460933608,
     "full_minus_no_mass_property_accuracy": 0.1229166666666666,
-    "full_minus_kinematic_pair_identity_accuracy": 0.0760416666666666
+    "full_minus_kinematic_pair_identity_accuracy": 0.0760416666666666,
+    "learned_shift_min_property_margin": 0.125,
+    "learned_shift_min_identity_margin": 0.4458333333333333,
+    "learned_shift_max_transition_ratio": 0.0065192539092481,
+    "learned_shift_min_reward_correlation": 0.9157332333864964
   }
 }
 
@@ -136,6 +140,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 61 required artifacts.
+Artifact verification checked 63 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

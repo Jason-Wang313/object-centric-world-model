@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 41.731s; strict claim audit passed; pilot-calibrated held-out gain 0.8320271408001559; leave-one-failure pilot gain 0.7047098791315347; noisy-probe reliable gain 0.8110300082552486)
-- bash scripts/run_all.sh: pass (full experiment runtime 308.824s; 16 main seeds, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 pilot calibration eval seeds, 864 pilot calibration rows, 40 leave-one-failure eval seeds per held-out family, 1200 leave-one-failure rows, 48 noisy-probe reliability seeds, 1440 noisy-probe rows, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, noisy-probe reliability panel, bootstrap statistical audit, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, domain-randomization checks, counterfactual target-swap checks, pilot-calibration checks, leave-one-failure calibration checks, noisy-probe checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
-- pytest: pass (16 passed in 9.37s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 52.949s; strict claim audit passed; learned shift min property margin 0.125; learned shift min identity margin 0.4421874999999999; noisy-probe reliable gain 0.8110300082552486)
+- bash scripts/run_all.sh: pass (full experiment runtime 321.478s; 16 main seeds, learned domain-shift panel with min property margin 0.125 and min identity margin 0.4458333333333333, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 pilot calibration eval seeds, 864 pilot calibration rows, 40 leave-one-failure eval seeds per held-out family, 1200 leave-one-failure rows, 48 noisy-probe reliability seeds, 1440 noisy-probe rows, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, noisy-probe reliability panel, bootstrap statistical audit, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, learned domain-shift checks, OOD checks, domain-randomization checks, counterfactual target-swap checks, pilot-calibration checks, leave-one-failure calibration checks, noisy-probe checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
+- pytest: pass (16 passed in 10.30s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -20,6 +20,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Sensitivity artifact: figure11_score_noise_sensitivity.png and sensitivity_metrics.csv. Combined repair low-noise minimum utility 0.8374916544433992.
 - Negative-control artifact: figure12_negative_control.png and negative_control.csv. Good-control raw high-N utility 0.6554531451148605.
 - Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. Full-minus-no-mass property gain 0.1229166666666666.
+- Learned domain-shift artifact: figure23_learned_domain_shift.png and learned_domain_shift.csv. Minimum shifted property margin 0.125 and identity margin 0.4458333333333333.
 - OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. Dense corrupted OOD combined-vs-raw gain 0.8411636120707556.
 - Domain-randomized artifact: figure18_domain_randomization.png and domain_randomization_metrics.csv. Combined-vs-raw gain 0.8343878574844603.
 - Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. Combined-vs-raw gain 0.816906396281512.
@@ -35,7 +36,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 
 ## Remaining Weaknesses
 - Synthetic scenes remain controlled, though the default run now uses 16 main seeds, 32 stress seeds, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, and noisy-probe reliability stress.
-- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.
+- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.
 - No real-robot or broad benchmark evidence is claimed.
 
 ## Artifact Inventory
@@ -46,6 +47,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\domain_randomization_seed_metrics.csv
 - results\tables\exact_law_validation.csv
 - results\tables\learned_ablation.csv
+- results\tables\learned_domain_shift.csv
 - results\tables\learned_learning_curve.csv
 - results\tables\learned_metrics.csv
 - results\tables\leave_one_failure_metrics.csv
@@ -88,6 +90,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure20_pilot_calibration.png
 - figures\figure21_leave_one_failure_out.png
 - figures\figure22_noisy_probe_reliability.png
+- figures\figure23_learned_domain_shift.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png
 - figures\figure4_targeted_probe_before_after.png

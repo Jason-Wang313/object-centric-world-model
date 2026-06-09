@@ -1,10 +1,10 @@
 {
-  "artifact_count": 61,
+  "artifact_count": 63,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 2710,
-      "sha256": "9cfb86ea67b6d362826871802908ff27fc9971feaab2ba1b9418c9f63efe5d48"
+      "bytes": 2811,
+      "sha256": "08bc982b50c7387ecc636ea6494b9aedc0239f856335e973cf746f1a645ed8ea"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -77,6 +77,11 @@
       "sha256": "10d8b9ae2ead6a75f66bcbaeac37664f4ec930d287e91983cac2d49ef66f5d61"
     },
     {
+      "path": "figures/figure23_learned_domain_shift.png",
+      "bytes": 61153,
+      "sha256": "0633a2464676ee129e0b0b5be2ed9287783d0f1f9ac1656d8a8941eda9d77852"
+    },
+    {
       "path": "figures/figure2_repair_comparison.png",
       "bytes": 127681,
       "sha256": "c38a8a82bf67c712505e841712175c4de77c7bf47cf20b54a593422603a48605"
@@ -118,8 +123,8 @@
     },
     {
       "path": "results/learned_object_model_summary.json",
-      "bytes": 634,
-      "sha256": "c551d13b985cdc0f8a37579e5c34611c5750ab7b875afbd83be2696eb1487187"
+      "bytes": 890,
+      "sha256": "0b893ea85d6dfb721fd25c99b32c0d80c0a9c988efb3bd6805c5908cb5e1f62b"
     },
     {
       "path": "results/leave_one_failure_summary.json",
@@ -133,8 +138,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 4883,
-      "sha256": "6fc759be23de3e94536f8eae45ee45aeb87fdd7a16566613c7a9495a05fe9134"
+      "bytes": 5114,
+      "sha256": "144cf9c3453d29e8f6b678f4dddb9541d90f07dc4e13e95769347f9ed02a3549"
     },
     {
       "path": "results/tables/counterfactual_target_metrics.csv",
@@ -165,6 +170,11 @@
       "path": "results/tables/learned_ablation.csv",
       "bytes": 1157,
       "sha256": "49ebed5a02a9958213858bb0a8304b9bc54bded00109c4301b9eff6efb5df9e3"
+    },
+    {
+      "path": "results/tables/learned_domain_shift.csv",
+      "bytes": 1196,
+      "sha256": "14aefcf3c168043dd0ca09bf569ef6fb3f9e985aadf3dd08a2936bd52ad63f03"
     },
     {
       "path": "results/tables/learned_learning_curve.csv",
@@ -303,8 +313,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 1244,
-      "sha256": "9f35229ea50cf4ea7f8a0fe5f0b31aeb8bb28210e207fe7ea90c4168e1cbd238"
+      "bytes": 1371,
+      "sha256": "c74557a18a29074c46203479106ac0aecbf31c33edae3a9b083ea870ac29aaa7"
     }
   ]
 }

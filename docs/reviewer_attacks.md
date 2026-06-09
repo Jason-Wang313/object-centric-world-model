@@ -54,11 +54,11 @@ Response: `run_claim_audit.sh` scans README, docs, and paper text for supported 
 
 ## Attack: The learned model is too simple.
 
-Response: The learned artifact is intentionally CPU NumPy and semi-learned. It now includes transition, hidden-property, identity-alignment, reward, and learning-curve evidence. It does not establish modern benchmark performance.
+Response: The learned artifact is intentionally CPU NumPy and semi-learned. It now includes transition, hidden-property, identity-alignment, reward, learning-curve evidence, feature ablations, and `learned_domain_shift.csv` checks on held-out dense, occluded, crossing, and mixed object-count synthetic variants. It does not establish modern benchmark performance.
 
 ## Attack: The learned evidence may not use object information.
 
-Response: `learned_ablation.csv` removes object-relevant features such as the mass sensor and identity-pair features. The audit requires the full object-feature model to beat these ablations on hidden-property and identity-alignment metrics.
+Response: `learned_ablation.csv` removes object-relevant features such as the mass sensor and identity-pair features, while `learned_domain_shift.csv` tests held-out denser and more occluded object scenes. The audit requires the full object-feature model to beat these ablations and retain margins on shifted synthetic variants.
 
 ## Attack: Oracle rows make repairs look weak or strong.
 

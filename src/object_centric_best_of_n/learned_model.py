@@ -136,6 +136,10 @@ def _object_features(
 def make_synthetic_trajectory_dataset(
     n_scenes: int = 240,
     seed: int = 0,
+    n_objects: int | tuple[int, int] = 4,
+    occlusion_mode: str = "periodic",
+    crossing_mode: str = "periodic",
+    action_scale: float = 0.08,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     rng = np.random.default_rng(seed)
     features: list[list[float]] = []
@@ -143,14 +147,36 @@ def make_synthetic_trajectory_dataset(
     property_targets: list[float] = []
     reward_targets: list[float] = []
     for scene_idx in range(n_scenes):
+        if isinstance(n_objects, tuple):
+            low, high = n_objects
+            scene_n_objects = int(rng.integers(low, high + 1))
+        else:
+            scene_n_objects = int(n_objects)
+        if occlusion_mode == "always":
+            occlusion = True
+        elif occlusion_mode == "never":
+            occlusion = False
+        elif occlusion_mode == "random":
+            occlusion = bool(rng.random() < 0.70)
+        else:
+            occlusion = bool(scene_idx % 3 == 0)
+        if crossing_mode == "always":
+            crossing = True
+        elif crossing_mode == "never":
+            crossing = False
+        elif crossing_mode == "random":
+            crossing = bool(rng.random() < 0.70)
+        else:
+            crossing = bool(scene_idx % 4 == 0)
         scene = make_scene(
             seed=int(rng.integers(0, 1_000_000)),
+            n_objects=scene_n_objects,
             hidden_property=True,
-            occlusion=bool(scene_idx % 3 == 0),
-            crossing=bool(scene_idx % 4 == 0),
+            occlusion=occlusion,
+            crossing=crossing,
         )
         for obj in scene.objects:
-            action = rng.normal(0.0, 0.08, size=2)
+            action = rng.normal(0.0, action_scale, size=2)
             x = _object_features(obj.position, obj.velocity, obj.hidden_mass, obj.color, obj.shape, obj.occluded)
             x[2] += float(action[0])
             x[3] += float(action[1])
@@ -193,23 +219,52 @@ def _pair_features(left: list[float], right: list[float]) -> list[float]:
     return np.r_[diff, left_arr[:4] * right_arr[:4], [1.0 - diff[4], 1.0 - diff[5]]].astype(float).tolist()
 
 
-def make_identity_alignment_dataset(n_scenes: int = 240, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+def make_identity_alignment_dataset(
+    n_scenes: int = 240,
+    seed: int = 0,
+    n_objects: int | tuple[int, int] = 4,
+    occlusion_mode: str = "periodic",
+    crossing_mode: str = "always",
+    action_scale: float = 0.08,
+) -> tuple[np.ndarray, np.ndarray]:
     """Make positive/negative slot-pair examples for identity persistence."""
 
     rng = np.random.default_rng(seed + 31_337)
     pair_rows: list[list[float]] = []
     labels: list[float] = []
     for scene_idx in range(n_scenes):
+        if isinstance(n_objects, tuple):
+            low, high = n_objects
+            scene_n_objects = int(rng.integers(low, high + 1))
+        else:
+            scene_n_objects = int(n_objects)
+        if occlusion_mode == "always":
+            occlusion = True
+        elif occlusion_mode == "never":
+            occlusion = False
+        elif occlusion_mode == "random":
+            occlusion = bool(rng.random() < 0.70)
+        else:
+            occlusion = bool(scene_idx % 2 == 0)
+        if crossing_mode == "always":
+            crossing = True
+        elif crossing_mode == "never":
+            crossing = False
+        elif crossing_mode == "random":
+            crossing = bool(rng.random() < 0.70)
+        else:
+            crossing = bool(scene_idx % 2 == 0)
         scene = make_scene(
             seed=int(rng.integers(0, 1_000_000)),
+            n_objects=scene_n_objects,
             hidden_property=True,
-            occlusion=bool(scene_idx % 2 == 0),
-            crossing=True,
+            occlusion=occlusion,
+            crossing=crossing,
         )
         current = []
         future = []
         for obj in scene.objects:
-            action = rng.normal(0.0, 0.08, size=2)
+            action = rng.normal(0.0, action_scale, size=2)
             current.append(_object_features(obj.position, obj.velocity, obj.hidden_mass, obj.color, obj.shape, obj.occluded))
             future.append(_next_object_features(obj, action))
         for obj_idx in range(len(scene.objects)):
@@ -219,6 +274,45 @@ def make_identity_alignment_dataset(n_scenes: int = 240, seed: int = 0) -> tuple
             pair_rows.append(_pair_features(current[obj_idx], future[negative_idx]))
             labels.append(0.0)
     return np.asarray(pair_rows, dtype=float), np.asarray(labels, dtype=float)
+
+
+def _metrics_from_predictions(
+    model: NumpyObjectCentricModel,
+    x_test: np.ndarray,
+    y_trans_test: np.ndarray,
+    y_prop_test: np.ndarray,
+    y_reward_test: np.ndarray,
+    identity_x_test: np.ndarray,
+    identity_y_test: np.ndarray,
+    transition_baseline: np.ndarray,
+    n_train_slots: int,
+) -> LearnedMetrics:
+    pred_trans = model.predict_transition(x_test)
+    pred_prop = model.predict_property_proba(x_test)
+    pred_reward = model.predict_reward(x_test)
+    pred_identity = model.predict_identity_alignment(identity_x_test)
+
+    transition_mse = float(np.mean((pred_trans - y_trans_test) ** 2))
+    constant_transition = np.tile(transition_baseline, (y_trans_test.shape[0], 1))
+    constant_transition_mse = float(np.mean((constant_transition - y_trans_test) ** 2))
+    property_accuracy = float(np.mean((pred_prop >= 0.5).astype(float) == y_prop_test))
+    random_property = max(float(np.mean(y_prop_test)), 1.0 - float(np.mean(y_prop_test)))
+    identity_accuracy = float(np.mean((pred_identity >= 0.5).astype(float) == identity_y_test))
+    random_identity = max(float(np.mean(identity_y_test)), 1.0 - float(np.mean(identity_y_test)))
+    reward_correlation = 0.0
+    if np.std(pred_reward) > 1e-12 and np.std(y_reward_test) > 1e-12:
+        reward_correlation = float(np.corrcoef(pred_reward, y_reward_test)[0, 1])
+    return LearnedMetrics(
+        property_accuracy=property_accuracy,
+        random_property_accuracy=random_property,
+        identity_alignment_accuracy=identity_accuracy,
+        random_identity_alignment_accuracy=random_identity,
+        transition_mse=transition_mse,
+        constant_transition_mse=constant_transition_mse,
+        reward_correlation=reward_correlation,
+        n_train_slots=int(n_train_slots),
+        n_test_slots=int(x_test.shape[0]),
+    )
 
 
 def _evaluate_for_train_size(
@@ -239,35 +333,17 @@ def _evaluate_for_train_size(
         identity_y=identity_y_train,
     )
 
-    pred_trans = model.predict_transition(x_test)
-    pred_prop = model.predict_property_proba(x_test)
-    pred_reward = model.predict_reward(x_test)
-    pred_identity = model.predict_identity_alignment(identity_x_test)
-
-    transition_mse = float(np.mean((pred_trans - y_trans_test) ** 2))
-    constant_transition = np.tile(np.mean(y_trans_train, axis=0), (y_trans_test.shape[0], 1))
-    constant_transition_mse = float(np.mean((constant_transition - y_trans_test) ** 2))
-    prop_binary = (pred_prop >= 0.5).astype(float)
-    property_accuracy = float(np.mean(prop_binary == y_prop_test))
-    random_property = max(float(np.mean(y_prop_test)), 1.0 - float(np.mean(y_prop_test)))
-    identity_binary = (pred_identity >= 0.5).astype(float)
-    identity_accuracy = float(np.mean(identity_binary == identity_y_test))
-    random_identity = max(float(np.mean(identity_y_test)), 1.0 - float(np.mean(identity_y_test)))
-    reward_correlation = 0.0
-    if np.std(pred_reward) > 1e-12 and np.std(y_reward_test) > 1e-12:
-        reward_correlation = float(np.corrcoef(pred_reward, y_reward_test)[0, 1])
-
     return (
-        LearnedMetrics(
-            property_accuracy=property_accuracy,
-            random_property_accuracy=random_property,
-            identity_alignment_accuracy=identity_accuracy,
-            random_identity_alignment_accuracy=random_identity,
-            transition_mse=transition_mse,
-            constant_transition_mse=constant_transition_mse,
-            reward_correlation=reward_correlation,
+        _metrics_from_predictions(
+            model,
+            x_test,
+            y_trans_test,
+            y_prop_test,
+            y_reward_test,
+            identity_x_test,
+            identity_y_test,
+            transition_baseline=np.mean(y_trans_train, axis=0),
             n_train_slots=int(x_train.shape[0]),
-            n_test_slots=int(x_test.shape[0]),
         ),
         model,
     )
@@ -349,6 +425,85 @@ def learned_ablation_rows(seed: int, n_train_scenes: int, n_test_scenes: int) ->
     return rows
 
 
+def learned_domain_shift_rows(
+    model: NumpyObjectCentricModel,
+    seed: int,
+    n_train_scenes: int,
+    n_test_scenes: int,
+) -> list[dict[str, float | int | str]]:
+    """Evaluate the learned model on held-out synthetic distribution shifts."""
+
+    x_train, y_trans_train, _, _ = make_synthetic_trajectory_dataset(n_train_scenes, seed)
+    transition_baseline = np.mean(y_trans_train, axis=0)
+    variants: list[tuple[str, dict[str, object]]] = [
+        ("standard_test", {}),
+        (
+            "dense6_test",
+            {
+                "n_objects": 6,
+                "occlusion_mode": "periodic",
+                "crossing_mode": "periodic",
+                "action_scale": 0.08,
+            },
+        ),
+        (
+            "dense8_occluded_crossing",
+            {
+                "n_objects": 8,
+                "occlusion_mode": "always",
+                "crossing_mode": "always",
+                "action_scale": 0.09,
+            },
+        ),
+        (
+            "random_count_mixed",
+            {
+                "n_objects": (5, 9),
+                "occlusion_mode": "random",
+                "crossing_mode": "random",
+                "action_scale": 0.10,
+            },
+        ),
+    ]
+    rows: list[dict[str, float | int | str]] = []
+    for idx, (variant, kwargs) in enumerate(variants):
+        x_test, y_trans_test, y_prop_test, y_reward_test = make_synthetic_trajectory_dataset(
+            n_test_scenes,
+            seed + 70_000 + idx * 997,
+            **kwargs,
+        )
+        identity_x_test, identity_y_test = make_identity_alignment_dataset(
+            n_test_scenes,
+            seed + 70_000 + idx * 997,
+            n_objects=kwargs.get("n_objects", 4),
+            occlusion_mode=str(kwargs.get("occlusion_mode", "periodic")),
+            crossing_mode=str(kwargs.get("crossing_mode", "always")),
+            action_scale=float(kwargs.get("action_scale", 0.08)),
+        )
+        metrics = _metrics_from_predictions(
+            model,
+            x_test,
+            y_trans_test,
+            y_prop_test,
+            y_reward_test,
+            identity_x_test,
+            identity_y_test,
+            transition_baseline=transition_baseline,
+            n_train_slots=int(x_train.shape[0]),
+        )
+        row = metrics.as_dict()
+        row["variant"] = variant
+        row["property_margin"] = float(row["property_accuracy"] - row["random_property_accuracy"])
+        row["identity_margin"] = float(row["identity_alignment_accuracy"] - row["random_identity_alignment_accuracy"])
+        row["transition_mse_ratio"] = float(row["transition_mse"] / row["constant_transition_mse"])
+        row["n_objects_spec"] = str(kwargs.get("n_objects", 4))
+        row["occlusion_mode"] = str(kwargs.get("occlusion_mode", "periodic"))
+        row["crossing_mode"] = str(kwargs.get("crossing_mode", "periodic"))
+        row["action_scale"] = float(kwargs.get("action_scale", 0.08))
+        rows.append(row)
+    return rows
+
+
 def train_and_evaluate(
     output_dir: str | Path | None = None,
     seed: int = 0,
@@ -371,12 +526,20 @@ def train_and_evaluate(
         learning_curve.to_csv(out / "tables" / "learned_learning_curve.csv", index=False)
         ablation_table = pd.DataFrame(learned_ablation_rows(seed, n_train_scenes, n_test_scenes))
         ablation_table.to_csv(out / "tables" / "learned_ablation.csv", index=False)
+        shift_table = pd.DataFrame(learned_domain_shift_rows(model, seed, n_train_scenes, n_test_scenes))
+        shift_table.to_csv(out / "tables" / "learned_domain_shift.csv", index=False)
+        shifted = shift_table[shift_table["variant"] != "standard_test"]
         summary = {
             "model": "numpy_linear_object_slot_model_with_identity_alignment",
             "claim_scope": "controlled synthetic trajectories only",
             "metrics": metrics.as_dict(),
             "learning_curve_rows": int(learning_curve.shape[0]),
             "ablation_rows": int(ablation_table.shape[0]),
+            "domain_shift_rows": int(shift_table.shape[0]),
+            "domain_shift_min_property_margin": float(shifted["property_margin"].min()),
+            "domain_shift_min_identity_margin": float(shifted["identity_margin"].min()),
+            "domain_shift_max_transition_ratio": float(shifted["transition_mse_ratio"].max()),
+            "domain_shift_min_reward_correlation": float(shifted["reward_correlation"].min()),
             "passes_minimum_learned_artifact_checks": bool(
                 metrics.property_accuracy >= metrics.random_property_accuracy + 0.15
                 and metrics.identity_alignment_accuracy >= metrics.random_identity_alignment_accuracy + 0.15
@@ -384,6 +547,10 @@ def train_and_evaluate(
                 and metrics.reward_correlation > 0.75
                 and float(ablation_table.loc[ablation_table["ablation"] == "no_mass_sensor", "full_minus_property_accuracy"].iloc[0]) >= 0.10
                 and float(ablation_table.loc[ablation_table["ablation"] == "kinematic_pair_identity", "full_minus_identity_alignment_accuracy"].iloc[0]) >= 0.05
+                and float(shifted["property_margin"].min()) >= 0.12
+                and float(shifted["identity_margin"].min()) >= 0.15
+                and float(shifted["transition_mse_ratio"].max()) <= 0.30
+                and float(shifted["reward_correlation"].min()) >= 0.70
             ),
         }
         (out / "learned_object_model_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")

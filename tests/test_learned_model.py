@@ -13,5 +13,9 @@ def test_learned_model_improves_over_simple_baselines(tmp_path):
     assert slots.shape[0] > 0
     summary = json.loads((tmp_path / "learned_object_model_summary.json").read_text(encoding="utf-8"))
     assert summary["passes_minimum_learned_artifact_checks"] is True
+    assert summary["domain_shift_rows"] >= 4
+    assert summary["domain_shift_min_property_margin"] >= 0.12
+    assert summary["domain_shift_min_identity_margin"] >= 0.15
     assert (tmp_path / "tables" / "learned_learning_curve.csv").exists()
     assert (tmp_path / "tables" / "learned_ablation.csv").exists()
+    assert (tmp_path / "tables" / "learned_domain_shift.csv").exists()

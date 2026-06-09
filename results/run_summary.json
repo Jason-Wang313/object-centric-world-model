@@ -93,6 +93,10 @@
   "combined_vs_raw_low_noise_sensitivity_margin": 0.8534731753001509,
   "learned_full_minus_no_mass_property_accuracy": 0.1229166666666666,
   "learned_full_minus_kinematic_pair_identity_accuracy": 0.0760416666666666,
+  "learned_shift_min_property_margin": 0.125,
+  "learned_shift_min_identity_margin": 0.4458333333333333,
+  "learned_shift_max_transition_ratio": 0.0065192539092481,
+  "learned_shift_min_reward_correlation": 0.9157332333864964,
   "ood_combined_mean_selected_utility": 0.876852645124664,
   "ood_raw_mean_selected_utility": 0.03568903305390835,
   "ood_combined_vs_raw_gain": 0.8411636120707556,
@@ -145,5 +149,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 308.824
+  "runtime_seconds": 321.478
 }

@@ -808,6 +808,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     pd.DataFrame([learned_row]).to_csv(tables / "learned_metrics.csv", index=False)
     learned_curve = pd.read_csv(tables / "learned_learning_curve.csv")
     learned_ablation = pd.read_csv(tables / "learned_ablation.csv")
+    learned_domain_shift = pd.read_csv(tables / "learned_domain_shift.csv")
 
     write_all_figures(
         main,
@@ -831,6 +832,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         pilot_df=pilot_metrics,
         leave_one_failure_df=loso_metrics,
         noisy_probe_df=noisy_probe_metrics,
+        learned_domain_shift_df=learned_domain_shift,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -861,6 +863,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     good_minus_corrupted = negative_control[negative_control["contrast"] == "good_minus_corrupted"]
     no_mass_ablation = learned_ablation[learned_ablation["ablation"] == "no_mass_sensor"]
     kinematic_pair_ablation = learned_ablation[learned_ablation["ablation"] == "kinematic_pair_identity"]
+    shifted_learned = learned_domain_shift[learned_domain_shift["variant"] != "standard_test"]
     ood_combined = ood_metrics[
         (ood_metrics["selector"] == "combined_repair")
         & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
@@ -941,6 +944,10 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "combined_vs_raw_low_noise_sensitivity_margin": sensitivity_margin,
         "learned_full_minus_no_mass_property_accuracy": float(no_mass_ablation["full_minus_property_accuracy"].iloc[0]) if not no_mass_ablation.empty else None,
         "learned_full_minus_kinematic_pair_identity_accuracy": float(kinematic_pair_ablation["full_minus_identity_alignment_accuracy"].iloc[0]) if not kinematic_pair_ablation.empty else None,
+        "learned_shift_min_property_margin": float(shifted_learned["property_margin"].min()) if not shifted_learned.empty else None,
+        "learned_shift_min_identity_margin": float(shifted_learned["identity_margin"].min()) if not shifted_learned.empty else None,
+        "learned_shift_max_transition_ratio": float(shifted_learned["transition_mse_ratio"].max()) if not shifted_learned.empty else None,
+        "learned_shift_min_reward_correlation": float(shifted_learned["reward_correlation"].min()) if not shifted_learned.empty else None,
         "ood_combined_mean_selected_utility": float(ood_combined["selected_real_utility_mean"].mean()) if not ood_combined.empty else None,
         "ood_raw_mean_selected_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
         "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,

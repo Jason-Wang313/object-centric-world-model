@@ -14,5 +14,10 @@
   },
   "learning_curve_rows": 4,
   "ablation_rows": 5,
+  "domain_shift_rows": 4,
+  "domain_shift_min_property_margin": 0.125,
+  "domain_shift_min_identity_margin": 0.4458333333333333,
+  "domain_shift_max_transition_ratio": 0.006519253909248158,
+  "domain_shift_min_reward_correlation": 0.9157332333864965,
   "passes_minimum_learned_artifact_checks": true
 }
