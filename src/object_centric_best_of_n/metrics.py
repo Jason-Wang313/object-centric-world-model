@@ -616,6 +616,80 @@ def counterfactual_target_summary(counter_seed_df: pd.DataFrame) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
+def target_identity_sweep_summary(target_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate target-identity sweep rows without collapsing target IDs."""
+
+    if target_seed_df.empty:
+        return pd.DataFrame()
+    group_cols = ["experiment", "scenario", "target_id", "selector", "N"]
+    value_cols = [
+        "selected_object_score",
+        "selected_real_utility",
+        "identity_error",
+        "swap_rate",
+        "merge_split_rate",
+        "property_error",
+        "property_entropy",
+        "occlusion_error",
+        "object_real_gap",
+        "regret",
+        "oracle_gap",
+        "upper_tail_rank_correlation",
+    ]
+    aggregate_rows: list[dict[str, float | int | str]] = []
+    for keys, group in target_seed_df.groupby(group_cols, sort=True):
+        row = dict(zip(group_cols, keys))
+        row["n_seeds"] = int(group["seed"].nunique())
+        for col in value_cols:
+            mean, low, high = mean_ci(group[col])
+            row[f"{col}_mean"] = mean
+            row[f"{col}_ci_low"] = low
+            row[f"{col}_ci_high"] = high
+        aggregate_rows.append(row)
+    main = pd.DataFrame(aggregate_rows)
+
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "target_id", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        combined = group[group["selector"] == "combined_repair"]
+        observable = group[group["selector"] == "observable_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        seed_group = target_seed_df[
+            (target_seed_df["scenario"] == group["scenario"].iloc[0])
+            & (target_seed_df["target_id"] == group["target_id"].iloc[0])
+            & (target_seed_df["N"] == group["N"].iloc[0])
+        ]
+        raw_seed = seed_group[seed_group["selector"] == "raw"][["seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "raw"}
+        )
+        wins: dict[str, float] = {}
+        for selector in ["observable_repair", "combined_repair"]:
+            treatment_seed = seed_group[seed_group["selector"] == selector][
+                ["seed", "selected_real_utility"]
+            ].rename(columns={"selected_real_utility": selector})
+            merged = treatment_seed.merge(raw_seed, on="seed", how="inner")
+            gains = merged[selector] - merged["raw"] if not merged.empty else pd.Series(dtype=float)
+            wins[selector] = float(np.mean(gains > 1e-12)) if len(gains) else float("nan")
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["target_sweep_combined_vs_raw_gain_mean"] = combined_utility - raw_utility
+            out["target_sweep_observable_vs_raw_gain_mean"] = observable_utility - raw_utility
+            out["target_sweep_combined_oracle_gap_mean"] = oracle_utility - combined_utility
+            out["target_sweep_observable_oracle_gap_mean"] = oracle_utility - observable_utility
+            out["target_sweep_combined_win_rate"] = wins["combined_repair"]
+            out["target_sweep_observable_win_rate"] = wins["observable_repair"]
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def pilot_calibration_summary(pilot_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate held-out pilot-label calibration rows."""
 
@@ -932,6 +1006,7 @@ def statistical_audit(
     extreme_object_seed_df: pd.DataFrame | None = None,
     family_seed_df: pd.DataFrame | None = None,
     counterfactual_seed_df: pd.DataFrame | None = None,
+    target_sweep_seed_df: pd.DataFrame | None = None,
     pilot_seed_df: pd.DataFrame | None = None,
     pilot_budget_seed_df: pd.DataFrame | None = None,
     leave_one_failure_seed_df: pd.DataFrame | None = None,
@@ -1123,6 +1198,34 @@ def statistical_audit(
             "Retargeted true-object stress observable-only repair selected-utility gain over raw.",
             observable_merged["observable"] - observable_merged["baseline"],
             threshold=0.45,
+        )
+
+    if target_sweep_seed_df is not None and not target_sweep_seed_df.empty:
+        n_max = int(target_sweep_seed_df["N"].max())
+        base = target_sweep_seed_df[
+            (target_sweep_seed_df["selector"] == "raw") & (target_sweep_seed_df["N"] == n_max)
+        ][["target_id", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "baseline"})
+        combined = target_sweep_seed_df[
+            (target_sweep_seed_df["selector"] == "combined_repair")
+            & (target_sweep_seed_df["N"] == n_max)
+        ][["target_id", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "combined"})
+        combined_merged = combined.merge(base, on=["target_id", "seed"], how="inner")
+        add_row(
+            "target_sweep_combined_repair_gain",
+            "Target-identity sweep combined repair selected-utility gain over raw.",
+            combined_merged["combined"] - combined_merged["baseline"],
+            threshold=0.55,
+        )
+        observable = target_sweep_seed_df[
+            (target_sweep_seed_df["selector"] == "observable_repair")
+            & (target_sweep_seed_df["N"] == n_max)
+        ][["target_id", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "observable"})
+        observable_merged = observable.merge(base, on=["target_id", "seed"], how="inner")
+        add_row(
+            "target_sweep_observable_repair_gain",
+            "Target-identity sweep observable-only repair selected-utility gain over raw.",
+            observable_merged["observable"] - observable_merged["baseline"],
+            threshold=0.50,
         )
 
     if pilot_seed_df is not None and not pilot_seed_df.empty:

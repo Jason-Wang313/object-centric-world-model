@@ -46,7 +46,7 @@ Response: `domain_randomization_metrics.csv` evaluates a held-out randomized syn
 
 ## Attack: The target identity is hard-coded.
 
-Response: `retarget_scene` creates a counterfactual scene where the true target is object 1 rather than object 0, and the generator now chooses wrong identities relative to the scene target rather than a fixed object ID. `counterfactual_target_metrics.csv` and `figure19_counterfactual_target.png` require raw high-N selection to fail while observable and combined repair recover utility on this target-swap panel.
+Response: `retarget_scene` creates a counterfactual scene where the true target is object 1 rather than object 0, and the generator now chooses wrong identities relative to the scene target rather than a fixed object ID. `target_identity_sweep_metrics.csv` broadens this to six possible true target identities in 6-object scenes. `counterfactual_target_metrics.csv`, `target_identity_sweep_metrics.csv`, `figure19_counterfactual_target.png`, and `figure27_target_identity_sweep.png` require raw high-N selection to fail while observable and combined repair recover utility.
 
 ## Attack: Repairs only beat weak selector baselines.
 

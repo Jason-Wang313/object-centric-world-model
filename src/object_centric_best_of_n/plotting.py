@@ -538,6 +538,33 @@ def figure26_pilot_budget(pilot_budget: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure26_pilot_label_budget.png")
 
 
+def figure27_target_identity_sweep(target_sweep: pd.DataFrame, out: Path) -> None:
+    if target_sweep.empty:
+        return
+    selectors = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
+    df = target_sweep[
+        (target_sweep["selector"].isin(selectors))
+        & (target_sweep["N"] == target_sweep["N"].max())
+    ]
+    if df.empty:
+        return
+    pivot = df.pivot_table(
+        index="target_id",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.0, 4.7))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#6f8f3c", "#3c7c5a", "#707070", "#2f6f9f"])
+    ax.set_xlabel("true target identity")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Target-identity sweep")
+    ax.set_ylim(0.0, 1.02)
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure27_target_identity_sweep.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -558,6 +585,7 @@ def write_all_figures(
     observable_df: pd.DataFrame | None = None,
     domain_df: pd.DataFrame | None = None,
     counterfactual_df: pd.DataFrame | None = None,
+    target_sweep_df: pd.DataFrame | None = None,
     pilot_df: pd.DataFrame | None = None,
     pilot_budget_df: pd.DataFrame | None = None,
     leave_one_failure_df: pd.DataFrame | None = None,
@@ -613,3 +641,5 @@ def write_all_figures(
         figure25_probe_cost_sensitivity(probe_cost_df, out)
     if pilot_budget_df is not None:
         figure26_pilot_budget(pilot_budget_df, out)
+    if target_sweep_df is not None:
+        figure27_target_identity_sweep(target_sweep_df, out)

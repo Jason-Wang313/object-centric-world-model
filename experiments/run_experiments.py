@@ -39,6 +39,7 @@ from object_centric_best_of_n.metrics import (
     sensitivity_summary,
     statistical_audit,
     stress_summary,
+    target_identity_sweep_summary,
 )
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
 from object_centric_best_of_n.plotting import write_all_figures
@@ -93,6 +94,8 @@ MODEL_FAMILY_SELECTORS = [
 ]
 DOMAIN_RANDOMIZATION_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 COUNTERFACTUAL_TARGET_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
+TARGET_SWEEP_IDS = [0, 1, 2, 3, 4, 5]
+TARGET_SWEEP_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_BUDGETS = [16, 32, 64, 128, 256, 512]
 NOISY_PROBE_RELIABILITIES = [0.55, 0.65, 0.75, 0.85, 0.90]
@@ -485,6 +488,51 @@ def _run_counterfactual_target_panel(
                 }
             )
             rows.append(record)
+    return pd.DataFrame(rows)
+
+
+def _run_target_identity_sweep_panel(
+    generator: ObjectCentricFutureGenerator,
+    target_sweep_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in target_sweep_seeds:
+        for target_id in TARGET_SWEEP_IDS:
+            base_scene = make_scene(
+                seed=560_000 + seed * 31 + target_id,
+                n_objects=6,
+                occlusion=True,
+                hidden_property=True,
+                crossing=True,
+            )
+            scene = retarget_scene(base_scene, target_id=target_id)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario="raw",
+                seed=571_111 + seed * 997 + target_id * 37,
+            )
+            for selector_name in TARGET_SWEEP_SELECTORS:
+                selected = SELECTORS[selector_name](candidates, scene, seed=seed + n + target_id * 13)
+                record = selection_record(
+                    "X_target_identity_sweep",
+                    "target_identity_sweep",
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "original_target_id": int(base_scene.target_id),
+                        "target_id": int(scene.target_id),
+                        "n_objects": int(len(scene.objects)),
+                        "generator_scenario": "raw",
+                    }
+                )
+                rows.append(record)
     return pd.DataFrame(rows)
 
 
@@ -894,6 +942,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_seeds = list(range(6)) if mode == "smoke" else list(range(48))
     counter_seed_df = _run_counterfactual_target_panel(generator, counter_seeds, n=max(ns))
     counter_metrics = counterfactual_target_summary(counter_seed_df)
+    target_sweep_seeds = list(range(4)) if mode == "smoke" else list(range(48))
+    target_sweep_seed_df = _run_target_identity_sweep_panel(generator, target_sweep_seeds, n=max(ns))
+    target_sweep_metrics = target_identity_sweep_summary(target_sweep_seed_df)
     pilot_train_seeds = list(range(4)) if mode == "smoke" else list(range(32))
     pilot_eval_seeds = list(range(4)) if mode == "smoke" else list(range(48))
     pilot_seed_df, pilot_calibrator = _run_pilot_calibration_panel(
@@ -935,6 +986,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         extreme_object_seed_df=extreme_object_seed_df,
         family_seed_df=family_seed_df,
         counterfactual_seed_df=counter_seed_df,
+        target_sweep_seed_df=target_sweep_seed_df,
         pilot_seed_df=pilot_seed_df,
         pilot_budget_seed_df=pilot_budget_seed_df,
         leave_one_failure_seed_df=loso_seed_df,
@@ -973,6 +1025,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     domain_metrics.to_csv(tables / "domain_randomization_metrics.csv", index=False)
     counter_seed_df.to_csv(tables / "counterfactual_target_seed_metrics.csv", index=False)
     counter_metrics.to_csv(tables / "counterfactual_target_metrics.csv", index=False)
+    target_sweep_seed_df.to_csv(tables / "target_identity_sweep_seed_metrics.csv", index=False)
+    target_sweep_metrics.to_csv(tables / "target_identity_sweep_metrics.csv", index=False)
     pilot_seed_df.to_csv(tables / "pilot_calibration_seed_metrics.csv", index=False)
     pilot_metrics.to_csv(tables / "pilot_calibration_metrics.csv", index=False)
     pilot_budget_seed_df.to_csv(tables / "pilot_budget_seed_metrics.csv", index=False)
@@ -1040,6 +1094,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         observable_df=observable_metrics,
         domain_df=domain_metrics,
         counterfactual_df=counter_metrics,
+        target_sweep_df=target_sweep_metrics,
         pilot_df=pilot_metrics,
         pilot_budget_df=pilot_budget_metrics,
         leave_one_failure_df=loso_metrics,
@@ -1117,6 +1172,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_combined = counter_metrics[counter_metrics["selector"] == "combined_repair"]
     counter_observable = counter_metrics[counter_metrics["selector"] == "observable_repair"]
     counter_raw = counter_metrics[counter_metrics["selector"] == "raw"]
+    target_sweep_combined = target_sweep_metrics[target_sweep_metrics["selector"] == "combined_repair"]
+    target_sweep_observable = target_sweep_metrics[target_sweep_metrics["selector"] == "observable_repair"]
+    target_sweep_raw = target_sweep_metrics[target_sweep_metrics["selector"] == "raw"]
     pilot_calibrated = pilot_metrics[pilot_metrics["selector"] == "pilot_calibrated"]
     pilot_raw = pilot_metrics[pilot_metrics["selector"] == "raw"]
     mature_pilot_budget = pilot_budget_metrics[
@@ -1179,6 +1237,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_model_family_proxy_rows": int(family_seed_df.shape[0]),
         "n_domain_randomization_rows": int(domain_seed_df.shape[0]),
         "n_counterfactual_target_rows": int(counter_seed_df.shape[0]),
+        "n_target_identity_sweep_rows": int(target_sweep_seed_df.shape[0]),
         "n_pilot_calibration_rows": int(pilot_seed_df.shape[0]),
         "n_pilot_budget_rows": int(pilot_budget_seed_df.shape[0]),
         "n_leave_one_failure_rows": int(loso_seed_df.shape[0]),
@@ -1237,6 +1296,15 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "counterfactual_combined_vs_raw_gain": float(counter_combined["counterfactual_combined_vs_raw_gain_mean"].iloc[0]) if not counter_combined.empty else None,
         "counterfactual_observable_vs_raw_gain": float(counter_observable["counterfactual_observable_vs_raw_gain_mean"].iloc[0]) if not counter_observable.empty else None,
         "counterfactual_combined_win_rate": float(counter_combined["counterfactual_combined_win_rate"].iloc[0]) if not counter_combined.empty else None,
+        "target_sweep_raw_mean_utility": float(target_sweep_raw["selected_real_utility_mean"].mean()) if not target_sweep_raw.empty else None,
+        "target_sweep_raw_mean_identity_error": float(target_sweep_raw["identity_error_mean"].mean()) if not target_sweep_raw.empty else None,
+        "target_sweep_combined_mean_utility": float(target_sweep_combined["selected_real_utility_mean"].mean()) if not target_sweep_combined.empty else None,
+        "target_sweep_observable_mean_utility": float(target_sweep_observable["selected_real_utility_mean"].mean()) if not target_sweep_observable.empty else None,
+        "target_sweep_combined_min_target_utility": float(target_sweep_combined["selected_real_utility_mean"].min()) if not target_sweep_combined.empty else None,
+        "target_sweep_observable_min_target_utility": float(target_sweep_observable["selected_real_utility_mean"].min()) if not target_sweep_observable.empty else None,
+        "target_sweep_combined_vs_raw_gain": float(target_sweep_combined["target_sweep_combined_vs_raw_gain_mean"].mean()) if not target_sweep_combined.empty else None,
+        "target_sweep_observable_vs_raw_gain": float(target_sweep_observable["target_sweep_observable_vs_raw_gain_mean"].mean()) if not target_sweep_observable.empty else None,
+        "target_sweep_combined_min_win_rate": float(target_sweep_combined["target_sweep_combined_win_rate"].min()) if not target_sweep_combined.empty else None,
         "pilot_raw_mean_utility": float(pilot_raw["selected_real_utility_mean"].mean()) if not pilot_raw.empty else None,
         "pilot_calibrated_mean_utility": float(pilot_calibrated["selected_real_utility_mean"].mean()) if not pilot_calibrated.empty else None,
         "pilot_calibrated_vs_raw_gain": float(pilot_calibrated["pilot_vs_raw_gain_mean"].mean()) if not pilot_calibrated.empty else None,

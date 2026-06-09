@@ -31,13 +31,14 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Extreme object-count synthetic stress for 10- and 12-object scenes.
 - Held-out domain-randomized synthetic stress with varied object counts and corruption flags.
 - Counterfactual target-identity stress that retargets the true object away from object zero.
+- Multi-target identity sweep over six possible true target identities.
 - Held-out pilot-label calibration for a learned utility selector trained from labeled object candidates.
 - Pilot-label budget sensitivity for the same learned utility selector.
 - Leave-one-failure-out pilot calibration, where each binding failure family is held out during pilot-calibrator training.
 - Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
 - Diagnostic probe-cost sensitivity, reporting net utility after charging probe actions.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, counterfactual target, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, counterfactual target, target-identity sweep, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -73,6 +74,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/domain_randomization_metrics.csv`
 - `results/tables/counterfactual_target_seed_metrics.csv`
 - `results/tables/counterfactual_target_metrics.csv`
+- `results/tables/target_identity_sweep_seed_metrics.csv`
+- `results/tables/target_identity_sweep_metrics.csv`
 - `results/tables/pilot_calibration_seed_metrics.csv`
 - `results/tables/pilot_calibration_metrics.csv`
 - `results/tables/pilot_budget_seed_metrics.csv`
@@ -121,6 +124,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure24_extreme_object_count.png`
 - `figures/figure25_probe_cost_sensitivity.png`
 - `figures/figure26_pilot_label_budget.png`
+- `figures/figure27_target_identity_sweep.png`
 
 ## Claim Boundaries
 

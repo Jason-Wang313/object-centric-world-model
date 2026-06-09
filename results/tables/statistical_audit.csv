@@ -11,10 +11,12 @@ extreme_object_observable_repair_gain,10/12-object corrupted-scene observable-on
 model_family_proxy_gain,Combined repair selected-utility gain over the best toy model-family proxy.,0.5457898784677047,0.47902003552955674,0.6122746709194089,0.2,lower,80,True
 counterfactual_combined_repair_gain,Retargeted true-object stress combined repair selected-utility gain over raw.,0.816906396281512,0.8038152320254462,0.8301024512531818,0.5,lower,48,True
 counterfactual_observable_repair_gain,Retargeted true-object stress observable-only repair selected-utility gain over raw.,0.8118514080123783,0.7972324713457769,0.8272028286554264,0.45,lower,48,True
-pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8043605069796411,0.8321748501809711,0.45,lower,144,True
-pilot_budget_mature_gain,Pilot-calibrated selected-utility gain over raw for label budgets >= 128.,0.8302670022712365,0.8222507242028098,0.8378636793064752,0.55,lower,432,True
-leave_one_failure_pilot_gain,Leave-one-failure-out pilot-calibrated selected-utility gain over raw.,0.7758011252035515,0.7594249779179112,0.790719330776359,0.4,lower,200,True
-noisy_probe_repair_gain,Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.,0.8667438725697416,0.8609003594431016,0.872383204153459,0.45,lower,144,True
-probe_cost_combined_repair_gain,Probe-cost-adjusted combined_repair selected-utility gain over raw for cost <= 0.10.,0.7749418797764499,0.7606841858847264,0.7883034297345589,0.49,lower,384,True
-probe_cost_observable_repair_gain,Probe-cost-adjusted observable_repair selected-utility gain over raw for cost <= 0.10.,0.7740809550049456,0.7603346643940359,0.7876535547126045,0.45,lower,384,True
-probe_cost_targeted_hidden_repair_gain,Probe-cost-adjusted targeted_probe selected-utility gain over raw for cost <= 0.10.,0.7036355640826374,0.6765291799888068,0.7303780922615305,0.35,lower,192,True
+target_sweep_combined_repair_gain,Target-identity sweep combined repair selected-utility gain over raw.,0.8102272022985342,0.8035063041337787,0.8174614161597457,0.55,lower,288,True
+target_sweep_observable_repair_gain,Target-identity sweep observable-only repair selected-utility gain over raw.,0.8117477875240109,0.8046359780457544,0.8186820414211854,0.5,lower,288,True
+pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8041310377163845,0.8323973180337888,0.45,lower,144,True
+pilot_budget_mature_gain,Pilot-calibrated selected-utility gain over raw for label budgets >= 128.,0.8302670022712365,0.8219071762952241,0.8382962826197208,0.55,lower,432,True
+leave_one_failure_pilot_gain,Leave-one-failure-out pilot-calibrated selected-utility gain over raw.,0.7758011252035515,0.7586829933477711,0.79039123703035,0.4,lower,200,True
+noisy_probe_repair_gain,Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.,0.8667438725697416,0.8609266921385779,0.8720960633400596,0.45,lower,144,True
+probe_cost_combined_repair_gain,Probe-cost-adjusted combined_repair selected-utility gain over raw for cost <= 0.10.,0.7749418797764499,0.761306783290847,0.7881677648456785,0.49,lower,384,True
+probe_cost_observable_repair_gain,Probe-cost-adjusted observable_repair selected-utility gain over raw for cost <= 0.10.,0.7740809550049456,0.7599873988834082,0.7871887386144973,0.45,lower,384,True
+probe_cost_targeted_hidden_repair_gain,Probe-cost-adjusted targeted_probe selected-utility gain over raw for cost <= 0.10.,0.7036355640826374,0.6744246394423294,0.732055550641455,0.35,lower,192,True

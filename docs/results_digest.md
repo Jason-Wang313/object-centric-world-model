@@ -26,6 +26,7 @@ This digest is generated from the current result artifacts.
 - Extreme object-count observable-vs-raw gain: 0.8392209815783754
 - Domain-randomized combined-vs-raw gain: 0.8343878574844603
 - Counterfactual target-swap combined-vs-raw gain: 0.816906396281512
+- Target-identity sweep combined-vs-raw gain: 0.8102272022985341
 - Pilot-calibrated held-out gain: 0.8192029444060406
 - Pilot-budget mature gain: 0.8302670022712365
 - Pilot-budget largest gain: 0.8247172225365372

@@ -69,6 +69,7 @@
   "n_model_family_proxy_rows": 480,
   "n_domain_randomization_rows": 240,
   "n_counterfactual_target_rows": 240,
+  "n_target_identity_sweep_rows": 1440,
   "n_pilot_calibration_rows": 864,
   "n_pilot_budget_rows": 5184,
   "n_leave_one_failure_rows": 1200,
@@ -127,6 +128,15 @@
   "counterfactual_combined_vs_raw_gain": 0.816906396281512,
   "counterfactual_observable_vs_raw_gain": 0.8118514080123783,
   "counterfactual_combined_win_rate": 1.0,
+  "target_sweep_raw_mean_utility": 0.00010916652326023515,
+  "target_sweep_raw_mean_identity_error": 1.0,
+  "target_sweep_combined_mean_utility": 0.8103363688217943,
+  "target_sweep_observable_mean_utility": 0.8118569540472711,
+  "target_sweep_combined_min_target_utility": 0.7955217976711665,
+  "target_sweep_observable_min_target_utility": 0.7975938837592791,
+  "target_sweep_combined_vs_raw_gain": 0.8102272022985341,
+  "target_sweep_observable_vs_raw_gain": 0.8117477875240109,
+  "target_sweep_combined_min_win_rate": 1.0,
   "pilot_raw_mean_utility": 0.008584399379120458,
   "pilot_calibrated_mean_utility": 0.827787343785161,
   "pilot_calibrated_vs_raw_gain": 0.8192029444060406,
@@ -171,5 +181,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 470.651
+  "runtime_seconds": 515.592
 }

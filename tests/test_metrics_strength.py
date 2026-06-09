@@ -20,6 +20,7 @@ from object_centric_best_of_n.metrics import (
     sensitivity_summary,
     statistical_audit,
     stress_summary,
+    target_identity_sweep_summary,
 )
 
 
@@ -107,6 +108,15 @@ def test_paired_effects_and_stress_summary_are_computed():
     counter = counterfactual_target_summary(df)
     assert "counterfactual_combined_vs_raw_gain_mean" in counter.columns
     assert counter[counter["selector"] == "combined_repair"]["counterfactual_combined_win_rate"].iloc[0] == 1.0
+    target_sweep_df = pd.DataFrame(
+        [
+            {**row, "experiment": "X_target_identity_sweep", "target_id": row["seed"] % 2}
+            for row in rows
+        ]
+    )
+    target_sweep = target_identity_sweep_summary(target_sweep_df)
+    assert "target_sweep_combined_vs_raw_gain_mean" in target_sweep.columns
+    assert target_sweep[target_sweep["selector"] == "combined_repair"]["target_sweep_combined_win_rate"].min() == 1.0
     pilot = pilot_calibration_summary(df)
     assert "pilot_vs_raw_gain_mean" in pilot.columns
     assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0
@@ -184,6 +194,7 @@ def test_paired_effects_and_stress_summary_are_computed():
                 {**rows[0], "selector": "diffusion_score_proxy", "selected_real_utility": 0.25},
             ]
         ),
+        target_sweep_seed_df=target_sweep_df,
         pilot_seed_df=df,
         pilot_budget_seed_df=pilot_budget_df,
         leave_one_failure_seed_df=df,
@@ -198,5 +209,7 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "leave_one_failure_pilot_gain" in set(stats["effect_id"])
     assert "noisy_probe_repair_gain" in set(stats["effect_id"])
     assert "extreme_object_combined_repair_gain" in set(stats["effect_id"])
+    assert "target_sweep_combined_repair_gain" in set(stats["effect_id"])
+    assert "target_sweep_observable_repair_gain" in set(stats["effect_id"])
     assert "probe_cost_combined_repair_gain" in set(stats["effect_id"])
     assert "probe_cost_targeted_hidden_repair_gain" in set(stats["effect_id"])

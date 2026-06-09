@@ -49,6 +49,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/domain_randomization_metrics.csv": ("scenario", "selector", "domain_combined_vs_raw_gain_mean", "domain_observable_vs_raw_gain_mean"),
     "results/tables/counterfactual_target_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "counterfactual_target_id"),
     "results/tables/counterfactual_target_metrics.csv": ("scenario", "selector", "counterfactual_combined_vs_raw_gain_mean", "counterfactual_observable_vs_raw_gain_mean"),
+    "results/tables/target_identity_sweep_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "target_id"),
+    "results/tables/target_identity_sweep_metrics.csv": ("scenario", "selector", "target_id", "target_sweep_combined_vs_raw_gain_mean", "target_sweep_observable_vs_raw_gain_mean"),
     "results/tables/pilot_calibration_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "pilot_train_candidates"),
     "results/tables/pilot_calibration_metrics.csv": ("scenario", "selector", "pilot_vs_raw_gain_mean", "pilot_win_rate"),
     "results/tables/pilot_budget_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "pilot_label_budget"),
@@ -90,6 +92,7 @@ REQUIRED_FIGURES = (
     "figures/figure24_extreme_object_count.png",
     "figures/figure25_probe_cost_sensitivity.png",
     "figures/figure26_pilot_label_budget.png",
+    "figures/figure27_target_identity_sweep.png",
 )
 
 REQUIRED_JSON = (
@@ -141,6 +144,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     family = _read_csv(tables / "model_family_proxy_metrics.csv")
     domain = _read_csv(tables / "domain_randomization_metrics.csv")
     counterfactual = _read_csv(tables / "counterfactual_target_metrics.csv")
+    target_sweep = _read_csv(tables / "target_identity_sweep_metrics.csv")
     pilot = _read_csv(tables / "pilot_calibration_metrics.csv")
     pilot_budget = _read_csv(tables / "pilot_budget_metrics.csv")
     loso = _read_csv(tables / "leave_one_failure_metrics.csv")
@@ -189,6 +193,11 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 if not extreme.empty
                 else pd.DataFrame()
             )
+            target_raw = (
+                target_sweep[target_sweep["selector"] == "raw"]
+                if not target_sweep.empty
+                else pd.DataFrame()
+            )
             c2_stats = (
                 statistical[statistical["effect_id"].isin(["raw_tail_score_gain", "raw_tail_utility_drop"])]
                 if not statistical.empty
@@ -221,10 +230,13 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     and not extreme_raw.empty
                     and float(extreme_raw["selected_real_utility_mean"].mean()) <= 0.12
                     and float(extreme_raw["identity_error_mean"].mean()) >= 0.75
+                    and not target_raw.empty
+                    and float(target_raw["selected_real_utility_mean"].mean()) <= 0.15
+                    and float(target_raw["identity_error_mean"].mean()) >= 0.75
                     and not c2_stats.empty
                     and bool(c2_stats["passes"].all())
                 ),
-                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD and extreme 10/12-object corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
+                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD, extreme 10/12-object, and target-identity-sweep corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
                 "observed": {
                     "raw_tail_score_gain": score_gain,
                     "raw_tail_utility_drop": utility_drop,
@@ -243,6 +255,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     "extreme_good_raw_utility": float(extreme_good["selected_real_utility_mean"].iloc[0]) if not extreme_good.empty else None,
                     "extreme_corrupted_raw_mean_utility": float(extreme_raw["selected_real_utility_mean"].mean()) if not extreme_raw.empty else None,
                     "extreme_corrupted_raw_identity_error": float(extreme_raw["identity_error_mean"].mean()) if not extreme_raw.empty else None,
+                    "target_sweep_raw_mean_utility": float(target_raw["selected_real_utility_mean"].mean()) if not target_raw.empty else None,
+                    "target_sweep_raw_identity_error": float(target_raw["identity_error_mean"].mean()) if not target_raw.empty else None,
                     "bootstrap_raw_tail_min_ci_margin": float((c2_stats["bootstrap_ci_low"] - c2_stats["threshold"]).min()) if not c2_stats.empty else None,
                 },
             }
@@ -381,6 +395,23 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(counter_combined["counterfactual_combined_vs_raw_gain_mean"].iloc[0]) >= 0.55
             and float(counter_observable["counterfactual_observable_vs_raw_gain_mean"].iloc[0]) >= 0.50
             and float(counter_combined["counterfactual_combined_win_rate"].iloc[0]) >= 0.85
+        )
+        target_sweep_combined = target_sweep[target_sweep["selector"] == "combined_repair"] if not target_sweep.empty else pd.DataFrame()
+        target_sweep_observable = target_sweep[target_sweep["selector"] == "observable_repair"] if not target_sweep.empty else pd.DataFrame()
+        target_sweep_raw = target_sweep[target_sweep["selector"] == "raw"] if not target_sweep.empty else pd.DataFrame()
+        target_sweep_pass = (
+            not target_sweep_combined.empty
+            and not target_sweep_observable.empty
+            and not target_sweep_raw.empty
+            and float(target_sweep_raw["selected_real_utility_mean"].mean()) <= 0.20
+            and float(target_sweep_combined["selected_real_utility_mean"].mean()) >= 0.75
+            and float(target_sweep_observable["selected_real_utility_mean"].mean()) >= 0.72
+            and float(target_sweep_combined["selected_real_utility_mean"].min()) >= 0.62
+            and float(target_sweep_observable["selected_real_utility_mean"].min()) >= 0.70
+            and float(target_sweep_combined["target_sweep_combined_vs_raw_gain_mean"].mean()) >= 0.60
+            and float(target_sweep_observable["target_sweep_observable_vs_raw_gain_mean"].mean()) >= 0.55
+            and float(target_sweep_combined["target_sweep_combined_win_rate"].min()) >= 0.85
+            and float(target_sweep_observable["target_sweep_observable_win_rate"].min()) >= 0.85
         )
         pilot_calibrated = pilot[pilot["selector"] == "pilot_calibrated"] if not pilot.empty else pd.DataFrame()
         pilot_pass = (
@@ -531,6 +562,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                         "model_family_proxy_gain",
                         "counterfactual_combined_repair_gain",
                         "counterfactual_observable_repair_gain",
+                        "target_sweep_combined_repair_gain",
+                        "target_sweep_observable_repair_gain",
                         "pilot_calibrated_repair_gain",
                         "pilot_budget_mature_gain",
                         "leave_one_failure_pilot_gain",
@@ -546,8 +579,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and pilot_pass and pilot_budget_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and target_sweep_pass and pilot_pass and pilot_budget_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap and multi-target identity-sweep stress succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -584,6 +617,14 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "counterfactual_combined_vs_raw_gain": float(counter_combined["counterfactual_combined_vs_raw_gain_mean"].iloc[0]) if not counter_combined.empty else None,
                 "counterfactual_observable_vs_raw_gain": float(counter_observable["counterfactual_observable_vs_raw_gain_mean"].iloc[0]) if not counter_observable.empty else None,
                 "counterfactual_combined_win_rate": float(counter_combined["counterfactual_combined_win_rate"].iloc[0]) if not counter_combined.empty else None,
+                "target_sweep_raw_mean_utility": float(target_sweep_raw["selected_real_utility_mean"].mean()) if not target_sweep_raw.empty else None,
+                "target_sweep_combined_mean_utility": float(target_sweep_combined["selected_real_utility_mean"].mean()) if not target_sweep_combined.empty else None,
+                "target_sweep_combined_min_target_utility": float(target_sweep_combined["selected_real_utility_mean"].min()) if not target_sweep_combined.empty else None,
+                "target_sweep_observable_mean_utility": float(target_sweep_observable["selected_real_utility_mean"].mean()) if not target_sweep_observable.empty else None,
+                "target_sweep_observable_min_target_utility": float(target_sweep_observable["selected_real_utility_mean"].min()) if not target_sweep_observable.empty else None,
+                "target_sweep_combined_vs_raw_gain": float(target_sweep_combined["target_sweep_combined_vs_raw_gain_mean"].mean()) if not target_sweep_combined.empty else None,
+                "target_sweep_observable_vs_raw_gain": float(target_sweep_observable["target_sweep_observable_vs_raw_gain_mean"].mean()) if not target_sweep_observable.empty else None,
+                "target_sweep_combined_min_win_rate": float(target_sweep_combined["target_sweep_combined_win_rate"].min()) if not target_sweep_combined.empty else None,
                 "pilot_calibrated_mean_utility": float(pilot_calibrated["selected_real_utility_mean"].mean()) if not pilot_calibrated.empty else None,
                 "pilot_calibrated_min_utility": float(pilot_calibrated["selected_real_utility_mean"].min()) if not pilot_calibrated.empty else None,
                 "pilot_calibrated_vs_raw_gain": float(pilot_calibrated["pilot_vs_raw_gain_mean"].mean()) if not pilot_calibrated.empty else None,
@@ -683,14 +724,14 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C2",
             "claim": "In controlled object-centric scenes, high-N selection can increase object score while real utility stagnates or falls due to binding failures.",
             "status": _status(strengths.get("C2", {}).get("passes") if root is not None else None),
-            "evidence": "figure1, figure14, figure24, main_metrics.csv, ood_metrics.csv, and extreme_object_count_metrics.csv",
+            "evidence": "figure1, figure14, figure24, figure27, main_metrics.csv, ood_metrics.csv, extreme_object_count_metrics.csv, and target_identity_sweep_metrics.csv",
             "strength": strengths.get("C2", {}),
         },
         {
             "id": "C3",
             "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
             "status": _status(strengths.get("C3", {}).get("passes") if root is not None else None),
-            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
+            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
             "strength": strengths.get("C3", {}),
         },
         {
@@ -894,6 +935,7 @@ def write_results_digest(root: str | Path) -> None:
         f"- Extreme object-count observable-vs-raw gain: {summary.get('extreme_object_count_observable_vs_raw_gain', 'unknown')}",
         f"- Domain-randomized combined-vs-raw gain: {summary.get('domain_randomized_combined_vs_raw_gain', 'unknown')}",
         f"- Counterfactual target-swap combined-vs-raw gain: {summary.get('counterfactual_combined_vs_raw_gain', 'unknown')}",
+        f"- Target-identity sweep combined-vs-raw gain: {summary.get('target_sweep_combined_vs_raw_gain', 'unknown')}",
         f"- Pilot-calibrated held-out gain: {summary.get('pilot_calibrated_vs_raw_gain', 'unknown')}",
         f"- Pilot-budget mature gain: {summary.get('pilot_budget_mature_vs_raw_gain', 'unknown')}",
         f"- Pilot-budget largest gain: {summary.get('pilot_budget_largest_vs_raw_gain', 'unknown')}",
@@ -1078,6 +1120,9 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Combined-vs-raw gain {summary_payload.get('domain_randomized_combined_vs_raw_gain', 'unknown')}.",
             "- Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. "
             f"Combined-vs-raw gain {summary_payload.get('counterfactual_combined_vs_raw_gain', 'unknown')}.",
+            "- Target-identity sweep artifact: figure27_target_identity_sweep.png and target_identity_sweep_metrics.csv. "
+            f"Combined-vs-raw gain {summary_payload.get('target_sweep_combined_vs_raw_gain', 'unknown')}, "
+            f"with minimum target utility {summary_payload.get('target_sweep_combined_min_target_utility', 'unknown')}.",
             "- Pilot-label calibration artifact: figure20_pilot_calibration.png, pilot_calibration_metrics.csv, and pilot_calibration_summary.json. "
             f"Held-out calibrated-vs-raw gain {summary_payload.get('pilot_calibrated_vs_raw_gain', 'unknown')}.",
             "- Pilot-label budget artifact: figure26_pilot_label_budget.png, pilot_budget_metrics.csv, and pilot_budget_summary.json. "
@@ -1098,7 +1143,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",
-            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, pilot-label budget sensitivity, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
+            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, target-identity sweep stress, held-out pilot-label calibration, pilot-label budget sensitivity, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
             "- Observable-only, pilot-calibrated, noisy-probe, and probe-cost repair reduce direct hidden-property truth alignment and free-probe assumptions, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",
