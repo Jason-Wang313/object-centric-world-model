@@ -4,6 +4,7 @@ from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     counterfactual_target_summary,
     domain_randomization_summary,
+    extreme_object_count_summary,
     model_family_proxy_summary,
     negative_control_summary,
     noisy_probe_summary,
@@ -89,6 +90,15 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "corrupted_mean" in set(negative["contrast"])
     ood = ood_summary(df)
     assert "combined_vs_raw_gain_mean" in ood.columns
+    extreme_df = pd.DataFrame(
+        [
+            {**row, "experiment": "U_extreme_object_count", "scenario": "extreme10_raw", "n_objects": 10}
+            for row in rows
+        ]
+    )
+    extreme = extreme_object_count_summary(extreme_df)
+    assert "extreme_combined_vs_raw_gain_mean" in extreme.columns
+    assert extreme[extreme["selector"] == "combined_repair"]["extreme_combined_win_rate"].iloc[0] == 1.0
     domain = domain_randomization_summary(df)
     assert "domain_combined_vs_raw_gain_mean" in domain.columns
     counter = counterfactual_target_summary(df)
@@ -130,6 +140,7 @@ def test_paired_effects_and_stress_summary_are_computed():
     stats = statistical_audit(
         df,
         ood_seed_df=df,
+        extreme_object_seed_df=extreme_df,
         family_seed_df=pd.DataFrame(
             rows
             + [
@@ -148,3 +159,4 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "pilot_calibrated_repair_gain" in set(stats["effect_id"])
     assert "leave_one_failure_pilot_gain" in set(stats["effect_id"])
     assert "noisy_probe_repair_gain" in set(stats["effect_id"])
+    assert "extreme_object_combined_repair_gain" in set(stats["effect_id"])

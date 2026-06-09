@@ -475,6 +475,53 @@ def ood_summary(ood_seed_df: pd.DataFrame) -> pd.DataFrame:
     return main.merge(combined, on=["experiment", "scenario", "N"], how="left")
 
 
+def extreme_object_count_summary(extreme_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate 10/12-object stress rows with repair, observable, and oracle gaps."""
+
+    if extreme_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(extreme_seed_df)
+    paired = paired_selector_effects(extreme_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        combined = group[group["selector"] == "combined_repair"]
+        observable = group[group["selector"] == "observable_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        combined_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "combined_repair")
+        ]
+        observable_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "observable_repair")
+        ]
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["extreme_combined_vs_raw_gain_mean"] = combined_utility - raw_utility
+            out["extreme_observable_vs_raw_gain_mean"] = observable_utility - raw_utility
+            out["extreme_combined_oracle_gap_mean"] = oracle_utility - combined_utility
+            out["extreme_observable_oracle_gap_mean"] = oracle_utility - observable_utility
+            out["extreme_combined_win_rate"] = (
+                float(combined_pair["win_rate"].iloc[0]) if not combined_pair.empty else float("nan")
+            )
+            out["extreme_observable_win_rate"] = (
+                float(observable_pair["win_rate"].iloc[0]) if not observable_pair.empty else float("nan")
+            )
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def domain_randomization_summary(domain_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate held-out domain-randomized synthetic stress rows."""
 
@@ -735,6 +782,7 @@ def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
 def statistical_audit(
     seed_df: pd.DataFrame,
     ood_seed_df: pd.DataFrame | None = None,
+    extreme_object_seed_df: pd.DataFrame | None = None,
     family_seed_df: pd.DataFrame | None = None,
     counterfactual_seed_df: pd.DataFrame | None = None,
     pilot_seed_df: pd.DataFrame | None = None,
@@ -847,6 +895,38 @@ def statistical_audit(
             observable_merged["observable"] - observable_merged["baseline"],
             threshold=0.50,
         )
+
+    if extreme_object_seed_df is not None and not extreme_object_seed_df.empty:
+        n_max = int(extreme_object_seed_df["N"].max())
+        corrupted = extreme_object_seed_df[
+            extreme_object_seed_df["scenario"].isin(
+                ["extreme10_raw", "extreme12_occlusion", "extreme12_hidden"]
+            )
+        ]
+        if not corrupted.empty:
+            base = corrupted[(corrupted["selector"] == "raw") & (corrupted["N"] == n_max)][
+                ["scenario", "seed", "selected_real_utility"]
+            ].rename(columns={"selected_real_utility": "baseline"})
+            treat = corrupted[(corrupted["selector"] == "combined_repair") & (corrupted["N"] == n_max)][
+                ["scenario", "seed", "selected_real_utility"]
+            ].rename(columns={"selected_real_utility": "treatment"})
+            merged = treat.merge(base, on=["scenario", "seed"], how="inner")
+            add_row(
+                "extreme_object_combined_repair_gain",
+                "10/12-object corrupted-scene combined repair selected-utility gain over raw.",
+                merged["treatment"] - merged["baseline"],
+                threshold=0.60,
+            )
+            observable = corrupted[(corrupted["selector"] == "observable_repair") & (corrupted["N"] == n_max)][
+                ["scenario", "seed", "selected_real_utility"]
+            ].rename(columns={"selected_real_utility": "observable"})
+            observable_merged = observable.merge(base, on=["scenario", "seed"], how="inner")
+            add_row(
+                "extreme_object_observable_repair_gain",
+                "10/12-object corrupted-scene observable-only repair selected-utility gain over raw.",
+                observable_merged["observable"] - observable_merged["baseline"],
+                threshold=0.50,
+            )
 
     if family_seed_df is not None and not family_seed_df.empty:
         n_max = int(family_seed_df["N"].max())

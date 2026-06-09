@@ -6,9 +6,11 @@ observable_repair_raw_gain,Observable-only repair selected-utility gain over raw
 targeted_probe_hidden_gain,Targeted probe selected-utility gain over raw for hidden-property scenes at high N.,0.7747901941902325,0.7162394057540883,0.8331539673383794,0.1,lower,16,True
 ood_combined_repair_gain,Dense OOD corrupted-scene combined repair selected-utility gain over raw.,0.8411636120707556,0.8160840222414751,0.8625036116658285,0.6,lower,48,True
 ood_observable_repair_gain,Dense OOD corrupted-scene observable-only repair selected-utility gain over raw.,0.8391697218661595,0.8146228918483795,0.8623629860601095,0.5,lower,48,True
-model_family_proxy_gain,Combined repair selected-utility gain over the best toy model-family proxy.,0.5457898784677047,0.48119565049537,0.6116788406841736,0.2,lower,80,True
-counterfactual_combined_repair_gain,Retargeted true-object stress combined repair selected-utility gain over raw.,0.816906396281512,0.8033821352295935,0.8300710841816604,0.5,lower,48,True
-counterfactual_observable_repair_gain,Retargeted true-object stress observable-only repair selected-utility gain over raw.,0.8118514080123783,0.7965755161921603,0.8267299680444506,0.45,lower,48,True
-pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8050928891106796,0.8318752871321331,0.45,lower,144,True
-leave_one_failure_pilot_gain,Leave-one-failure-out pilot-calibrated selected-utility gain over raw.,0.7758011252035515,0.7605564247032619,0.7909026074511044,0.4,lower,200,True
-noisy_probe_repair_gain,Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.,0.8667438725697416,0.8612132110639885,0.8724219106385658,0.45,lower,144,True
+extreme_object_combined_repair_gain,10/12-object corrupted-scene combined repair selected-utility gain over raw.,0.8434197833015507,0.8259360032913996,0.8598772333398098,0.6,lower,72,True
+extreme_object_observable_repair_gain,10/12-object corrupted-scene observable-only repair selected-utility gain over raw.,0.8392209815783753,0.8199435356779784,0.8571167138248469,0.5,lower,72,True
+model_family_proxy_gain,Combined repair selected-utility gain over the best toy model-family proxy.,0.5457898784677047,0.47902003552955674,0.6122746709194089,0.2,lower,80,True
+counterfactual_combined_repair_gain,Retargeted true-object stress combined repair selected-utility gain over raw.,0.816906396281512,0.8038152320254462,0.8301024512531818,0.5,lower,48,True
+counterfactual_observable_repair_gain,Retargeted true-object stress observable-only repair selected-utility gain over raw.,0.8118514080123783,0.7972324713457769,0.8272028286554264,0.45,lower,48,True
+pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8043605069796411,0.8321748501809711,0.45,lower,144,True
+leave_one_failure_pilot_gain,Leave-one-failure-out pilot-calibrated selected-utility gain over raw.,0.7758011252035515,0.7588950999991306,0.7907406339300532,0.4,lower,200,True
+noisy_probe_repair_gain,Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.,0.8667438725697416,0.8608191426897072,0.8724472350882777,0.45,lower,144,True

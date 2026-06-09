@@ -22,6 +22,8 @@ This digest is generated from the current result artifacts.
 - Learned shift min identity margin: 0.4458333333333333
 - OOD combined mean selected utility: 0.876852645124664
 - OOD combined-vs-raw gain: 0.8411636120707556
+- Extreme object-count combined-vs-raw gain: 0.8434197833015505
+- Extreme object-count observable-vs-raw gain: 0.8392209815783754
 - Domain-randomized combined-vs-raw gain: 0.8343878574844603
 - Counterfactual target-swap combined-vs-raw gain: 0.816906396281512
 - Pilot-calibrated held-out gain: 0.8192029444060406

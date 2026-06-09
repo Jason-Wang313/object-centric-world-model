@@ -28,13 +28,14 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
 - Negative controls for the non-corrupted setting and learned feature ablations.
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.
+- Extreme object-count synthetic stress for 10- and 12-object scenes.
 - Held-out domain-randomized synthetic stress with varied object counts and corruption flags.
 - Counterfactual target-identity stress that retargets the true object away from object zero.
 - Held-out pilot-label calibration for a learned utility selector trained from labeled object candidates.
 - Leave-one-failure-out pilot calibration, where each binding failure family is held out during pilot-calibrator training.
 - Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, counterfactual target, pilot calibration, leave-one-failure calibration, noisy-probe repair, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, counterfactual target, pilot calibration, leave-one-failure calibration, noisy-probe repair, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -64,6 +65,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_ablation.csv`
 - `results/tables/ood_seed_metrics.csv`
 - `results/tables/ood_metrics.csv`
+- `results/tables/extreme_object_count_seed_metrics.csv`
+- `results/tables/extreme_object_count_metrics.csv`
 - `results/tables/domain_randomization_seed_metrics.csv`
 - `results/tables/domain_randomization_metrics.csv`
 - `results/tables/counterfactual_target_seed_metrics.csv`
@@ -108,6 +111,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure21_leave_one_failure_out.png`
 - `figures/figure22_noisy_probe_reliability.png`
 - `figures/figure23_learned_domain_shift.png`
+- `figures/figure24_extreme_object_count.png`
 
 ## Claim Boundaries
 

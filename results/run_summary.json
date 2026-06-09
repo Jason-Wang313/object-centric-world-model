@@ -65,6 +65,7 @@
   "n_main_rows": 336,
   "n_stress_rows": 1120,
   "n_ood_rows": 320,
+  "n_extreme_object_count_rows": 480,
   "n_model_family_proxy_rows": 480,
   "n_domain_randomization_rows": 240,
   "n_counterfactual_target_rows": 240,
@@ -103,6 +104,12 @@
   "ood_good_control_raw_utility": 0.7549937089444607,
   "ood_observable_mean_selected_utility": 0.8748587549200678,
   "ood_observable_vs_raw_gain": 0.8391697218661595,
+  "extreme_object_count_raw_mean_utility": 0.026260969339013663,
+  "extreme_object_count_combined_mean_utility": 0.8696807526405642,
+  "extreme_object_count_observable_mean_utility": 0.8654819509173891,
+  "extreme_object_count_combined_vs_raw_gain": 0.8434197833015505,
+  "extreme_object_count_observable_vs_raw_gain": 0.8392209815783754,
+  "extreme_object_count_good_control_raw_utility": 0.7364395956385009,
   "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
   "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
   "model_family_max_combined_oracle_gap": 0.10589603837960726,
@@ -149,5 +156,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 321.478
+  "runtime_seconds": 342.967
 }

@@ -1,10 +1,10 @@
 {
-  "artifact_count": 63,
+  "artifact_count": 66,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 2811,
-      "sha256": "08bc982b50c7387ecc636ea6494b9aedc0239f856335e973cf746f1a645ed8ea"
+      "bytes": 2943,
+      "sha256": "b5636a36807eda0c57467a5f89097bc19ab1ca8ad208c5815521da10fa680e90"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -38,8 +38,8 @@
     },
     {
       "path": "figures/figure16_statistical_audit.png",
-      "bytes": 138737,
-      "sha256": "e5dd731acd9d0e59f658e02f84daf73f23f2ebbc12122581c748d451891573b5"
+      "bytes": 157039,
+      "sha256": "4f15ed00f5800158fcf652239885dbb0d48d2e57ce9ccb4a337ceb8c6e7729c5"
     },
     {
       "path": "figures/figure17_observable_repair.png",
@@ -80,6 +80,11 @@
       "path": "figures/figure23_learned_domain_shift.png",
       "bytes": 61153,
       "sha256": "0633a2464676ee129e0b0b5be2ed9287783d0f1f9ac1656d8a8941eda9d77852"
+    },
+    {
+      "path": "figures/figure24_extreme_object_count.png",
+      "bytes": 59328,
+      "sha256": "e22c5188979656ea408d667249b4811e9c67e5e9fad5623ebb19124711a2786c"
     },
     {
       "path": "figures/figure2_repair_comparison.png",
@@ -138,8 +143,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 5114,
-      "sha256": "144cf9c3453d29e8f6b678f4dddb9541d90f07dc4e13e95769347f9ed02a3549"
+      "bytes": 5569,
+      "sha256": "b68a5be686ff28a6b61fe0629649b0af8f465a65b0efab05ec0779b67b22d9a8"
     },
     {
       "path": "results/tables/counterfactual_target_metrics.csv",
@@ -165,6 +170,16 @@
       "path": "results/tables/exact_law_validation.csv",
       "bytes": 8682,
       "sha256": "9aa9c913202d4f17eb39d7b299214d8793c6e66667902370decf6601aadf77d6"
+    },
+    {
+      "path": "results/tables/extreme_object_count_metrics.csv",
+      "bytes": 14168,
+      "sha256": "e8a49564a5843bdc2b47c9269398be0cdc933d0bd294f76c70e3ae7c6b80291a"
+    },
+    {
+      "path": "results/tables/extreme_object_count_seed_metrics.csv",
+      "bytes": 129225,
+      "sha256": "5293b0b99e3988df2a71bf62dbae5777b84344e2a955728f787fc1333b6aab08"
     },
     {
       "path": "results/tables/learned_ablation.csv",
@@ -298,8 +313,8 @@
     },
     {
       "path": "results/tables/statistical_audit.csv",
-      "bytes": 2391,
-      "sha256": "97af018307c1cb56f7bf6a4624b72d50166f85c5757058bce079fba82a36c977"
+      "bytes": 2781,
+      "sha256": "04eda7f66035dab6a8fd7805024d95ac9275c2ebcb448b8301ffe4a8a8d4a584"
     },
     {
       "path": "results/tables/stress_metrics.csv",
@@ -313,8 +328,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 1371,
-      "sha256": "c74557a18a29074c46203479106ac0aecbf31c33edae3a9b083ea870ac29aaa7"
+      "bytes": 1498,
+      "sha256": "cd1998283de1b405f9ccb0824e9ecef3de22b54673b9e03c670b553075c1d0a7"
     }
   ]
 }

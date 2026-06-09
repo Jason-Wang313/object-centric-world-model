@@ -57,6 +57,8 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/learned_ablation.csv",
         "results/tables/ood_seed_metrics.csv",
         "results/tables/ood_metrics.csv",
+        "results/tables/extreme_object_count_seed_metrics.csv",
+        "results/tables/extreme_object_count_metrics.csv",
         "results/tables/domain_randomization_seed_metrics.csv",
         "results/tables/domain_randomization_metrics.csv",
         "results/tables/counterfactual_target_seed_metrics.csv",
@@ -102,6 +104,7 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "figures/figure21_leave_one_failure_out.png",
         "figures/figure22_noisy_probe_reliability.png",
         "figures/figure23_learned_domain_shift.png",
+        "figures/figure24_extreme_object_count.png",
     ]
     missing = [rel for rel in required if not (ROOT / rel).exists()]
     assert not missing

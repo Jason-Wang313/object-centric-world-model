@@ -41,6 +41,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_ablation.csv": ("ablation", "property_accuracy", "identity_alignment_accuracy"),
     "results/tables/ood_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
     "results/tables/ood_metrics.csv": ("scenario", "selector", "selected_real_utility_mean"),
+    "results/tables/extreme_object_count_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "n_objects"),
+    "results/tables/extreme_object_count_metrics.csv": ("scenario", "selector", "selected_real_utility_mean", "extreme_combined_vs_raw_gain_mean"),
     "results/tables/model_family_proxy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility"),
     "results/tables/model_family_proxy_metrics.csv": ("scenario", "selector", "best_proxy_utility_mean", "combined_vs_best_proxy_gain_mean"),
     "results/tables/domain_randomization_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "n_objects"),
@@ -81,6 +83,7 @@ REQUIRED_FIGURES = (
     "figures/figure21_leave_one_failure_out.png",
     "figures/figure22_noisy_probe_reliability.png",
     "figures/figure23_learned_domain_shift.png",
+    "figures/figure24_extreme_object_count.png",
 )
 
 REQUIRED_JSON = (
@@ -127,6 +130,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     learned_ablation = _read_csv(tables / "learned_ablation.csv")
     learned_shift = _read_csv(tables / "learned_domain_shift.csv")
     ood = _read_csv(tables / "ood_metrics.csv")
+    extreme = _read_csv(tables / "extreme_object_count_metrics.csv")
     family = _read_csv(tables / "model_family_proxy_metrics.csv")
     domain = _read_csv(tables / "domain_randomization_metrics.csv")
     counterfactual = _read_csv(tables / "counterfactual_target_metrics.csv")
@@ -162,6 +166,19 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 (ood["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
                 & (ood["selector"] == "raw")
             ] if not ood.empty else pd.DataFrame()
+            extreme_good = (
+                extreme[(extreme["scenario"] == "extreme10_good") & (extreme["selector"] == "raw")]
+                if not extreme.empty
+                else pd.DataFrame()
+            )
+            extreme_raw = (
+                extreme[
+                    (extreme["scenario"].isin(["extreme10_raw", "extreme12_occlusion", "extreme12_hidden"]))
+                    & (extreme["selector"] == "raw")
+                ]
+                if not extreme.empty
+                else pd.DataFrame()
+            )
             c2_stats = (
                 statistical[statistical["effect_id"].isin(["raw_tail_score_gain", "raw_tail_utility_drop"])]
                 if not statistical.empty
@@ -189,10 +206,15 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     and not ood_raw.empty
                     and float(ood_raw["selected_real_utility_mean"].mean()) <= 0.12
                     and float(ood_raw["identity_error_mean"].mean()) >= 0.80
+                    and not extreme_good.empty
+                    and float(extreme_good["selected_real_utility_mean"].iloc[0]) >= 0.55
+                    and not extreme_raw.empty
+                    and float(extreme_raw["selected_real_utility_mean"].mean()) <= 0.12
+                    and float(extreme_raw["identity_error_mean"].mean()) >= 0.75
                     and not c2_stats.empty
                     and bool(c2_stats["passes"].all())
                 ),
-                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
+                "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD and extreme 10/12-object corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
                 "observed": {
                     "raw_tail_score_gain": score_gain,
                     "raw_tail_utility_drop": utility_drop,
@@ -208,6 +230,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                     "ood_good_raw_utility": float(ood_good["selected_real_utility_mean"].iloc[0]) if not ood_good.empty else None,
                     "ood_corrupted_raw_mean_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
                     "ood_corrupted_raw_identity_error": float(ood_raw["identity_error_mean"].mean()) if not ood_raw.empty else None,
+                    "extreme_good_raw_utility": float(extreme_good["selected_real_utility_mean"].iloc[0]) if not extreme_good.empty else None,
+                    "extreme_corrupted_raw_mean_utility": float(extreme_raw["selected_real_utility_mean"].mean()) if not extreme_raw.empty else None,
+                    "extreme_corrupted_raw_identity_error": float(extreme_raw["identity_error_mean"].mean()) if not extreme_raw.empty else None,
                     "bootstrap_raw_tail_min_ci_margin": float((c2_stats["bootstrap_ci_low"] - c2_stats["threshold"]).min()) if not c2_stats.empty else None,
                 },
             }
@@ -284,6 +309,40 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(ood_combined["selected_real_utility_mean"].mean()) >= 0.80
             and float(ood_combined["selected_real_utility_mean"].min()) >= 0.82
             and float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) >= 0.70
+        )
+        extreme_combined = (
+            extreme[
+                (extreme["scenario"].isin(["extreme10_raw", "extreme12_occlusion", "extreme12_hidden"]))
+                & (extreme["selector"] == "combined_repair")
+            ]
+            if not extreme.empty
+            else pd.DataFrame()
+        )
+        extreme_observable = (
+            extreme[
+                (extreme["scenario"].isin(["extreme10_raw", "extreme12_occlusion", "extreme12_hidden"]))
+                & (extreme["selector"] == "observable_repair")
+            ]
+            if not extreme.empty
+            else pd.DataFrame()
+        )
+        extreme_raw = (
+            extreme[
+                (extreme["scenario"].isin(["extreme10_raw", "extreme12_occlusion", "extreme12_hidden"]))
+                & (extreme["selector"] == "raw")
+            ]
+            if not extreme.empty
+            else pd.DataFrame()
+        )
+        extreme_pass = (
+            not extreme_combined.empty
+            and not extreme_observable.empty
+            and not extreme_raw.empty
+            and float(extreme_combined["selected_real_utility_mean"].mean()) >= 0.78
+            and float(extreme_combined["selected_real_utility_mean"].min()) >= 0.75
+            and float(extreme_observable["selected_real_utility_mean"].mean()) >= 0.72
+            and float(extreme_combined["selected_real_utility_mean"].mean() - extreme_raw["selected_real_utility_mean"].mean()) >= 0.60
+            and float(extreme_observable["selected_real_utility_mean"].mean() - extreme_raw["selected_real_utility_mean"].mean()) >= 0.50
         )
         domain_combined = domain[domain["selector"] == "combined_repair"] if not domain.empty else pd.DataFrame()
         domain_observable = domain[domain["selector"] == "observable_repair"] if not domain.empty else pd.DataFrame()
@@ -381,6 +440,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                         "targeted_probe_hidden_gain",
                         "ood_combined_repair_gain",
                         "ood_observable_repair_gain",
+                        "extreme_object_combined_repair_gain",
+                        "extreme_object_observable_repair_gain",
                         "model_family_proxy_gain",
                         "counterfactual_combined_repair_gain",
                         "counterfactual_observable_repair_gain",
@@ -395,8 +456,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and domain_pass and counterfactual_pass and pilot_pass and loso_pass and noisy_probe_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and pilot_pass and loso_pass and noisy_probe_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -416,6 +477,11 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "ood_combined_mean_utility": float(ood_combined["selected_real_utility_mean"].mean()) if not ood_combined.empty else None,
                 "ood_combined_min_utility": float(ood_combined["selected_real_utility_mean"].min()) if not ood_combined.empty else None,
                 "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,
+                "extreme_combined_mean_utility": float(extreme_combined["selected_real_utility_mean"].mean()) if not extreme_combined.empty else None,
+                "extreme_combined_min_utility": float(extreme_combined["selected_real_utility_mean"].min()) if not extreme_combined.empty else None,
+                "extreme_observable_mean_utility": float(extreme_observable["selected_real_utility_mean"].mean()) if not extreme_observable.empty else None,
+                "extreme_combined_vs_raw_gain": float(extreme_combined["selected_real_utility_mean"].mean() - extreme_raw["selected_real_utility_mean"].mean()) if not extreme_combined.empty and not extreme_raw.empty else None,
+                "extreme_observable_vs_raw_gain": float(extreme_observable["selected_real_utility_mean"].mean() - extreme_raw["selected_real_utility_mean"].mean()) if not extreme_observable.empty and not extreme_raw.empty else None,
                 "domain_raw_utility": float(domain_raw["selected_real_utility_mean"].iloc[0]) if not domain_raw.empty else None,
                 "domain_combined_utility": float(domain_combined["selected_real_utility_mean"].iloc[0]) if not domain_combined.empty else None,
                 "domain_observable_utility": float(domain_observable["selected_real_utility_mean"].iloc[0]) if not domain_observable.empty else None,
@@ -512,14 +578,14 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C2",
             "claim": "In controlled object-centric scenes, high-N selection can increase object score while real utility stagnates or falls due to binding failures.",
             "status": _status(strengths.get("C2", {}).get("passes") if root is not None else None),
-            "evidence": "figure1 and main_metrics.csv for the raw scenario",
+            "evidence": "figure1, figure14, figure24, main_metrics.csv, ood_metrics.csv, and extreme_object_count_metrics.csv",
             "strength": strengths.get("C2", {}),
         },
         {
             "id": "C3",
             "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
             "status": _status(strengths.get("C3", {}).get("passes") if root is not None else None),
-            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, and noisy_probe_metrics.csv",
+            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, and extreme_object_count_metrics.csv",
             "strength": strengths.get("C3", {}),
         },
         {
@@ -719,6 +785,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Learned shift min identity margin: {summary.get('learned_shift_min_identity_margin', 'unknown')}",
         f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
         f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
+        f"- Extreme object-count combined-vs-raw gain: {summary.get('extreme_object_count_combined_vs_raw_gain', 'unknown')}",
+        f"- Extreme object-count observable-vs-raw gain: {summary.get('extreme_object_count_observable_vs_raw_gain', 'unknown')}",
         f"- Domain-randomized combined-vs-raw gain: {summary.get('domain_randomized_combined_vs_raw_gain', 'unknown')}",
         f"- Counterfactual target-swap combined-vs-raw gain: {summary.get('counterfactual_combined_vs_raw_gain', 'unknown')}",
         f"- Pilot-calibrated held-out gain: {summary.get('pilot_calibrated_vs_raw_gain', 'unknown')}",
@@ -894,6 +962,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Minimum shifted property margin {summary_payload.get('learned_shift_min_property_margin', 'unknown')} and identity margin {summary_payload.get('learned_shift_min_identity_margin', 'unknown')}.",
             "- OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. "
             f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
+            "- Extreme object-count artifact: figure24_extreme_object_count.png and extreme_object_count_metrics.csv. "
+            f"10/12-object corrupted combined-vs-raw gain {summary_payload.get('extreme_object_count_combined_vs_raw_gain', 'unknown')}.",
             "- Domain-randomized artifact: figure18_domain_randomization.png and domain_randomization_metrics.csv. "
             f"Combined-vs-raw gain {summary_payload.get('domain_randomized_combined_vs_raw_gain', 'unknown')}.",
             "- Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. "
@@ -914,7 +984,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",
-            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, and noisy-probe reliability stress.",
+            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, and noisy-probe reliability stress.",
             "- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",

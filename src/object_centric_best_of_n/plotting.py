@@ -453,6 +453,27 @@ def figure23_learned_domain_shift(domain_shift: pd.DataFrame, out: Path) -> None
     _save(fig, out / "figure23_learned_domain_shift.png")
 
 
+def figure24_extreme_object_count(extreme: pd.DataFrame, out: Path) -> None:
+    if extreme.empty:
+        return
+    selectors = ["raw", "observable_repair", "combined_repair", "oracle"]
+    df = extreme[(extreme["selector"].isin(selectors)) & (extreme["N"] == extreme["N"].max())]
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.0, 4.7))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#6f8f3c", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("10/12-object synthetic variant")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Extreme object-count stress")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(["raw", "observable repair", "combined repair", "oracle"], frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure24_extreme_object_count.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -467,6 +488,7 @@ def write_all_figures(
     negative_df: pd.DataFrame | None = None,
     learned_ablation_df: pd.DataFrame | None = None,
     ood_df: pd.DataFrame | None = None,
+    extreme_object_df: pd.DataFrame | None = None,
     family_df: pd.DataFrame | None = None,
     statistical_df: pd.DataFrame | None = None,
     observable_df: pd.DataFrame | None = None,
@@ -519,3 +541,5 @@ def write_all_figures(
         figure22_noisy_probe_reliability(noisy_probe_df, out)
     if learned_domain_shift_df is not None:
         figure23_learned_domain_shift(learned_domain_shift_df, out)
+    if extreme_object_df is not None:
+        figure24_extreme_object_count(extreme_object_df, out)

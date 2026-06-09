@@ -10,4 +10,4 @@ Third, we train a small NumPy object-centric model on generated slot trajectorie
 
 Fourth, we compare selectors: raw score, identity-consistent score, property-calibrated score, targeted-probe repair, observable-only repair, combined repair, random selection, and oracle selection.
 
-Fifth, we aggregate paired seed gains and high-N stress rows. The claim audit requires numeric margins before marking core claims strongly supported.
+Fifth, we aggregate paired seed gains, high-N stress rows, dense OOD rows, and extreme 10/12-object rows. The claim audit requires numeric margins before marking core claims strongly supported.

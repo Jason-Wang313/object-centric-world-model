@@ -22,6 +22,7 @@ from object_centric_best_of_n.metrics import (
     deployment_gate_from_metrics,
     domain_randomization_summary,
     exact_law_prediction_error,
+    extreme_object_count_summary,
     model_family_proxy_summary,
     negative_control_summary,
     observable_repair_summary,
@@ -72,6 +73,13 @@ OOD_VARIANTS = [
     ("dense8_hidden", 8, False, True, False, "hidden_property"),
 ]
 OOD_SELECTORS = ["raw", "combined_repair", "observable_repair", "random", "oracle"]
+EXTREME_OBJECT_VARIANTS = [
+    ("extreme10_good", 10, False, False, False, "good"),
+    ("extreme10_raw", 10, True, True, True, "raw"),
+    ("extreme12_occlusion", 12, True, True, True, "occlusion"),
+    ("extreme12_hidden", 12, False, True, False, "hidden_property"),
+]
+EXTREME_OBJECT_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 MODEL_FAMILY_SCENARIOS = ["raw", "occlusion", "hidden_property", "swap", "merge_split"]
 MODEL_FAMILY_SELECTORS = [
     "raw",
@@ -283,6 +291,50 @@ def _run_ood_panel(
             for selector_name in OOD_SELECTORS:
                 selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
                 rows.append(selection_record("K_ood_object_count", variant_name, selector_name, n, seed, selected, candidates))
+    return pd.DataFrame(rows)
+
+
+def _run_extreme_object_count_panel(
+    generator: ObjectCentricFutureGenerator,
+    extreme_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in extreme_seeds:
+        for variant_name, n_objects, occlusion, hidden_property, crossing, scenario in EXTREME_OBJECT_VARIANTS:
+            scene = make_scene(
+                seed=420_000 + seed,
+                n_objects=n_objects,
+                occlusion=occlusion,
+                hidden_property=hidden_property,
+                crossing=crossing,
+            )
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=scenario,
+                seed=421_337 + seed * 421 + n_objects + len(variant_name),
+            )
+            for selector_name in EXTREME_OBJECT_SELECTORS:
+                selected = SELECTORS[selector_name](candidates, scene, seed=seed + n + n_objects)
+                record = selection_record(
+                    "U_extreme_object_count",
+                    variant_name,
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "n_objects": int(n_objects),
+                        "occlusion_flag": int(occlusion),
+                        "hidden_property_flag": int(hidden_property),
+                        "crossing_flag": int(crossing),
+                    }
+                )
+                rows.append(record)
     return pd.DataFrame(rows)
 
 
@@ -709,6 +761,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     ood_seeds = list(range(4)) if mode == "smoke" else list(range(16))
     ood_seed_df = _run_ood_panel(generator, ood_seeds, n=max(ns))
     ood_metrics = ood_summary(ood_seed_df)
+    extreme_object_seeds = list(range(4)) if mode == "smoke" else list(range(24))
+    extreme_object_seed_df = _run_extreme_object_count_panel(generator, extreme_object_seeds, n=max(ns))
+    extreme_object_metrics = extreme_object_count_summary(extreme_object_seed_df)
     family_seeds = list(range(4)) if mode == "smoke" else list(range(16))
     family_seed_df = _run_model_family_panel(generator, family_seeds, n=max(ns))
     family_metrics = model_family_proxy_summary(family_seed_df)
@@ -743,6 +798,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     statistical_metrics = statistical_audit(
         seed_df,
         ood_seed_df=ood_seed_df,
+        extreme_object_seed_df=extreme_object_seed_df,
         family_seed_df=family_seed_df,
         counterfactual_seed_df=counter_seed_df,
         pilot_seed_df=pilot_seed_df,
@@ -773,6 +829,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     calibration_metrics.to_csv(tables / "score_calibration.csv", index=False)
     ood_seed_df.to_csv(tables / "ood_seed_metrics.csv", index=False)
     ood_metrics.to_csv(tables / "ood_metrics.csv", index=False)
+    extreme_object_seed_df.to_csv(tables / "extreme_object_count_seed_metrics.csv", index=False)
+    extreme_object_metrics.to_csv(tables / "extreme_object_count_metrics.csv", index=False)
     family_seed_df.to_csv(tables / "model_family_proxy_seed_metrics.csv", index=False)
     family_metrics.to_csv(tables / "model_family_proxy_metrics.csv", index=False)
     domain_seed_df.to_csv(tables / "domain_randomization_seed_metrics.csv", index=False)
@@ -824,6 +882,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         negative_df=negative_control,
         learned_ablation_df=learned_ablation,
         ood_df=ood_metrics,
+        extreme_object_df=extreme_object_metrics,
         family_df=family_metrics,
         statistical_df=statistical_metrics,
         observable_df=observable_metrics,
@@ -877,6 +936,23 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
     ]
     ood_good = ood_metrics[(ood_metrics["selector"] == "raw") & (ood_metrics["scenario"] == "dense6_good")]
+    extreme_corrupted = ["extreme10_raw", "extreme12_occlusion", "extreme12_hidden"]
+    extreme_combined = extreme_object_metrics[
+        (extreme_object_metrics["selector"] == "combined_repair")
+        & (extreme_object_metrics["scenario"].isin(extreme_corrupted))
+    ]
+    extreme_observable = extreme_object_metrics[
+        (extreme_object_metrics["selector"] == "observable_repair")
+        & (extreme_object_metrics["scenario"].isin(extreme_corrupted))
+    ]
+    extreme_raw = extreme_object_metrics[
+        (extreme_object_metrics["selector"] == "raw")
+        & (extreme_object_metrics["scenario"].isin(extreme_corrupted))
+    ]
+    extreme_good = extreme_object_metrics[
+        (extreme_object_metrics["selector"] == "raw")
+        & (extreme_object_metrics["scenario"] == "extreme10_good")
+    ]
     family_combined = family_metrics[
         (family_metrics["selector"] == "combined_repair")
         & (family_metrics["scenario"].isin(MODEL_FAMILY_SCENARIOS))
@@ -916,6 +992,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_main_rows": int(main.shape[0]),
         "n_stress_rows": int(stress_seed_df.shape[0]),
         "n_ood_rows": int(ood_seed_df.shape[0]),
+        "n_extreme_object_count_rows": int(extreme_object_seed_df.shape[0]),
         "n_model_family_proxy_rows": int(family_seed_df.shape[0]),
         "n_domain_randomization_rows": int(domain_seed_df.shape[0]),
         "n_counterfactual_target_rows": int(counter_seed_df.shape[0]),
@@ -954,6 +1031,12 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "ood_good_control_raw_utility": float(ood_good["selected_real_utility_mean"].iloc[0]) if not ood_good.empty else None,
         "ood_observable_mean_selected_utility": float(ood_observable["selected_real_utility_mean"].mean()) if not ood_observable.empty else None,
         "ood_observable_vs_raw_gain": float(ood_observable["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_observable.empty and not ood_raw.empty else None,
+        "extreme_object_count_raw_mean_utility": float(extreme_raw["selected_real_utility_mean"].mean()) if not extreme_raw.empty else None,
+        "extreme_object_count_combined_mean_utility": float(extreme_combined["selected_real_utility_mean"].mean()) if not extreme_combined.empty else None,
+        "extreme_object_count_observable_mean_utility": float(extreme_observable["selected_real_utility_mean"].mean()) if not extreme_observable.empty else None,
+        "extreme_object_count_combined_vs_raw_gain": float(extreme_combined["selected_real_utility_mean"].mean() - extreme_raw["selected_real_utility_mean"].mean()) if not extreme_combined.empty and not extreme_raw.empty else None,
+        "extreme_object_count_observable_vs_raw_gain": float(extreme_observable["selected_real_utility_mean"].mean() - extreme_raw["selected_real_utility_mean"].mean()) if not extreme_observable.empty and not extreme_raw.empty else None,
+        "extreme_object_count_good_control_raw_utility": float(extreme_good["selected_real_utility_mean"].iloc[0]) if not extreme_good.empty else None,
         "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
         "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
         "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,

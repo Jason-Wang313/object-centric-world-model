@@ -34,7 +34,7 @@ Response: `negative_control.csv` compares the good non-corrupted setting with co
 
 ## Attack: The result may not survive more distractor objects.
 
-Response: `ood_metrics.csv` evaluates dense 6- and 8-object variants, including a dense good control and dense corrupted scenes. The audit requires dense corrupted scenes to collapse under raw selection and recover under combined repair.
+Response: `ood_metrics.csv` evaluates dense 6- and 8-object variants, including a dense good control and dense corrupted scenes. `extreme_object_count_metrics.csv` separately evaluates 10- and 12-object variants. The audit requires dense and extreme corrupted scenes to collapse under raw selection and recover under combined and observable repair.
 
 ## Attack: The scenarios are hand-picked.
 
