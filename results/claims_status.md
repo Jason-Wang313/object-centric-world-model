@@ -44,7 +44,7 @@ Strength: {
     "target_sweep_raw_identity_error": 1.0,
     "synthetic_benchmark_raw_mean_utility": 0.019333590390072087,
     "synthetic_benchmark_raw_identity_error": 0.9821428571428571,
-    "bootstrap_raw_tail_min_ci_margin": 0.0829473068486257
+    "bootstrap_raw_tail_min_ci_margin": 0.03294730684862571
   }
 }
 
@@ -148,7 +148,7 @@ Strength: {
     "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
     "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
     "model_family_max_combined_oracle_gap": 0.1058960383796072,
-    "bootstrap_repair_min_ci_margin": 0.1690988115705207
+    "bootstrap_repair_min_ci_margin": 0.1035063041337787
   }
 }
 

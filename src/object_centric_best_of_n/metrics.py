@@ -1372,25 +1372,25 @@ def statistical_audit(
                 "raw_tail_score_gain",
                 "Raw selected object-score gain from lowest to highest N.",
                 merged["score_high_n"] - merged["score_low_n"],
-                threshold=0.25,
+                threshold=0.35,
             )
             add_row(
                 "raw_tail_utility_drop",
                 "Raw selected real-utility drop from lowest to highest N.",
                 merged["utility_low_n"] - merged["utility_high_n"],
-                threshold=0.10,
+                threshold=0.15,
             )
         add_row(
             "combined_repair_raw_gain",
             "Combined repair selected-utility gain over raw at high N.",
             _paired_gain_units(seed_df, "raw", "combined_repair"),
-            threshold=0.50,
+            threshold=0.55,
         )
         add_row(
             "observable_repair_raw_gain",
             "Observable-only repair selected-utility gain over raw at high N.",
             _paired_gain_units(seed_df, "raw", "observable_repair"),
-            threshold=0.45,
+            threshold=0.55,
         )
         add_row(
             "targeted_probe_hidden_gain",
@@ -1413,7 +1413,7 @@ def statistical_audit(
             "ood_combined_repair_gain",
             "Dense OOD corrupted-scene combined repair selected-utility gain over raw.",
             merged["treatment"] - merged["baseline"],
-            threshold=0.60,
+            threshold=0.65,
         )
         observable = corrupted[(corrupted["selector"] == "observable_repair") & (corrupted["N"] == n_max)][
             ["scenario", "seed", "selected_real_utility"]
@@ -1423,7 +1423,7 @@ def statistical_audit(
             "ood_observable_repair_gain",
             "Dense OOD corrupted-scene observable-only repair selected-utility gain over raw.",
             observable_merged["observable"] - observable_merged["baseline"],
-            threshold=0.50,
+            threshold=0.65,
         )
 
     if extreme_object_seed_df is not None and not extreme_object_seed_df.empty:
@@ -1445,7 +1445,7 @@ def statistical_audit(
                 "extreme_object_combined_repair_gain",
                 "10/12-object corrupted-scene combined repair selected-utility gain over raw.",
                 merged["treatment"] - merged["baseline"],
-                threshold=0.60,
+                threshold=0.65,
             )
             observable = corrupted[(corrupted["selector"] == "observable_repair") & (corrupted["N"] == n_max)][
                 ["scenario", "seed", "selected_real_utility"]
@@ -1455,7 +1455,7 @@ def statistical_audit(
                 "extreme_object_observable_repair_gain",
                 "10/12-object corrupted-scene observable-only repair selected-utility gain over raw.",
                 observable_merged["observable"] - observable_merged["baseline"],
-                threshold=0.50,
+                threshold=0.65,
             )
 
     if family_seed_df is not None and not family_seed_df.empty:
@@ -1477,7 +1477,7 @@ def statistical_audit(
             "model_family_proxy_gain",
             "Combined repair selected-utility gain over the best toy model-family proxy.",
             merged["combined"] - merged["best_proxy"],
-            threshold=0.20,
+            threshold=0.25,
         )
 
     if counterfactual_seed_df is not None and not counterfactual_seed_df.empty:
@@ -1493,7 +1493,7 @@ def statistical_audit(
             "counterfactual_combined_repair_gain",
             "Retargeted true-object stress combined repair selected-utility gain over raw.",
             combined_merged["combined"] - combined_merged["baseline"],
-            threshold=0.50,
+            threshold=0.65,
         )
         observable = counterfactual_seed_df[
             (counterfactual_seed_df["selector"] == "observable_repair") & (counterfactual_seed_df["N"] == n_max)
@@ -1503,7 +1503,7 @@ def statistical_audit(
             "counterfactual_observable_repair_gain",
             "Retargeted true-object stress observable-only repair selected-utility gain over raw.",
             observable_merged["observable"] - observable_merged["baseline"],
-            threshold=0.45,
+            threshold=0.65,
         )
 
     if target_sweep_seed_df is not None and not target_sweep_seed_df.empty:
@@ -1520,7 +1520,7 @@ def statistical_audit(
             "target_sweep_combined_repair_gain",
             "Target-identity sweep combined repair selected-utility gain over raw.",
             combined_merged["combined"] - combined_merged["baseline"],
-            threshold=0.55,
+            threshold=0.70,
         )
         observable = target_sweep_seed_df[
             (target_sweep_seed_df["selector"] == "observable_repair")
@@ -1531,7 +1531,7 @@ def statistical_audit(
             "target_sweep_observable_repair_gain",
             "Target-identity sweep observable-only repair selected-utility gain over raw.",
             observable_merged["observable"] - observable_merged["baseline"],
-            threshold=0.50,
+            threshold=0.70,
         )
 
     if pilot_seed_df is not None and not pilot_seed_df.empty:
@@ -1547,7 +1547,7 @@ def statistical_audit(
             "pilot_calibrated_repair_gain",
             "Held-out pilot-label calibrated selector selected-utility gain over raw.",
             merged["pilot"] - merged["baseline"],
-            threshold=0.45,
+            threshold=0.70,
         )
 
     if pilot_budget_seed_df is not None and not pilot_budget_seed_df.empty:
@@ -1564,7 +1564,7 @@ def statistical_audit(
             "pilot_budget_mature_gain",
             "Pilot-calibrated selected-utility gain over raw for label budgets >= 128.",
             merged["pilot"] - merged["baseline"],
-            threshold=0.55,
+            threshold=0.70,
         )
 
     if leave_one_failure_seed_df is not None and not leave_one_failure_seed_df.empty:
@@ -1580,7 +1580,7 @@ def statistical_audit(
             "leave_one_failure_pilot_gain",
             "Leave-one-failure-out pilot-calibrated selected-utility gain over raw.",
             merged["pilot"] - merged["baseline"],
-            threshold=0.40,
+            threshold=0.55,
         )
 
     if noisy_probe_seed_df is not None and not noisy_probe_seed_df.empty:
@@ -1597,7 +1597,7 @@ def statistical_audit(
             "noisy_probe_repair_gain",
             "Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.",
             merged["noisy"] - merged["baseline"],
-            threshold=0.45,
+            threshold=0.70,
         )
 
     if probe_cost_seed_df is not None and not probe_cost_seed_df.empty:
@@ -1641,7 +1641,7 @@ def statistical_audit(
             "learned_selection_identity_gain",
             "Learned identity+reward selector selected-utility gain over raw.",
             learned_merged["learned"] - learned_merged["baseline"],
-            threshold=0.35,
+            threshold=0.40,
         )
         reward = learned_selection_seed_df[
             (learned_selection_seed_df["selector"] == "learned_reward")
@@ -1652,7 +1652,7 @@ def statistical_audit(
             "learned_selection_identity_over_reward_gain",
             "Learned identity+reward selector selected-utility gain over learned reward-only selector.",
             identity_merged["learned"] - identity_merged["reward"],
-            threshold=0.12,
+            threshold=0.15,
         )
 
     if learned_repair_policy_seed_df is not None and not learned_repair_policy_seed_df.empty:
@@ -1676,7 +1676,7 @@ def statistical_audit(
             "learned_repair_policy_gain",
             "Learned repair-policy selected-utility gain over raw on benchmark-style held-out variants.",
             raw_merged["policy"] - raw_merged["baseline"],
-            threshold=0.50,
+            threshold=0.65,
         )
         identity_merged = policy.merge(learned_identity, on=["scenario", "seed"], how="inner")
         add_row(
@@ -1701,7 +1701,7 @@ def statistical_audit(
             "synthetic_benchmark_combined_repair_gain",
             "Benchmark-style synthetic task-suite combined repair selected-utility gain over raw.",
             combined_merged["combined"] - combined_merged["baseline"],
-            threshold=0.55,
+            threshold=0.60,
         )
         observable = synthetic_benchmark_seed_df[
             (synthetic_benchmark_seed_df["selector"] == "observable_repair")
@@ -1712,7 +1712,7 @@ def statistical_audit(
             "synthetic_benchmark_observable_repair_gain",
             "Benchmark-style synthetic task-suite observable-only repair selected-utility gain over raw.",
             observable_merged["observable"] - observable_merged["baseline"],
-            threshold=0.50,
+            threshold=0.55,
         )
 
     if deployment_policy_seed_df is not None and not deployment_policy_seed_df.empty:

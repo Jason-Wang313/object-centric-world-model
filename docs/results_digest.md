@@ -43,7 +43,7 @@ This digest is generated from the current result artifacts.
 - Probe-cost low-cost combined-vs-raw gain: 0.77494187977645
 - Probe-cost max-cost combined-vs-raw gain: 0.51744187977645
 - Toy proxy combined-vs-best-proxy gain: 0.5504614056934154
-- Bootstrap audit minimum CI margin: 0.08294730684862575
+- Bootstrap audit minimum CI margin: 0.03294730684862576
 
 ## Learned Model
 - Property accuracy: 0.9958333333333333 versus baseline 0.75

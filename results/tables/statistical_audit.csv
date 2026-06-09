@@ -1,30 +1,30 @@
 effect_id,description,estimate,bootstrap_ci_low,bootstrap_ci_high,threshold,direction,n_units,passes
-raw_tail_score_gain,Raw selected object-score gain from lowest to highest N.,0.5759192453426587,0.4400044173071301,0.7090730180713054,0.25,lower,16,True
-raw_tail_utility_drop,Raw selected real-utility drop from lowest to highest N.,0.36397088780796794,0.18294730684862576,0.552018676749414,0.1,lower,16,True
-combined_repair_raw_gain,Combined repair selected-utility gain over raw at high N.,0.8803086375224858,0.8627924411526106,0.8955036686405,0.5,lower,16,True
-observable_repair_raw_gain,Observable-only repair selected-utility gain over raw at high N.,0.8803086375224858,0.8633515616564604,0.8953801332776069,0.45,lower,16,True
+raw_tail_score_gain,Raw selected object-score gain from lowest to highest N.,0.5759192453426587,0.4400044173071301,0.7090730180713054,0.35,lower,16,True
+raw_tail_utility_drop,Raw selected real-utility drop from lowest to highest N.,0.36397088780796794,0.18294730684862576,0.552018676749414,0.15,lower,16,True
+combined_repair_raw_gain,Combined repair selected-utility gain over raw at high N.,0.8803086375224858,0.8627924411526106,0.8955036686405,0.55,lower,16,True
+observable_repair_raw_gain,Observable-only repair selected-utility gain over raw at high N.,0.8803086375224858,0.8633515616564604,0.8953801332776069,0.55,lower,16,True
 targeted_probe_hidden_gain,Targeted probe selected-utility gain over raw for hidden-property scenes at high N.,0.7747901941902325,0.7162394057540883,0.8331539673383794,0.1,lower,16,True
-ood_combined_repair_gain,Dense OOD corrupted-scene combined repair selected-utility gain over raw.,0.8411636120707556,0.8160840222414751,0.8625036116658285,0.6,lower,48,True
-ood_observable_repair_gain,Dense OOD corrupted-scene observable-only repair selected-utility gain over raw.,0.8391697218661595,0.8146228918483795,0.8623629860601095,0.5,lower,48,True
-extreme_object_combined_repair_gain,10/12-object corrupted-scene combined repair selected-utility gain over raw.,0.8434197833015507,0.8259360032913996,0.8598772333398098,0.6,lower,72,True
-extreme_object_observable_repair_gain,10/12-object corrupted-scene observable-only repair selected-utility gain over raw.,0.8392209815783753,0.8199435356779784,0.8571167138248469,0.5,lower,72,True
-model_family_proxy_gain,Combined repair selected-utility gain over the best toy model-family proxy.,0.5457898784677047,0.47902003552955674,0.6122746709194089,0.2,lower,80,True
-counterfactual_combined_repair_gain,Retargeted true-object stress combined repair selected-utility gain over raw.,0.816906396281512,0.8038152320254462,0.8301024512531818,0.5,lower,48,True
-counterfactual_observable_repair_gain,Retargeted true-object stress observable-only repair selected-utility gain over raw.,0.8118514080123783,0.7972324713457769,0.8272028286554264,0.45,lower,48,True
-target_sweep_combined_repair_gain,Target-identity sweep combined repair selected-utility gain over raw.,0.8102272022985342,0.8035063041337787,0.8174614161597457,0.55,lower,288,True
-target_sweep_observable_repair_gain,Target-identity sweep observable-only repair selected-utility gain over raw.,0.8117477875240109,0.8046359780457544,0.8186820414211854,0.5,lower,288,True
-pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8041310377163845,0.8323973180337888,0.45,lower,144,True
-pilot_budget_mature_gain,Pilot-calibrated selected-utility gain over raw for label budgets >= 128.,0.8302670022712365,0.8219071762952241,0.8382962826197208,0.55,lower,432,True
-leave_one_failure_pilot_gain,Leave-one-failure-out pilot-calibrated selected-utility gain over raw.,0.7758011252035515,0.7586829933477711,0.79039123703035,0.4,lower,200,True
-noisy_probe_repair_gain,Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.,0.8667438725697416,0.8609266921385779,0.8720960633400596,0.45,lower,144,True
+ood_combined_repair_gain,Dense OOD corrupted-scene combined repair selected-utility gain over raw.,0.8411636120707556,0.8160840222414751,0.8625036116658285,0.65,lower,48,True
+ood_observable_repair_gain,Dense OOD corrupted-scene observable-only repair selected-utility gain over raw.,0.8391697218661595,0.8146228918483795,0.8623629860601095,0.65,lower,48,True
+extreme_object_combined_repair_gain,10/12-object corrupted-scene combined repair selected-utility gain over raw.,0.8434197833015507,0.8259360032913996,0.8598772333398098,0.65,lower,72,True
+extreme_object_observable_repair_gain,10/12-object corrupted-scene observable-only repair selected-utility gain over raw.,0.8392209815783753,0.8199435356779784,0.8571167138248469,0.65,lower,72,True
+model_family_proxy_gain,Combined repair selected-utility gain over the best toy model-family proxy.,0.5457898784677047,0.47902003552955674,0.6122746709194089,0.25,lower,80,True
+counterfactual_combined_repair_gain,Retargeted true-object stress combined repair selected-utility gain over raw.,0.816906396281512,0.8038152320254462,0.8301024512531818,0.65,lower,48,True
+counterfactual_observable_repair_gain,Retargeted true-object stress observable-only repair selected-utility gain over raw.,0.8118514080123783,0.7972324713457769,0.8272028286554264,0.65,lower,48,True
+target_sweep_combined_repair_gain,Target-identity sweep combined repair selected-utility gain over raw.,0.8102272022985342,0.8035063041337787,0.8174614161597457,0.7,lower,288,True
+target_sweep_observable_repair_gain,Target-identity sweep observable-only repair selected-utility gain over raw.,0.8117477875240109,0.8046359780457544,0.8186820414211854,0.7,lower,288,True
+pilot_calibrated_repair_gain,Held-out pilot-label calibrated selector selected-utility gain over raw.,0.8192029444060405,0.8041310377163845,0.8323973180337888,0.7,lower,144,True
+pilot_budget_mature_gain,Pilot-calibrated selected-utility gain over raw for label budgets >= 128.,0.8302670022712365,0.8219071762952241,0.8382962826197208,0.7,lower,432,True
+leave_one_failure_pilot_gain,Leave-one-failure-out pilot-calibrated selected-utility gain over raw.,0.7758011252035515,0.7586829933477711,0.79039123703035,0.55,lower,200,True
+noisy_probe_repair_gain,Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.,0.8667438725697416,0.8609266921385779,0.8720960633400596,0.7,lower,144,True
 probe_cost_combined_repair_gain,Probe-cost-adjusted combined_repair selected-utility gain over raw for cost <= 0.10.,0.7749418797764499,0.761306783290847,0.7881677648456785,0.49,lower,384,True
 probe_cost_observable_repair_gain,Probe-cost-adjusted observable_repair selected-utility gain over raw for cost <= 0.10.,0.7740809550049456,0.7599873988834082,0.7871887386144973,0.45,lower,384,True
 probe_cost_targeted_hidden_repair_gain,Probe-cost-adjusted targeted_probe selected-utility gain over raw for cost <= 0.10.,0.7036355640826374,0.6744246394423294,0.732055550641455,0.35,lower,192,True
-learned_selection_identity_gain,Learned identity+reward selector selected-utility gain over raw.,0.6583388223801651,0.6177346559843349,0.6965478861027736,0.35,lower,224,True
-learned_selection_identity_over_reward_gain,Learned identity+reward selector selected-utility gain over learned reward-only selector.,0.3596642896057789,0.30997998473958316,0.40900935898510027,0.12,lower,224,True
-learned_repair_policy_gain,Learned repair-policy selected-utility gain over raw on benchmark-style held-out variants.,0.8234771981724383,0.8124202148399401,0.833812384551211,0.5,lower,224,True
+learned_selection_identity_gain,Learned identity+reward selector selected-utility gain over raw.,0.6583388223801651,0.6177346559843349,0.6965478861027736,0.4,lower,224,True
+learned_selection_identity_over_reward_gain,Learned identity+reward selector selected-utility gain over learned reward-only selector.,0.3596642896057789,0.30997998473958316,0.40900935898510027,0.15,lower,224,True
+learned_repair_policy_gain,Learned repair-policy selected-utility gain over raw on benchmark-style held-out variants.,0.8234771981724383,0.8124202148399401,0.833812384551211,0.65,lower,224,True
 learned_repair_policy_over_learned_identity_gain,Learned repair-policy selected-utility gain over the learned identity+reward selector.,0.22529096240352464,0.18491709536335466,0.27043197396356367,0.1,lower,224,True
-synthetic_benchmark_combined_repair_gain,Benchmark-style synthetic task-suite combined repair selected-utility gain over raw.,0.8161407808398964,0.8063476695077779,0.8253837344014596,0.55,lower,224,True
-synthetic_benchmark_observable_repair_gain,Benchmark-style synthetic task-suite observable-only repair selected-utility gain over raw.,0.8160747948047941,0.8061943112612676,0.8251114034642487,0.5,lower,224,True
+synthetic_benchmark_combined_repair_gain,Benchmark-style synthetic task-suite combined repair selected-utility gain over raw.,0.8161407808398964,0.8063476695077779,0.8253837344014596,0.6,lower,224,True
+synthetic_benchmark_observable_repair_gain,Benchmark-style synthetic task-suite observable-only repair selected-utility gain over raw.,0.8160747948047941,0.8061943112612676,0.8251114034642487,0.55,lower,224,True
 deployment_policy_gate_gain,Conservative deployment-gate policy selected-utility gain over raw high-N selection in corrupted scenes.,0.7883015801574633,0.7442473261357344,0.8234529560678132,0.5,lower,80,True
 deployment_policy_gate_over_stop_early_gain,Conservative deployment-gate policy selected-utility gain over a raw stop-early fallback in corrupted scenes.,0.5368058036226959,0.4690988115705207,0.6030959453139579,0.3,lower,80,True

@@ -217,7 +217,7 @@
   "probe_cost_max_cost_observable_vs_raw_gain": 0.5165809550049456,
   "probe_cost_low_cost_raw_mean_utility": 0.06339235257364377,
   "statistical_audit_all_pass": true,
-  "statistical_audit_min_ci_margin": 0.08294730684862575,
+  "statistical_audit_min_ci_margin": 0.03294730684862576,
   "learned_metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
@@ -230,5 +230,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 763.869
+  "runtime_seconds": 813.495
 }

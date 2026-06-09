@@ -1214,6 +1214,7 @@ def write_paper_claim_coverage(
     text_overclaims: Iterable[str] | None = None,
 ) -> dict[str, object]:
     root = Path(root)
+    (root / "docs").mkdir(parents=True, exist_ok=True)
     coverage = paper_claim_coverage(claims, root=root, text_overclaims=text_overclaims)
     rows = list(coverage["rows"])
     tables = root / "results" / "tables"
@@ -1251,6 +1252,7 @@ def write_paper_claim_coverage(
 
 def write_results_digest(root: str | Path) -> None:
     root = Path(root)
+    (root / "docs").mkdir(parents=True, exist_ok=True)
     summary = _read_json(root / "results" / "run_summary.json")
     claims = _read_json(root / "results" / "claims_status.json")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
@@ -1446,6 +1448,7 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
 
 def write_final_audit(root: str | Path, command_results: dict[str, str] | None = None) -> None:
     root = Path(root)
+    (root / "docs").mkdir(parents=True, exist_ok=True)
     inventory = artifact_inventory(root)
     summary_payload = _read_json(root / "results" / "run_summary.json")
     if command_results is None:
