@@ -26,6 +26,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_metrics.csv": ("property_accuracy", "identity_alignment_accuracy", "transition_mse"),
     "results/tables/learned_learning_curve.csv": ("train_scenes", "property_accuracy", "identity_alignment_accuracy"),
     "results/tables/learned_domain_shift.csv": ("variant", "property_margin", "identity_margin", "transition_mse_ratio"),
+    "results/tables/learned_selection_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "learned_reward_mean"),
+    "results/tables/learned_selection_metrics.csv": ("scenario", "selector", "learned_identity_vs_raw_gain_mean", "learned_identity_vs_reward_gain_mean"),
     "results/tables/repair_metrics.csv": ("scenario", "selector", "N", "selected_real_utility_mean"),
     "results/tables/paired_effects.csv": ("scenario", "selector", "N", "mean_gain", "win_rate"),
     "results/tables/repair_ablation.csv": ("scenario", "combined_vs_raw_gain", "combined_vs_best_single_gain"),
@@ -93,6 +95,7 @@ REQUIRED_FIGURES = (
     "figures/figure25_probe_cost_sensitivity.png",
     "figures/figure26_pilot_label_budget.png",
     "figures/figure27_target_identity_sweep.png",
+    "figures/figure28_learned_selection_transfer.png",
 )
 
 REQUIRED_JSON = (
@@ -139,6 +142,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     negative_control = _read_csv(tables / "negative_control.csv")
     learned_ablation = _read_csv(tables / "learned_ablation.csv")
     learned_shift = _read_csv(tables / "learned_domain_shift.csv")
+    learned_selection = _read_csv(tables / "learned_selection_metrics.csv")
     ood = _read_csv(tables / "ood_metrics.csv")
     extreme = _read_csv(tables / "extreme_object_count_metrics.csv")
     family = _read_csv(tables / "model_family_proxy_metrics.csv")
@@ -676,6 +680,23 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             if not learned_ablation.empty
             else pd.DataFrame()
         )
+        learned_identity_selector = (
+            learned_selection[learned_selection["selector"] == "learned_identity_reward"]
+            if not learned_selection.empty
+            else pd.DataFrame()
+        )
+        learned_selection_stats = (
+            statistical[
+                statistical["effect_id"].isin(
+                    [
+                        "learned_selection_identity_gain",
+                        "learned_selection_identity_over_reward_gain",
+                    ]
+                )
+            ]
+            if not statistical.empty
+            else pd.DataFrame()
+        )
         strengths["C4"] = {
             "passes": bool(
                 learned.get("passes_minimum_learned_artifact_checks")
@@ -692,8 +713,16 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 and float(shifted_learned["identity_margin"].min()) >= 0.15
                 and float(shifted_learned["transition_mse_ratio"].max()) <= 0.30
                 and float(shifted_learned["reward_correlation"].min()) >= 0.70
+                and not learned_identity_selector.empty
+                and float(learned_identity_selector["selected_real_utility_mean"].mean()) >= 0.50
+                and float(learned_identity_selector["selected_real_utility_mean"].min()) >= 0.35
+                and float(learned_identity_selector["learned_identity_vs_raw_gain_mean"].mean()) >= 0.40
+                and float(learned_identity_selector["learned_identity_vs_reward_gain_mean"].mean()) >= 0.15
+                and float(learned_identity_selector["learned_identity_win_rate"].min()) >= 0.70
+                and not learned_selection_stats.empty
+                and bool(learned_selection_stats["passes"].all())
             ),
-            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, and held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70",
+            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, and the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and bootstrap lower bounds passing",
             "observed": {
                 "property_margin": float(prop_margin),
                 "identity_alignment_margin": float(identity_margin),
@@ -705,6 +734,12 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "learned_shift_min_identity_margin": float(shifted_learned["identity_margin"].min()) if not shifted_learned.empty else None,
                 "learned_shift_max_transition_ratio": float(shifted_learned["transition_mse_ratio"].max()) if not shifted_learned.empty else None,
                 "learned_shift_min_reward_correlation": float(shifted_learned["reward_correlation"].min()) if not shifted_learned.empty else None,
+                "learned_selection_identity_mean_utility": float(learned_identity_selector["selected_real_utility_mean"].mean()) if not learned_identity_selector.empty else None,
+                "learned_selection_identity_min_scenario_utility": float(learned_identity_selector["selected_real_utility_mean"].min()) if not learned_identity_selector.empty else None,
+                "learned_selection_identity_vs_raw_gain": float(learned_identity_selector["learned_identity_vs_raw_gain_mean"].mean()) if not learned_identity_selector.empty else None,
+                "learned_selection_identity_vs_reward_gain": float(learned_identity_selector["learned_identity_vs_reward_gain_mean"].mean()) if not learned_identity_selector.empty else None,
+                "learned_selection_identity_min_win_rate": float(learned_identity_selector["learned_identity_win_rate"].min()) if not learned_identity_selector.empty else None,
+                "learned_selection_bootstrap_min_ci_margin": float((learned_selection_stats["bootstrap_ci_low"] - learned_selection_stats["threshold"]).min()) if not learned_selection_stats.empty else None,
             },
         }
     return strengths
@@ -738,7 +773,7 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C4",
             "claim": "A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories.",
             "status": _status(strengths.get("C4", {}).get("passes") if root is not None else None),
-            "evidence": "learned_object_model_summary.json, learned_metrics.csv, learned_learning_curve.csv, learned_ablation.csv, and learned_domain_shift.csv",
+            "evidence": "learned_object_model_summary.json, learned_metrics.csv, learned_learning_curve.csv, learned_ablation.csv, learned_domain_shift.csv, learned_selection_metrics.csv, and figure28_learned_selection_transfer.png",
             "strength": strengths.get("C4", {}),
         },
         {
@@ -929,6 +964,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Learned full-minus-kinematic-pair identity accuracy: {summary.get('learned_full_minus_kinematic_pair_identity_accuracy', 'unknown')}",
         f"- Learned shift min property margin: {summary.get('learned_shift_min_property_margin', 'unknown')}",
         f"- Learned shift min identity margin: {summary.get('learned_shift_min_identity_margin', 'unknown')}",
+        f"- Learned selection identity-vs-raw gain: {summary.get('learned_selection_identity_vs_raw_gain', 'unknown')}",
+        f"- Learned selection identity-vs-reward gain: {summary.get('learned_selection_identity_vs_reward_gain', 'unknown')}",
         f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
         f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
         f"- Extreme object-count combined-vs-raw gain: {summary.get('extreme_object_count_combined_vs_raw_gain', 'unknown')}",
@@ -1112,6 +1149,9 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Full-minus-no-mass property gain {summary_payload.get('learned_full_minus_no_mass_property_accuracy', 'unknown')}.",
             "- Learned domain-shift artifact: figure23_learned_domain_shift.png and learned_domain_shift.csv. "
             f"Minimum shifted property margin {summary_payload.get('learned_shift_min_property_margin', 'unknown')} and identity margin {summary_payload.get('learned_shift_min_identity_margin', 'unknown')}.",
+            "- Learned selection transfer artifact: figure28_learned_selection_transfer.png and learned_selection_metrics.csv. "
+            f"Identity+reward learned selector raw gain {summary_payload.get('learned_selection_identity_vs_raw_gain', 'unknown')} "
+            f"and identity-over-reward gain {summary_payload.get('learned_selection_identity_vs_reward_gain', 'unknown')}.",
             "- OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. "
             f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
             "- Extreme object-count artifact: figure24_extreme_object_count.png and extreme_object_count_metrics.csv. "
@@ -1143,7 +1183,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",
-            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, target-identity sweep stress, held-out pilot-label calibration, pilot-label budget sensitivity, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
+            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, target-identity sweep stress, learned selection transfer, held-out pilot-label calibration, pilot-label budget sensitivity, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
             "- Observable-only, pilot-calibrated, noisy-probe, and probe-cost repair reduce direct hidden-property truth alignment and free-probe assumptions, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",

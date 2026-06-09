@@ -64,6 +64,10 @@ Response: The learned artifact is intentionally CPU NumPy and semi-learned. It n
 
 Response: `learned_ablation.csv` removes object-relevant features such as the mass sensor and identity-pair features, while `learned_domain_shift.csv` tests held-out denser and more occluded object scenes. The audit requires the full object-feature model to beat these ablations and retain margins on shifted synthetic variants.
 
+## Attack: The learned model is disconnected from Best-of-N selection.
+
+Response: `learned_selection_metrics.csv` uses the CPU NumPy reward and identity-alignment heads to score held-out candidate futures under Best-of-N selection. The reward-only learned selector is reported separately, and the audit requires the identity+reward learned selector to beat raw selection, beat reward-only selection, satisfy paired win-rate thresholds, and pass bootstrap lower-bound checks. This remains controlled synthetic transfer evidence, not a benchmark claim.
+
 ## Attack: Oracle rows make repairs look weak or strong.
 
 Response: Oracle rows are upper bounds for interpreting regret and oracle gap. Repair claims are based on controlled improvements over raw and random selectors, not equality to oracle in every setting.

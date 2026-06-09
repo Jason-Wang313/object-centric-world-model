@@ -1,6 +1,8 @@
 import json
 
-from object_centric_best_of_n.learned_model import train_and_evaluate
+from object_centric_best_of_n.envs import make_scene
+from object_centric_best_of_n.learned_model import learned_candidate_scores, train_and_evaluate
+from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
 
 
 def test_learned_model_improves_over_simple_baselines(tmp_path):
@@ -19,3 +21,10 @@ def test_learned_model_improves_over_simple_baselines(tmp_path):
     assert (tmp_path / "tables" / "learned_learning_curve.csv").exists()
     assert (tmp_path / "tables" / "learned_ablation.csv").exists()
     assert (tmp_path / "tables" / "learned_domain_shift.csv").exists()
+    scene = make_scene(seed=42, occlusion=True, hidden_property=True, crossing=True)
+    candidates = ObjectCentricFutureGenerator(seed=9).generate_candidates(scene, n=5, scenario="raw", seed=44)
+    scores = learned_candidate_scores(model, candidates, scene)
+    assert scores["learned_reward"].shape == (5,)
+    assert scores["learned_identity_reward"].shape == (5,)
+    assert scores["learned_identity_reward"].min() >= 0.0
+    assert scores["learned_identity_reward"].max() <= 1.0

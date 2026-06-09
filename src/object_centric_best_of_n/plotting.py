@@ -565,6 +565,38 @@ def figure27_target_identity_sweep(target_sweep: pd.DataFrame, out: Path) -> Non
     _save(fig, out / "figure27_target_identity_sweep.png")
 
 
+def figure28_learned_selection_transfer(learned_selection: pd.DataFrame, out: Path) -> None:
+    if learned_selection.empty:
+        return
+    selectors = ["raw", "learned_reward", "learned_identity_reward", "combined_repair", "oracle"]
+    df = learned_selection[
+        (learned_selection["selector"].isin(selectors))
+        & (learned_selection["N"] == learned_selection["N"].max())
+    ]
+    if df.empty:
+        return
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.2, 4.8))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#d1963a", "#4d8f9f", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("held-out learned-selection family")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Learned selection transfer")
+    ax.set_ylim(0.0, 1.02)
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(
+        ["raw", "learned reward", "learned identity+reward", "combined repair", "oracle"],
+        frameon=False,
+        fontsize=8,
+        ncol=2,
+    )
+    _save(fig, out / "figure28_learned_selection_transfer.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -592,6 +624,7 @@ def write_all_figures(
     noisy_probe_df: pd.DataFrame | None = None,
     probe_cost_df: pd.DataFrame | None = None,
     learned_domain_shift_df: pd.DataFrame | None = None,
+    learned_selection_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -643,3 +676,5 @@ def write_all_figures(
         figure26_pilot_budget(pilot_budget_df, out)
     if target_sweep_df is not None:
         figure27_target_identity_sweep(target_sweep_df, out)
+    if learned_selection_df is not None:
+        figure28_learned_selection_transfer(learned_selection_df, out)

@@ -5,6 +5,7 @@ from object_centric_best_of_n.metrics import (
     counterfactual_target_summary,
     domain_randomization_summary,
     extreme_object_count_summary,
+    learned_selection_summary,
     model_family_proxy_summary,
     negative_control_summary,
     noisy_probe_summary,
@@ -117,6 +118,47 @@ def test_paired_effects_and_stress_summary_are_computed():
     target_sweep = target_identity_sweep_summary(target_sweep_df)
     assert "target_sweep_combined_vs_raw_gain_mean" in target_sweep.columns
     assert target_sweep[target_sweep["selector"] == "combined_repair"]["target_sweep_combined_win_rate"].min() == 1.0
+    learned_selection_df = pd.DataFrame(
+        [
+            {
+                **row,
+                "experiment": "Y_learned_selection_transfer",
+                "learned_reward_mean": 0.4,
+                "learned_identity_alignment_mean": 0.6,
+                "learned_property_confidence_mean": 0.8,
+                "target_id": row["seed"] % 2,
+            }
+            for row in rows
+            if row["selector"] in {"raw", "observable_repair", "combined_repair", "oracle"}
+        ]
+        + [
+            {
+                **rows[0],
+                "experiment": "Y_learned_selection_transfer",
+                "selector": "learned_reward",
+                "selected_real_utility": 0.45,
+                "learned_reward_mean": 0.4,
+                "learned_identity_alignment_mean": 0.6,
+                "learned_property_confidence_mean": 0.8,
+                "target_id": 0,
+            },
+            {
+                **rows[0],
+                "experiment": "Y_learned_selection_transfer",
+                "selector": "learned_identity_reward",
+                "selected_real_utility": 0.72,
+                "learned_reward_mean": 0.4,
+                "learned_identity_alignment_mean": 0.6,
+                "learned_property_confidence_mean": 0.8,
+                "target_id": 0,
+            },
+        ]
+    )
+    learned_selection = learned_selection_summary(learned_selection_df)
+    assert "learned_identity_vs_raw_gain_mean" in learned_selection.columns
+    assert learned_selection[
+        learned_selection["selector"] == "learned_identity_reward"
+    ]["learned_identity_vs_reward_gain_mean"].iloc[0] > 0.0
     pilot = pilot_calibration_summary(df)
     assert "pilot_vs_raw_gain_mean" in pilot.columns
     assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0
@@ -200,6 +242,7 @@ def test_paired_effects_and_stress_summary_are_computed():
         leave_one_failure_seed_df=df,
         noisy_probe_seed_df=noisy_df,
         probe_cost_seed_df=probe_cost_df,
+        learned_selection_seed_df=learned_selection_df,
         bootstrap_reps=50,
     )
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
@@ -211,5 +254,7 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "extreme_object_combined_repair_gain" in set(stats["effect_id"])
     assert "target_sweep_combined_repair_gain" in set(stats["effect_id"])
     assert "target_sweep_observable_repair_gain" in set(stats["effect_id"])
+    assert "learned_selection_identity_gain" in set(stats["effect_id"])
+    assert "learned_selection_identity_over_reward_gain" in set(stats["effect_id"])
     assert "probe_cost_combined_repair_gain" in set(stats["effect_id"])
     assert "probe_cost_targeted_hidden_repair_gain" in set(stats["effect_id"])

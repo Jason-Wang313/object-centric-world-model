@@ -14,7 +14,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .envs import make_scene
+from .envs import ObjectScene, make_scene
+from .object_model import Candidate
 
 
 @dataclass
@@ -217,6 +218,102 @@ def _pair_features(left: list[float], right: list[float]) -> list[float]:
     right_arr = np.asarray(right, dtype=float)
     diff = np.abs(left_arr - right_arr)
     return np.r_[diff, left_arr[:4] * right_arr[:4], [1.0 - diff[4], 1.0 - diff[5]]].astype(float).tolist()
+
+
+def candidate_slot_features(candidate: Candidate, scene: ObjectScene) -> tuple[np.ndarray, float]:
+    """Map a predicted target slot to the learned model's slot feature space."""
+
+    chosen_slot = None
+    if candidate.predicted_target_id is not None:
+        for slot in candidate.slots:
+            if slot.predicted_obj_id == candidate.predicted_target_id:
+                chosen_slot = slot
+                break
+    if chosen_slot is None and candidate.slots:
+        chosen_slot = max(candidate.slots, key=lambda slot: slot.confidence)
+
+    if chosen_slot is None:
+        target = scene.target()
+        return (
+            np.asarray(
+                _object_features(
+                    target.position,
+                    target.velocity,
+                    candidate.hidden_property_estimate,
+                    target.color,
+                    target.shape,
+                    target.occluded,
+                ),
+                dtype=float,
+            ),
+            0.0,
+        )
+
+    predicted_obj = None
+    if chosen_slot.predicted_obj_id is not None:
+        for obj in scene.objects:
+            if obj.obj_id == chosen_slot.predicted_obj_id:
+                predicted_obj = obj
+                break
+    reference_obj = predicted_obj if predicted_obj is not None else scene.target()
+    trajectory = list(chosen_slot.trajectory)
+    if len(trajectory) >= 2:
+        velocity = np.asarray(trajectory[-1], dtype=float) - np.asarray(trajectory[0], dtype=float)
+    else:
+        velocity = np.asarray(reference_obj.velocity, dtype=float)
+    features = _object_features(
+        chosen_slot.position,
+        (float(velocity[0]), float(velocity[1])),
+        chosen_slot.hidden_mass_estimate,
+        reference_obj.color,
+        reference_obj.shape,
+        reference_obj.occluded,
+    )
+    return np.asarray(features, dtype=float), float(chosen_slot.confidence)
+
+
+def learned_candidate_scores(
+    model: NumpyObjectCentricModel,
+    candidates: list[Candidate],
+    scene: ObjectScene,
+) -> dict[str, np.ndarray]:
+    """Score candidate futures with learned reward and learned identity alignment."""
+
+    target = scene.target()
+    target_features = np.asarray(
+        _object_features(
+            target.position,
+            target.velocity,
+            target.hidden_mass,
+            target.color,
+            target.shape,
+            target.occluded,
+        ),
+        dtype=float,
+    )
+    rows = []
+    pair_rows = []
+    slot_confidences = []
+    for candidate in candidates:
+        features, confidence = candidate_slot_features(candidate, scene)
+        rows.append(features)
+        pair_rows.append(np.asarray(_pair_features(target_features.tolist(), features.tolist()), dtype=float))
+        slot_confidences.append(confidence)
+
+    x = np.vstack(rows)
+    pair_x = np.vstack(pair_rows)
+    confidence = np.asarray(slot_confidences, dtype=float)
+    reward = model.predict_reward(x)
+    identity = model.predict_identity_alignment(pair_x)
+    property_proba = model.predict_property_proba(x)
+    property_confidence = np.maximum(property_proba, 1.0 - property_proba)
+    identity_reward = 0.56 * reward + 0.36 * identity + 0.06 * confidence + 0.02 * property_confidence
+    return {
+        "learned_reward": np.clip(reward, 0.0, 1.0),
+        "learned_identity_reward": np.clip(identity_reward, 0.0, 1.0),
+        "learned_identity_alignment": np.clip(identity, 0.0, 1.0),
+        "learned_property_confidence": np.clip(property_confidence, 0.0, 1.0),
+    }
 
 
 def make_identity_alignment_dataset(

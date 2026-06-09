@@ -22,6 +22,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - An object-centric future generator with slots, identities, hidden properties, trajectories, and failure diagnostics.
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
 - Held-out learned domain-shift checks for dense, occluded, crossing, and mixed object-count synthetic variants.
+- Learned selection transfer, where the CPU NumPy reward and identity-alignment heads score held-out candidate futures.
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
@@ -38,7 +39,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
 - Diagnostic probe-cost sensitivity, reporting net utility after charging probe actions.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, counterfactual target, target-identity sweep, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, extreme object-count, counterfactual target, target-identity sweep, learned selection transfer, pilot calibration, leave-one-failure calibration, noisy-probe repair, probe-cost repair, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -52,6 +53,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/seed_metrics.csv`
 - `results/tables/learned_metrics.csv`
 - `results/tables/learned_domain_shift.csv`
+- `results/tables/learned_selection_seed_metrics.csv`
+- `results/tables/learned_selection_metrics.csv`
 - `results/tables/repair_metrics.csv`
 - `results/tables/paired_effects.csv`
 - `results/tables/repair_ablation.csv`
@@ -125,6 +128,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure25_probe_cost_sensitivity.png`
 - `figures/figure26_pilot_label_budget.png`
 - `figures/figure27_target_identity_sweep.png`
+- `figures/figure28_learned_selection_transfer.png`
 
 ## Claim Boundaries
 

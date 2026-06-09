@@ -15,7 +15,7 @@ import pandas as pd
 
 from object_centric_best_of_n.audit import write_claim_status, write_final_audit
 from object_centric_best_of_n.envs import make_scene, retarget_scene
-from object_centric_best_of_n.learned_model import train_and_evaluate
+from object_centric_best_of_n.learned_model import learned_candidate_scores, train_and_evaluate
 from object_centric_best_of_n.metrics import (
     aggregate_seed_metrics,
     counterfactual_target_summary,
@@ -25,6 +25,7 @@ from object_centric_best_of_n.metrics import (
     extreme_object_count_summary,
     model_family_proxy_summary,
     negative_control_summary,
+    learned_selection_summary,
     observable_repair_summary,
     ood_summary,
     paired_selector_effects,
@@ -96,6 +97,15 @@ DOMAIN_RANDOMIZATION_SELECTORS = ["raw", "observable_repair", "combined_repair",
 COUNTERFACTUAL_TARGET_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 TARGET_SWEEP_IDS = [0, 1, 2, 3, 4, 5]
 TARGET_SWEEP_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
+LEARNED_SELECTION_TARGET_IDS = [0, 1, 2, 3, 4, 5]
+LEARNED_SELECTION_SELECTORS = [
+    "raw",
+    "learned_reward",
+    "learned_identity_reward",
+    "observable_repair",
+    "combined_repair",
+    "oracle",
+]
 PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_BUDGETS = [16, 32, 64, 128, 256, 512]
 NOISY_PROBE_RELIABILITIES = [0.55, 0.65, 0.75, 0.85, 0.90]
@@ -530,6 +540,83 @@ def _run_target_identity_sweep_panel(
                         "target_id": int(scene.target_id),
                         "n_objects": int(len(scene.objects)),
                         "generator_scenario": "raw",
+                    }
+                )
+                rows.append(record)
+    return pd.DataFrame(rows)
+
+
+def _run_learned_selection_panel(
+    generator: ObjectCentricFutureGenerator,
+    learned_model,
+    learned_selection_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in learned_selection_seeds:
+        eval_cases = [
+            (
+                "raw_heldout",
+                _scene_for_scenario(610_000 + seed, "raw"),
+                "raw",
+                {"target_id": 0, "n_objects": 4},
+            )
+        ]
+        base_scene = make_scene(
+            seed=620_000 + seed,
+            n_objects=6,
+            occlusion=True,
+            hidden_property=True,
+            crossing=True,
+        )
+        for target_id in LEARNED_SELECTION_TARGET_IDS:
+            scene = retarget_scene(base_scene, target_id=target_id)
+            eval_cases.append(
+                (
+                    f"target_{target_id}",
+                    scene,
+                    "raw",
+                    {"target_id": int(target_id), "n_objects": int(len(scene.objects))},
+                )
+            )
+        for scenario_label, scene, generator_scenario, flags in eval_cases:
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=generator_scenario,
+                seed=631_000 + seed * 997 + len(scenario_label),
+            )
+            learned_scores = learned_candidate_scores(learned_model, candidates, scene)
+            for selector_name in LEARNED_SELECTION_SELECTORS:
+                if selector_name in {"learned_reward", "learned_identity_reward"}:
+                    selected = _select_by_scores_with_label(
+                        candidates,
+                        learned_scores[selector_name],
+                        seed=seed + n + len(scenario_label),
+                        label=selector_name,
+                    )
+                else:
+                    selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                record = selection_record(
+                    "Y_learned_selection_transfer",
+                    scenario_label,
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "generator_scenario": generator_scenario,
+                        "learned_reward_mean": float(np.mean(learned_scores["learned_reward"])),
+                        "learned_identity_alignment_mean": float(
+                            np.mean(learned_scores["learned_identity_alignment"])
+                        ),
+                        "learned_property_confidence_mean": float(
+                            np.mean(learned_scores["learned_property_confidence"])
+                        ),
+                        **flags,
                     }
                 )
                 rows.append(record)
@@ -979,6 +1066,20 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     probe_cost_seeds = list(range(4)) if mode == "smoke" else list(range(48))
     probe_cost_seed_df = _run_probe_cost_panel(generator, probe_cost_seeds=probe_cost_seeds, n=max(ns))
     probe_cost_metrics = probe_cost_summary(probe_cost_seed_df)
+    learned_metrics, learned_model = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
+    learned_row = learned_metrics.as_dict()
+    pd.DataFrame([learned_row]).to_csv(tables / "learned_metrics.csv", index=False)
+    learned_curve = pd.read_csv(tables / "learned_learning_curve.csv")
+    learned_ablation = pd.read_csv(tables / "learned_ablation.csv")
+    learned_domain_shift = pd.read_csv(tables / "learned_domain_shift.csv")
+    learned_selection_seeds = list(range(4)) if mode == "smoke" else list(range(32))
+    learned_selection_seed_df = _run_learned_selection_panel(
+        generator,
+        learned_model,
+        learned_selection_seeds=learned_selection_seeds,
+        n=max(ns),
+    )
+    learned_selection_metrics = learned_selection_summary(learned_selection_seed_df)
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
@@ -992,6 +1093,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         leave_one_failure_seed_df=loso_seed_df,
         noisy_probe_seed_df=noisy_probe_seed_df,
         probe_cost_seed_df=probe_cost_seed_df,
+        learned_selection_seed_df=learned_selection_seed_df,
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
@@ -1037,6 +1139,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     noisy_probe_metrics.to_csv(tables / "noisy_probe_metrics.csv", index=False)
     probe_cost_seed_df.to_csv(tables / "probe_cost_seed_metrics.csv", index=False)
     probe_cost_metrics.to_csv(tables / "probe_cost_metrics.csv", index=False)
+    learned_selection_seed_df.to_csv(tables / "learned_selection_seed_metrics.csv", index=False)
+    learned_selection_metrics.to_csv(tables / "learned_selection_metrics.csv", index=False)
     pilot_summary = {
         "mode": mode,
         "train_seeds": pilot_train_seeds,
@@ -1067,13 +1171,6 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     (results / "leave_one_failure_summary.json").write_text(json.dumps(loso_summary, indent=2), encoding="utf-8")
     statistical_metrics.to_csv(tables / "statistical_audit.csv", index=False)
 
-    learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
-    learned_row = learned_metrics.as_dict()
-    pd.DataFrame([learned_row]).to_csv(tables / "learned_metrics.csv", index=False)
-    learned_curve = pd.read_csv(tables / "learned_learning_curve.csv")
-    learned_ablation = pd.read_csv(tables / "learned_ablation.csv")
-    learned_domain_shift = pd.read_csv(tables / "learned_domain_shift.csv")
-
     write_all_figures(
         main,
         seed_df,
@@ -1101,6 +1198,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         noisy_probe_df=noisy_probe_metrics,
         probe_cost_df=probe_cost_metrics,
         learned_domain_shift_df=learned_domain_shift,
+        learned_selection_df=learned_selection_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -1132,6 +1230,11 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     no_mass_ablation = learned_ablation[learned_ablation["ablation"] == "no_mass_sensor"]
     kinematic_pair_ablation = learned_ablation[learned_ablation["ablation"] == "kinematic_pair_identity"]
     shifted_learned = learned_domain_shift[learned_domain_shift["variant"] != "standard_test"]
+    learned_selection_raw = learned_selection_metrics[learned_selection_metrics["selector"] == "raw"]
+    learned_selection_reward = learned_selection_metrics[learned_selection_metrics["selector"] == "learned_reward"]
+    learned_selection_identity = learned_selection_metrics[
+        learned_selection_metrics["selector"] == "learned_identity_reward"
+    ]
     ood_combined = ood_metrics[
         (ood_metrics["selector"] == "combined_repair")
         & (ood_metrics["scenario"].isin(["dense6_raw", "dense8_occlusion", "dense8_hidden"]))
@@ -1243,6 +1346,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_leave_one_failure_rows": int(loso_seed_df.shape[0]),
         "n_noisy_probe_rows": int(noisy_probe_seed_df.shape[0]),
         "n_probe_cost_rows": int(probe_cost_seed_df.shape[0]),
+        "n_learned_selection_rows": int(learned_selection_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -1269,6 +1373,13 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "learned_shift_min_identity_margin": float(shifted_learned["identity_margin"].min()) if not shifted_learned.empty else None,
         "learned_shift_max_transition_ratio": float(shifted_learned["transition_mse_ratio"].max()) if not shifted_learned.empty else None,
         "learned_shift_min_reward_correlation": float(shifted_learned["reward_correlation"].min()) if not shifted_learned.empty else None,
+        "learned_selection_raw_mean_utility": float(learned_selection_raw["selected_real_utility_mean"].mean()) if not learned_selection_raw.empty else None,
+        "learned_selection_reward_mean_utility": float(learned_selection_reward["selected_real_utility_mean"].mean()) if not learned_selection_reward.empty else None,
+        "learned_selection_identity_mean_utility": float(learned_selection_identity["selected_real_utility_mean"].mean()) if not learned_selection_identity.empty else None,
+        "learned_selection_identity_min_scenario_utility": float(learned_selection_identity["selected_real_utility_mean"].min()) if not learned_selection_identity.empty else None,
+        "learned_selection_identity_vs_raw_gain": float(learned_selection_identity["learned_identity_vs_raw_gain_mean"].mean()) if not learned_selection_identity.empty else None,
+        "learned_selection_identity_vs_reward_gain": float(learned_selection_identity["learned_identity_vs_reward_gain_mean"].mean()) if not learned_selection_identity.empty else None,
+        "learned_selection_identity_min_win_rate": float(learned_selection_identity["learned_identity_win_rate"].min()) if not learned_selection_identity.empty else None,
         "ood_combined_mean_selected_utility": float(ood_combined["selected_real_utility_mean"].mean()) if not ood_combined.empty else None,
         "ood_raw_mean_selected_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
         "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,

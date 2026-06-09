@@ -690,6 +690,92 @@ def target_identity_sweep_summary(target_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def learned_selection_summary(learned_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate learned reward and learned identity-reward Best-of-N selectors."""
+
+    if learned_seed_df.empty:
+        return pd.DataFrame()
+    value_cols = [
+        "selected_object_score",
+        "selected_real_utility",
+        "identity_error",
+        "swap_rate",
+        "merge_split_rate",
+        "property_error",
+        "property_entropy",
+        "occlusion_error",
+        "object_real_gap",
+        "regret",
+        "oracle_gap",
+        "upper_tail_rank_correlation",
+        "learned_reward_mean",
+        "learned_identity_alignment_mean",
+        "learned_property_confidence_mean",
+    ]
+    group_cols = ["experiment", "scenario", "selector", "N"]
+    aggregate_rows: list[dict[str, float | int | str]] = []
+    for keys, group in learned_seed_df.groupby(group_cols, sort=True):
+        row = dict(zip(group_cols, keys))
+        row["n_seeds"] = int(group["seed"].nunique())
+        if "target_id" in group.columns:
+            unique_targets = sorted(int(value) for value in group["target_id"].dropna().unique())
+            row["target_ids"] = "|".join(str(value) for value in unique_targets)
+        for col in value_cols:
+            mean, low, high = mean_ci(group[col])
+            row[f"{col}_mean"] = mean
+            row[f"{col}_ci_low"] = low
+            row[f"{col}_ci_high"] = high
+        aggregate_rows.append(row)
+    main = pd.DataFrame(aggregate_rows)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        reward = group[group["selector"] == "learned_reward"]
+        identity = group[group["selector"] == "learned_identity_reward"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        reward_utility = (
+            float(reward["selected_real_utility_mean"].iloc[0]) if not reward.empty else float("nan")
+        )
+        identity_utility = (
+            float(identity["selected_real_utility_mean"].iloc[0]) if not identity.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        seed_group = learned_seed_df[
+            (learned_seed_df["scenario"] == group["scenario"].iloc[0])
+            & (learned_seed_df["N"] == group["N"].iloc[0])
+        ]
+        raw_seed = seed_group[seed_group["selector"] == "raw"][["seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "raw"}
+        )
+        reward_seed = seed_group[seed_group["selector"] == "learned_reward"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "reward"})
+        identity_seed = seed_group[seed_group["selector"] == "learned_identity_reward"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "identity"})
+        raw_pair = identity_seed.merge(raw_seed, on="seed", how="inner")
+        reward_pair = identity_seed.merge(reward_seed, on="seed", how="inner")
+        raw_gains = raw_pair["identity"] - raw_pair["raw"] if not raw_pair.empty else pd.Series(dtype=float)
+        reward_gains = (
+            reward_pair["identity"] - reward_pair["reward"] if not reward_pair.empty else pd.Series(dtype=float)
+        )
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["learned_reward_vs_raw_gain_mean"] = reward_utility - raw_utility
+            out["learned_identity_vs_raw_gain_mean"] = identity_utility - raw_utility
+            out["learned_identity_vs_reward_gain_mean"] = identity_utility - reward_utility
+            out["learned_identity_oracle_gap_mean"] = oracle_utility - identity_utility
+            out["learned_identity_win_rate"] = (
+                float(np.mean(raw_gains > 1e-12)) if len(raw_gains) else float("nan")
+            )
+            out["learned_identity_over_reward_win_rate"] = (
+                float(np.mean(reward_gains > 1e-12)) if len(reward_gains) else float("nan")
+            )
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def pilot_calibration_summary(pilot_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate held-out pilot-label calibration rows."""
 
@@ -1012,6 +1098,7 @@ def statistical_audit(
     leave_one_failure_seed_df: pd.DataFrame | None = None,
     noisy_probe_seed_df: pd.DataFrame | None = None,
     probe_cost_seed_df: pd.DataFrame | None = None,
+    learned_selection_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -1320,6 +1407,34 @@ def statistical_audit(
                 merged["treatment"] - merged["baseline"],
                 threshold=threshold,
             )
+
+    if learned_selection_seed_df is not None and not learned_selection_seed_df.empty:
+        n_max = int(learned_selection_seed_df["N"].max())
+        base = learned_selection_seed_df[
+            (learned_selection_seed_df["selector"] == "raw") & (learned_selection_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "baseline"})
+        learned = learned_selection_seed_df[
+            (learned_selection_seed_df["selector"] == "learned_identity_reward")
+            & (learned_selection_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "learned"})
+        learned_merged = learned.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "learned_selection_identity_gain",
+            "Learned identity+reward selector selected-utility gain over raw.",
+            learned_merged["learned"] - learned_merged["baseline"],
+            threshold=0.35,
+        )
+        reward = learned_selection_seed_df[
+            (learned_selection_seed_df["selector"] == "learned_reward")
+            & (learned_selection_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "reward"})
+        identity_merged = learned.merge(reward, on=["scenario", "seed"], how="inner")
+        add_row(
+            "learned_selection_identity_over_reward_gain",
+            "Learned identity+reward selector selected-utility gain over learned reward-only selector.",
+            identity_merged["learned"] - identity_merged["reward"],
+            threshold=0.12,
+        )
 
     return pd.DataFrame(rows)
 
