@@ -486,6 +486,72 @@ def _run_pilot_calibration_panel(
     return pd.DataFrame(rows), calibrator
 
 
+def _run_leave_one_failure_out_panel(
+    generator: ObjectCentricFutureGenerator,
+    train_seeds: list[int],
+    eval_seeds: list[int],
+    n: int,
+) -> tuple[pd.DataFrame, list[dict[str, object]]]:
+    rows: list[dict[str, float | int | str]] = []
+    calibrator_summaries: list[dict[str, object]] = []
+    for heldout_scenario in STRESS_SCENARIOS:
+        train_scenarios = [scenario for scenario in STRESS_SCENARIOS if scenario != heldout_scenario]
+        train_candidates = []
+        for seed in train_seeds:
+            for scenario in train_scenarios:
+                scene = _scene_for_scenario(390_000 + seed, scenario)
+                train_candidates.extend(
+                    generator.generate_candidates(
+                        scene,
+                        n=n,
+                        scenario=scenario,
+                        seed=407_311 + seed * 977 + len(scenario),
+                    )
+                )
+        calibrator = fit_pilot_calibrator(train_candidates, ridge=2e-3)
+        calibrator_summaries.append(
+            {
+                "heldout_scenario": heldout_scenario,
+                "train_scenarios": train_scenarios,
+                "calibrator": calibrator,
+            }
+        )
+        for seed in eval_seeds:
+            scene = _scene_for_scenario(430_000 + seed, heldout_scenario)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=heldout_scenario,
+                seed=419_999 + seed * 887 + len(heldout_scenario),
+            )
+            pilot_scores = np.asarray([pilot_calibrated_score(candidate, calibrator) for candidate in candidates])
+            for selector_name in PILOT_CALIBRATION_SELECTORS:
+                if selector_name == "pilot_calibrated":
+                    selected = _select_by_scores_with_label(candidates, pilot_scores, seed=seed + n, label=selector_name)
+                else:
+                    selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                record = selection_record(
+                    "S_leave_one_failure_out",
+                    f"heldout_{heldout_scenario}",
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "heldout_scenario": heldout_scenario,
+                        "train_scenarios": "|".join(train_scenarios),
+                        "pilot_train_candidates": int(calibrator["n_train_candidates"]),
+                        "pilot_train_mae": float(calibrator["train_mae"]),
+                        "pilot_train_correlation": float(calibrator["train_correlation"]),
+                    }
+                )
+                rows.append(record)
+    return pd.DataFrame(rows), calibrator_summaries
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -572,6 +638,15 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         n=max(ns),
     )
     pilot_metrics = pilot_calibration_summary(pilot_seed_df)
+    loso_train_seeds = list(range(3)) if mode == "smoke" else list(range(24))
+    loso_eval_seeds = list(range(3)) if mode == "smoke" else list(range(40))
+    loso_seed_df, loso_calibrators = _run_leave_one_failure_out_panel(
+        generator,
+        train_seeds=loso_train_seeds,
+        eval_seeds=loso_eval_seeds,
+        n=max(ns),
+    )
+    loso_metrics = pilot_calibration_summary(loso_seed_df)
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
@@ -579,6 +654,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         family_seed_df=family_seed_df,
         counterfactual_seed_df=counter_seed_df,
         pilot_seed_df=pilot_seed_df,
+        leave_one_failure_seed_df=loso_seed_df,
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
@@ -612,6 +688,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_metrics.to_csv(tables / "counterfactual_target_metrics.csv", index=False)
     pilot_seed_df.to_csv(tables / "pilot_calibration_seed_metrics.csv", index=False)
     pilot_metrics.to_csv(tables / "pilot_calibration_metrics.csv", index=False)
+    loso_seed_df.to_csv(tables / "leave_one_failure_seed_metrics.csv", index=False)
+    loso_metrics.to_csv(tables / "leave_one_failure_metrics.csv", index=False)
     pilot_summary = {
         "mode": mode,
         "train_seeds": pilot_train_seeds,
@@ -620,6 +698,14 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "calibrator": pilot_calibrator,
     }
     (results / "pilot_calibration_summary.json").write_text(json.dumps(pilot_summary, indent=2), encoding="utf-8")
+    loso_summary = {
+        "mode": mode,
+        "train_seeds": loso_train_seeds,
+        "eval_seeds": loso_eval_seeds,
+        "n_eval_rows": int(loso_seed_df.shape[0]),
+        "calibrators": loso_calibrators,
+    }
+    (results / "leave_one_failure_summary.json").write_text(json.dumps(loso_summary, indent=2), encoding="utf-8")
     statistical_metrics.to_csv(tables / "statistical_audit.csv", index=False)
 
     learned_metrics, _ = train_and_evaluate(results, seed=123 if mode == "smoke" else 456)
@@ -648,6 +734,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         domain_df=domain_metrics,
         counterfactual_df=counter_metrics,
         pilot_df=pilot_metrics,
+        leave_one_failure_df=loso_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -703,6 +790,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_raw = counter_metrics[counter_metrics["selector"] == "raw"]
     pilot_calibrated = pilot_metrics[pilot_metrics["selector"] == "pilot_calibrated"]
     pilot_raw = pilot_metrics[pilot_metrics["selector"] == "raw"]
+    loso_pilot = loso_metrics[loso_metrics["selector"] == "pilot_calibrated"]
+    loso_raw = loso_metrics[loso_metrics["selector"] == "raw"]
     statistical_pass_margin = None
     if not statistical_metrics.empty:
         statistical_pass_margin = float(
@@ -730,6 +819,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_domain_randomization_rows": int(domain_seed_df.shape[0]),
         "n_counterfactual_target_rows": int(counter_seed_df.shape[0]),
         "n_pilot_calibration_rows": int(pilot_seed_df.shape[0]),
+        "n_leave_one_failure_rows": int(loso_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -780,6 +870,12 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "pilot_calibrated_max_oracle_gap": float(pilot_calibrated["pilot_oracle_gap_mean"].max()) if not pilot_calibrated.empty else None,
         "pilot_calibration_train_mae": float(pilot_calibrator["train_mae"]),
         "pilot_calibration_train_correlation": float(pilot_calibrator["train_correlation"]),
+        "leave_one_failure_raw_mean_utility": float(loso_raw["selected_real_utility_mean"].mean()) if not loso_raw.empty else None,
+        "leave_one_failure_pilot_mean_utility": float(loso_pilot["selected_real_utility_mean"].mean()) if not loso_pilot.empty else None,
+        "leave_one_failure_pilot_vs_raw_gain": float(loso_pilot["pilot_vs_raw_gain_mean"].mean()) if not loso_pilot.empty else None,
+        "leave_one_failure_pilot_min_win_rate": float(loso_pilot["pilot_win_rate"].min()) if not loso_pilot.empty else None,
+        "leave_one_failure_pilot_max_oracle_gap": float(loso_pilot["pilot_oracle_gap_mean"].max()) if not loso_pilot.empty else None,
+        "leave_one_failure_min_train_correlation": float(min(item["calibrator"]["train_correlation"] for item in loso_calibrators)) if loso_calibrators else None,
         "statistical_audit_all_pass": bool(statistical_metrics["passes"].all()) if not statistical_metrics.empty else None,
         "statistical_audit_min_ci_margin": statistical_pass_margin,
         "learned_metrics": learned_row,

@@ -649,6 +649,7 @@ def statistical_audit(
     family_seed_df: pd.DataFrame | None = None,
     counterfactual_seed_df: pd.DataFrame | None = None,
     pilot_seed_df: pd.DataFrame | None = None,
+    leave_one_failure_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -819,6 +820,22 @@ def statistical_audit(
             "Held-out pilot-label calibrated selector selected-utility gain over raw.",
             merged["pilot"] - merged["baseline"],
             threshold=0.45,
+        )
+
+    if leave_one_failure_seed_df is not None and not leave_one_failure_seed_df.empty:
+        n_max = int(leave_one_failure_seed_df["N"].max())
+        base = leave_one_failure_seed_df[
+            (leave_one_failure_seed_df["selector"] == "raw") & (leave_one_failure_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "baseline"})
+        pilot = leave_one_failure_seed_df[
+            (leave_one_failure_seed_df["selector"] == "pilot_calibrated") & (leave_one_failure_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "pilot"})
+        merged = pilot.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "leave_one_failure_pilot_gain",
+            "Leave-one-failure-out pilot-calibrated selected-utility gain over raw.",
+            merged["pilot"] - merged["baseline"],
+            threshold=0.40,
         )
 
     return pd.DataFrame(rows)

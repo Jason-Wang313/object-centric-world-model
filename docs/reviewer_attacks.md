@@ -14,7 +14,7 @@ Response: Correct for the strongest controlled stack: it uses diagnostic signals
 
 ## Attack: The deployment gate says to collect pilot labels, but labels are not tested.
 
-Response: `pilot_calibration_metrics.csv` evaluates a held-out selector trained from pilot-labeled candidates using observable object features. The train seeds are separate from the held-out raw, randomized-domain, and target-swap evaluation seeds; the audit requires calibrated selected utility, paired raw gain, win rate, oracle gap, and bootstrap lower-bound checks before counting the evidence.
+Response: `pilot_calibration_metrics.csv` evaluates a held-out selector trained from pilot-labeled candidates using observable object features. The train seeds are separate from the held-out raw, randomized-domain, and target-swap evaluation seeds. The upgraded run also writes `leave_one_failure_metrics.csv`, where each raw, occlusion, hidden-property, swap, or merge/split failure family is held out during pilot-calibrator training and then evaluated as the test family. The audit requires calibrated selected utility, paired raw gain, win rate, oracle gap, leave-one-failure transfer, and bootstrap lower-bound checks before counting the evidence.
 
 ## Attack: The repair result could be a seed fluke.
 

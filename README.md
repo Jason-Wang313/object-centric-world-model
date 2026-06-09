@@ -30,8 +30,9 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Held-out domain-randomized synthetic stress with varied object counts and corruption flags.
 - Counterfactual target-identity stress that retargets the true object away from object zero.
 - Held-out pilot-label calibration for a learned utility selector trained from labeled object candidates.
+- Leave-one-failure-out pilot calibration, where each binding failure family is held out during pilot-calibrator training.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, counterfactual target, pilot calibration, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, counterfactual target, pilot calibration, leave-one-failure calibration, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -66,6 +67,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/counterfactual_target_metrics.csv`
 - `results/tables/pilot_calibration_seed_metrics.csv`
 - `results/tables/pilot_calibration_metrics.csv`
+- `results/tables/leave_one_failure_seed_metrics.csv`
+- `results/tables/leave_one_failure_metrics.csv`
 - `results/tables/model_family_proxy_seed_metrics.csv`
 - `results/tables/model_family_proxy_metrics.csv`
 - `results/tables/statistical_audit.csv`
@@ -73,6 +76,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
 - `results/pilot_calibration_summary.json`
+- `results/leave_one_failure_summary.json`
 - `results/verification_log.json`
 - `results/artifact_manifest.json`
 - `docs/results_digest.md`
@@ -96,6 +100,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure18_domain_randomization.png`
 - `figures/figure19_counterfactual_target.png`
 - `figures/figure20_pilot_calibration.png`
+- `figures/figure21_leave_one_failure_out.png`
 
 ## Claim Boundaries
 

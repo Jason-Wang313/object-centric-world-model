@@ -69,6 +69,7 @@
   "n_domain_randomization_rows": 240,
   "n_counterfactual_target_rows": 240,
   "n_pilot_calibration_rows": 864,
+  "n_leave_one_failure_rows": 1200,
   "deployment_gate": "block_high_n",
   "exact_law_mean_absolute_error": 0.0004629118998613018,
   "raw_tail_score_gain": 0.5759192453426587,
@@ -119,6 +120,12 @@
   "pilot_calibrated_max_oracle_gap": 0.13278858832632634,
   "pilot_calibration_train_mae": 0.0478788429570998,
   "pilot_calibration_train_correlation": 0.983367982746434,
+  "leave_one_failure_raw_mean_utility": 0.040286694449083796,
+  "leave_one_failure_pilot_mean_utility": 0.8160878196526353,
+  "leave_one_failure_pilot_vs_raw_gain": 0.7758011252035516,
+  "leave_one_failure_pilot_min_win_rate": 1.0,
+  "leave_one_failure_pilot_max_oracle_gap": 0.11509503797791432,
+  "leave_one_failure_min_train_correlation": 0.9818478546301981,
   "statistical_audit_all_pass": true,
   "statistical_audit_min_ci_margin": 0.08294730684862575,
   "learned_metrics": {
@@ -133,5 +140,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 200.884
+  "runtime_seconds": 284.008
 }

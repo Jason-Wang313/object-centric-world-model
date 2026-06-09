@@ -23,6 +23,7 @@ This digest is generated from the current result artifacts.
 - Domain-randomized combined-vs-raw gain: 0.8343878574844603
 - Counterfactual target-swap combined-vs-raw gain: 0.816906396281512
 - Pilot-calibrated held-out gain: 0.8192029444060406
+- Leave-one-failure pilot gain: 0.7758011252035516
 - Toy proxy combined-vs-best-proxy gain: 0.5504614056934154
 - Bootstrap audit minimum CI margin: 0.08294730684862575
 

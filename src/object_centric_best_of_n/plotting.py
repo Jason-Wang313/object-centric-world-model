@@ -387,6 +387,27 @@ def figure20_pilot_calibration(pilot: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure20_pilot_calibration.png")
 
 
+def figure21_leave_one_failure_out(loso: pd.DataFrame, out: Path) -> None:
+    if loso.empty:
+        return
+    selectors = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "oracle"]
+    df = loso[(loso["selector"].isin(selectors)) & (loso["N"] == loso["N"].max())]
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.2, 4.8))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#4d8f9f", "#6f8f3c", "#3c7c5a", "#2f6f9f"])
+    ax.set_xlabel("held-out failure family")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Leave-one-failure-out pilot calibration")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure21_leave_one_failure_out.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -407,6 +428,7 @@ def write_all_figures(
     domain_df: pd.DataFrame | None = None,
     counterfactual_df: pd.DataFrame | None = None,
     pilot_df: pd.DataFrame | None = None,
+    leave_one_failure_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -444,3 +466,5 @@ def write_all_figures(
         figure19_counterfactual_target(counterfactual_df, out)
     if pilot_df is not None:
         figure20_pilot_calibration(pilot_df, out)
+    if leave_one_failure_df is not None:
+        figure21_leave_one_failure_out(leave_one_failure_df, out)

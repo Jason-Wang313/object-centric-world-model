@@ -121,8 +121,10 @@ def test_paired_effects_and_stress_summary_are_computed():
             ]
         ),
         pilot_seed_df=df,
+        leave_one_failure_seed_df=df,
         bootstrap_reps=50,
     )
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
     assert "combined_repair_raw_gain" in set(stats["effect_id"])
     assert "pilot_calibrated_repair_gain" in set(stats["effect_id"])
+    assert "leave_one_failure_pilot_gain" in set(stats["effect_id"])
