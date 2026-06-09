@@ -12,6 +12,7 @@ from object_centric_best_of_n.metrics import (
     ood_summary,
     paired_selector_effects,
     pilot_calibration_summary,
+    pilot_budget_summary,
     probe_cost_summary,
     repair_ablation_summary,
     score_calibration_table,
@@ -109,6 +110,22 @@ def test_paired_effects_and_stress_summary_are_computed():
     pilot = pilot_calibration_summary(df)
     assert "pilot_vs_raw_gain_mean" in pilot.columns
     assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0
+    pilot_budget_df = pd.DataFrame(
+        [
+            {
+                **row,
+                "experiment": "W_pilot_label_budget",
+                "pilot_label_budget": 128,
+                "pilot_train_mae": 0.1,
+                "pilot_train_correlation": 0.9,
+            }
+            for row in rows
+            if row["selector"] in {"raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"}
+        ]
+    )
+    pilot_budget = pilot_budget_summary(pilot_budget_df)
+    assert "pilot_budget_vs_raw_gain_mean" in pilot_budget.columns
+    assert pilot_budget[pilot_budget["selector"] == "pilot_calibrated"]["pilot_budget_win_rate"].iloc[0] == 1.0
     noisy_probe = noisy_probe_summary(
         pd.DataFrame(
             [
@@ -168,6 +185,7 @@ def test_paired_effects_and_stress_summary_are_computed():
             ]
         ),
         pilot_seed_df=df,
+        pilot_budget_seed_df=pilot_budget_df,
         leave_one_failure_seed_df=df,
         noisy_probe_seed_df=noisy_df,
         probe_cost_seed_df=probe_cost_df,
@@ -176,6 +194,7 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
     assert "combined_repair_raw_gain" in set(stats["effect_id"])
     assert "pilot_calibrated_repair_gain" in set(stats["effect_id"])
+    assert "pilot_budget_mature_gain" in set(stats["effect_id"])
     assert "leave_one_failure_pilot_gain" in set(stats["effect_id"])
     assert "noisy_probe_repair_gain" in set(stats["effect_id"])
     assert "extreme_object_combined_repair_gain" in set(stats["effect_id"])

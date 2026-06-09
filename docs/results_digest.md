@@ -27,6 +27,8 @@ This digest is generated from the current result artifacts.
 - Domain-randomized combined-vs-raw gain: 0.8343878574844603
 - Counterfactual target-swap combined-vs-raw gain: 0.816906396281512
 - Pilot-calibrated held-out gain: 0.8192029444060406
+- Pilot-budget mature gain: 0.8302670022712365
+- Pilot-budget largest gain: 0.8247172225365372
 - Leave-one-failure pilot gain: 0.7758011252035516
 - Noisy-probe reliable gain: 0.8667438725697415
 - Probe-cost low-cost combined-vs-raw gain: 0.77494187977645

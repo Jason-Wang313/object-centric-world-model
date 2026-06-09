@@ -51,6 +51,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/counterfactual_target_metrics.csv": ("scenario", "selector", "counterfactual_combined_vs_raw_gain_mean", "counterfactual_observable_vs_raw_gain_mean"),
     "results/tables/pilot_calibration_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "pilot_train_candidates"),
     "results/tables/pilot_calibration_metrics.csv": ("scenario", "selector", "pilot_vs_raw_gain_mean", "pilot_win_rate"),
+    "results/tables/pilot_budget_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "pilot_label_budget"),
+    "results/tables/pilot_budget_metrics.csv": ("scenario", "selector", "pilot_label_budget", "pilot_budget_vs_raw_gain_mean"),
     "results/tables/leave_one_failure_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "heldout_scenario"),
     "results/tables/leave_one_failure_metrics.csv": ("scenario", "selector", "pilot_vs_raw_gain_mean", "pilot_win_rate"),
     "results/tables/noisy_probe_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "probe_reliability"),
@@ -87,12 +89,14 @@ REQUIRED_FIGURES = (
     "figures/figure23_learned_domain_shift.png",
     "figures/figure24_extreme_object_count.png",
     "figures/figure25_probe_cost_sensitivity.png",
+    "figures/figure26_pilot_label_budget.png",
 )
 
 REQUIRED_JSON = (
     "results/run_summary.json",
     "results/learned_object_model_summary.json",
     "results/pilot_calibration_summary.json",
+    "results/pilot_budget_summary.json",
     "results/leave_one_failure_summary.json",
     "results/verification_log.json",
     "results/artifact_manifest.json",
@@ -138,12 +142,14 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     domain = _read_csv(tables / "domain_randomization_metrics.csv")
     counterfactual = _read_csv(tables / "counterfactual_target_metrics.csv")
     pilot = _read_csv(tables / "pilot_calibration_metrics.csv")
+    pilot_budget = _read_csv(tables / "pilot_budget_metrics.csv")
     loso = _read_csv(tables / "leave_one_failure_metrics.csv")
     noisy_probe = _read_csv(tables / "noisy_probe_metrics.csv")
     probe_cost = _read_csv(tables / "probe_cost_metrics.csv")
     statistical = _read_csv(tables / "statistical_audit.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
     pilot_summary = _read_json(root / "results" / "pilot_calibration_summary.json")
+    pilot_budget_summary_payload = _read_json(root / "results" / "pilot_budget_summary.json")
     loso_summary = _read_json(root / "results" / "leave_one_failure_summary.json")
 
     strengths: dict[str, dict[str, object]] = {}
@@ -386,6 +392,42 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(pilot_calibrated["pilot_oracle_gap_mean"].max()) <= 0.22
             and float(pilot_summary.get("calibrator", {}).get("train_correlation", 0.0)) >= 0.80
         )
+        mature_pilot_budget = (
+            pilot_budget[
+                (pilot_budget["selector"] == "pilot_calibrated")
+                & (pilot_budget["pilot_label_budget"] >= 128)
+            ]
+            if not pilot_budget.empty
+            else pd.DataFrame()
+        )
+        largest_pilot_budget = (
+            pilot_budget[
+                (pilot_budget["selector"] == "pilot_calibrated")
+                & (pilot_budget["pilot_label_budget"] == pilot_budget["pilot_label_budget"].max())
+            ]
+            if not pilot_budget.empty
+            else pd.DataFrame()
+        )
+        budget_train_correlations = (
+            [
+                float(item.get("calibrator", {}).get("train_correlation", 0.0))
+                for item in pilot_budget_summary_payload.get("calibrators", [])
+                if int(item.get("pilot_label_budget", 0)) >= 128
+            ]
+            if pilot_budget_summary_payload
+            else []
+        )
+        pilot_budget_pass = (
+            not mature_pilot_budget.empty
+            and not largest_pilot_budget.empty
+            and float(mature_pilot_budget["selected_real_utility_mean"].mean()) >= 0.72
+            and float(mature_pilot_budget["pilot_budget_vs_raw_gain_mean"].mean()) >= 0.55
+            and float(mature_pilot_budget["pilot_budget_win_rate"].min()) >= 0.85
+            and float(largest_pilot_budget["selected_real_utility_mean"].mean()) >= 0.78
+            and float(largest_pilot_budget["pilot_budget_oracle_gap_mean"].max()) <= 0.22
+            and bool(budget_train_correlations)
+            and min(budget_train_correlations) >= 0.75
+        )
         loso_pilot = loso[loso["selector"] == "pilot_calibrated"] if not loso.empty else pd.DataFrame()
         loso_train_correlations = (
             [
@@ -490,6 +532,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                         "counterfactual_combined_repair_gain",
                         "counterfactual_observable_repair_gain",
                         "pilot_calibrated_repair_gain",
+                        "pilot_budget_mature_gain",
                         "leave_one_failure_pilot_gain",
                         "noisy_probe_repair_gain",
                         "probe_cost_combined_repair_gain",
@@ -503,8 +546,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and pilot_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and extreme_pass and domain_pass and counterfactual_pass and pilot_pass and pilot_budget_pass and loso_pass and noisy_probe_pass and probe_cost_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -547,6 +590,12 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "pilot_calibrated_min_win_rate": float(pilot_calibrated["pilot_win_rate"].min()) if not pilot_calibrated.empty else None,
                 "pilot_calibrated_max_oracle_gap": float(pilot_calibrated["pilot_oracle_gap_mean"].max()) if not pilot_calibrated.empty else None,
                 "pilot_train_correlation": float(pilot_summary.get("calibrator", {}).get("train_correlation", 0.0)) if pilot_summary else None,
+                "pilot_budget_mature_mean_utility": float(mature_pilot_budget["selected_real_utility_mean"].mean()) if not mature_pilot_budget.empty else None,
+                "pilot_budget_mature_vs_raw_gain": float(mature_pilot_budget["pilot_budget_vs_raw_gain_mean"].mean()) if not mature_pilot_budget.empty else None,
+                "pilot_budget_mature_min_win_rate": float(mature_pilot_budget["pilot_budget_win_rate"].min()) if not mature_pilot_budget.empty else None,
+                "pilot_budget_largest_mean_utility": float(largest_pilot_budget["selected_real_utility_mean"].mean()) if not largest_pilot_budget.empty else None,
+                "pilot_budget_largest_max_oracle_gap": float(largest_pilot_budget["pilot_budget_oracle_gap_mean"].max()) if not largest_pilot_budget.empty else None,
+                "pilot_budget_min_mature_train_correlation": min(budget_train_correlations) if budget_train_correlations else None,
                 "leave_one_failure_pilot_mean_utility": float(loso_pilot["selected_real_utility_mean"].mean()) if not loso_pilot.empty else None,
                 "leave_one_failure_pilot_min_utility": float(loso_pilot["selected_real_utility_mean"].min()) if not loso_pilot.empty else None,
                 "leave_one_failure_pilot_vs_raw_gain": float(loso_pilot["pilot_vs_raw_gain_mean"].mean()) if not loso_pilot.empty else None,
@@ -641,7 +690,7 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C3",
             "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
             "status": _status(strengths.get("C3", {}).get("passes") if root is not None else None),
-            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
+            "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv",
             "strength": strengths.get("C3", {}),
         },
         {
@@ -846,6 +895,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Domain-randomized combined-vs-raw gain: {summary.get('domain_randomized_combined_vs_raw_gain', 'unknown')}",
         f"- Counterfactual target-swap combined-vs-raw gain: {summary.get('counterfactual_combined_vs_raw_gain', 'unknown')}",
         f"- Pilot-calibrated held-out gain: {summary.get('pilot_calibrated_vs_raw_gain', 'unknown')}",
+        f"- Pilot-budget mature gain: {summary.get('pilot_budget_mature_vs_raw_gain', 'unknown')}",
+        f"- Pilot-budget largest gain: {summary.get('pilot_budget_largest_vs_raw_gain', 'unknown')}",
         f"- Leave-one-failure pilot gain: {summary.get('leave_one_failure_pilot_vs_raw_gain', 'unknown')}",
         f"- Noisy-probe reliable gain: {summary.get('noisy_probe_mean_reliable_gain', 'unknown')}",
         f"- Probe-cost low-cost combined-vs-raw gain: {summary.get('probe_cost_low_cost_combined_vs_raw_gain', 'unknown')}",
@@ -891,6 +942,7 @@ def artifact_inventory(root: str | Path) -> dict[str, list[str]]:
         "results/run_summary.json",
         "results/learned_object_model_summary.json",
         "results/pilot_calibration_summary.json",
+        "results/pilot_budget_summary.json",
         "results/leave_one_failure_summary.json",
         "results/claims_status.json",
         "results/verification_log.json",
@@ -1028,6 +1080,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Combined-vs-raw gain {summary_payload.get('counterfactual_combined_vs_raw_gain', 'unknown')}.",
             "- Pilot-label calibration artifact: figure20_pilot_calibration.png, pilot_calibration_metrics.csv, and pilot_calibration_summary.json. "
             f"Held-out calibrated-vs-raw gain {summary_payload.get('pilot_calibrated_vs_raw_gain', 'unknown')}.",
+            "- Pilot-label budget artifact: figure26_pilot_label_budget.png, pilot_budget_metrics.csv, and pilot_budget_summary.json. "
+            f"Mature-budget gain {summary_payload.get('pilot_budget_mature_vs_raw_gain', 'unknown')} and largest-budget gain {summary_payload.get('pilot_budget_largest_vs_raw_gain', 'unknown')}.",
             "- Leave-one-failure-out artifact: figure21_leave_one_failure_out.png, leave_one_failure_metrics.csv, and leave_one_failure_summary.json. "
             f"Held-out-family calibrated-vs-raw gain {summary_payload.get('leave_one_failure_pilot_vs_raw_gain', 'unknown')}.",
             "- Noisy-probe artifact: figure22_noisy_probe_reliability.png and noisy_probe_metrics.csv. "
@@ -1044,7 +1098,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",
-            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
+            f"- Synthetic scenes remain controlled, though the default run now uses {len(summary_payload.get('seeds', [])) or 'unknown'} main seeds, {len(summary_payload.get('stress_seeds', [])) or 'unknown'} stress seeds, dense and extreme object-count stress, held-out domain-randomized stress, held-out pilot-label calibration, pilot-label budget sensitivity, leave-one-failure-out calibration, noisy-probe reliability stress, and probe-cost sensitivity.",
             "- Observable-only, pilot-calibrated, noisy-probe, and probe-cost repair reduce direct hidden-property truth alignment and free-probe assumptions, and learned domain-shift tests add dense/occluded/crossing variants, but all probe and slot diagnostics still come from the toy generator.",
             "- No real-robot or broad benchmark evidence is claimed.",
             "",

@@ -11,3 +11,5 @@ Third, we train a small NumPy object-centric model on generated slot trajectorie
 Fourth, we compare selectors: raw score, identity-consistent score, property-calibrated score, targeted-probe repair, observable-only repair, combined repair, random selection, and oracle selection. Probe-cost sensitivity subtracts a fixed diagnostic-action cost from probe-using selectors before reporting net selected utility.
 
 Fifth, we aggregate paired seed gains, high-N stress rows, dense OOD rows, and extreme 10/12-object rows. The claim audit requires numeric margins before marking core claims strongly supported.
+
+For pilot-label calibration, we also sweep the number of labeled candidate futures used to fit the utility calibrator. The held-out scenes are fixed across budgets, so the budget curve reflects calibration data size rather than a changing evaluation set.

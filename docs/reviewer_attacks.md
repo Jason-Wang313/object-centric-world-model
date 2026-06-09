@@ -22,7 +22,7 @@ Response: `probe_cost_metrics.csv` charges diagnostic actions before reporting s
 
 ## Attack: The deployment gate says to collect pilot labels, but labels are not tested.
 
-Response: `pilot_calibration_metrics.csv` evaluates a held-out selector trained from pilot-labeled candidates using observable object features. The train seeds are separate from the held-out raw, randomized-domain, and target-swap evaluation seeds. The upgraded run also writes `leave_one_failure_metrics.csv`, where each raw, occlusion, hidden-property, swap, or merge/split failure family is held out during pilot-calibrator training and then evaluated as the test family. The audit requires calibrated selected utility, paired raw gain, win rate, oracle gap, leave-one-failure transfer, and bootstrap lower-bound checks before counting the evidence.
+Response: `pilot_calibration_metrics.csv` evaluates a held-out selector trained from pilot-labeled candidates using observable object features. The train seeds are separate from the held-out raw, randomized-domain, and target-swap evaluation seeds. `pilot_budget_metrics.csv` sweeps the number of labeled candidates, and `leave_one_failure_metrics.csv` holds each raw, occlusion, hidden-property, swap, or merge/split failure family out during pilot-calibrator training and then evaluates it as the test family. The audit requires calibrated selected utility, paired raw gain, budget sensitivity, win rate, oracle gap, leave-one-failure transfer, and bootstrap lower-bound checks before counting the evidence.
 
 ## Attack: The repair result could be a seed fluke.
 

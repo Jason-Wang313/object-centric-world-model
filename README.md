@@ -32,6 +32,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Held-out domain-randomized synthetic stress with varied object counts and corruption flags.
 - Counterfactual target-identity stress that retargets the true object away from object zero.
 - Held-out pilot-label calibration for a learned utility selector trained from labeled object candidates.
+- Pilot-label budget sensitivity for the same learned utility selector.
 - Leave-one-failure-out pilot calibration, where each binding failure family is held out during pilot-calibrator training.
 - Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
 - Diagnostic probe-cost sensitivity, reporting net utility after charging probe actions.
@@ -74,6 +75,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/counterfactual_target_metrics.csv`
 - `results/tables/pilot_calibration_seed_metrics.csv`
 - `results/tables/pilot_calibration_metrics.csv`
+- `results/tables/pilot_budget_seed_metrics.csv`
+- `results/tables/pilot_budget_metrics.csv`
 - `results/tables/leave_one_failure_seed_metrics.csv`
 - `results/tables/leave_one_failure_metrics.csv`
 - `results/tables/noisy_probe_seed_metrics.csv`
@@ -87,6 +90,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
 - `results/pilot_calibration_summary.json`
+- `results/pilot_budget_summary.json`
 - `results/leave_one_failure_summary.json`
 - `results/verification_log.json`
 - `results/artifact_manifest.json`
@@ -116,6 +120,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure23_learned_domain_shift.png`
 - `figures/figure24_extreme_object_count.png`
 - `figures/figure25_probe_cost_sensitivity.png`
+- `figures/figure26_pilot_label_budget.png`
 
 ## Claim Boundaries
 

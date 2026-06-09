@@ -47,11 +47,11 @@ Strength: {
 ## C3: strongly_supported
 Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.
 
-Evidence: figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv
+Evidence: figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
   "observed": {
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
@@ -94,6 +94,12 @@ Strength: {
     "pilot_calibrated_min_win_rate": 1.0,
     "pilot_calibrated_max_oracle_gap": 0.1327885883263263,
     "pilot_train_correlation": 0.983367982746434,
+    "pilot_budget_mature_mean_utility": 0.8439224499476208,
+    "pilot_budget_mature_vs_raw_gain": 0.8302670022712365,
+    "pilot_budget_mature_min_win_rate": 1.0,
+    "pilot_budget_largest_mean_utility": 0.8383726702129214,
+    "pilot_budget_largest_max_oracle_gap": 0.100120217810831,
+    "pilot_budget_min_mature_train_correlation": 0.9858498253079078,
     "leave_one_failure_pilot_mean_utility": 0.8160878196526353,
     "leave_one_failure_pilot_min_utility": 0.806587797091829,
     "leave_one_failure_pilot_vs_raw_gain": 0.7758011252035516,
@@ -157,6 +163,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 69 required artifacts.
+Artifact verification checked 73 required artifacts.
 
 No paper-text or artifact overclaim problems detected.

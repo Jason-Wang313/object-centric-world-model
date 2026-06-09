@@ -70,6 +70,7 @@
   "n_domain_randomization_rows": 240,
   "n_counterfactual_target_rows": 240,
   "n_pilot_calibration_rows": 864,
+  "n_pilot_budget_rows": 5184,
   "n_leave_one_failure_rows": 1200,
   "n_noisy_probe_rows": 1440,
   "n_probe_cost_rows": 3360,
@@ -133,6 +134,12 @@
   "pilot_calibrated_max_oracle_gap": 0.13278858832632634,
   "pilot_calibration_train_mae": 0.0478788429570998,
   "pilot_calibration_train_correlation": 0.983367982746434,
+  "pilot_budget_mature_mean_utility": 0.8439224499476208,
+  "pilot_budget_mature_vs_raw_gain": 0.8302670022712365,
+  "pilot_budget_mature_min_win_rate": 1.0,
+  "pilot_budget_smallest_vs_raw_gain": 0.7880166038627622,
+  "pilot_budget_largest_vs_raw_gain": 0.8247172225365372,
+  "pilot_budget_largest_max_oracle_gap": 0.10012021781083102,
   "leave_one_failure_raw_mean_utility": 0.040286694449083796,
   "leave_one_failure_pilot_mean_utility": 0.8160878196526353,
   "leave_one_failure_pilot_vs_raw_gain": 0.7758011252035516,
@@ -164,5 +171,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 476.606
+  "runtime_seconds": 470.651
 }

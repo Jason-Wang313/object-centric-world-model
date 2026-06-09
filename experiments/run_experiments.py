@@ -29,6 +29,7 @@ from object_centric_best_of_n.metrics import (
     ood_summary,
     paired_selector_effects,
     pilot_calibration_summary,
+    pilot_budget_summary,
     noisy_probe_summary,
     probe_cost_summary,
     repair_ablation_summary,
@@ -93,6 +94,7 @@ MODEL_FAMILY_SELECTORS = [
 DOMAIN_RANDOMIZATION_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 COUNTERFACTUAL_TARGET_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
+PILOT_BUDGETS = [16, 32, 64, 128, 256, 512]
 NOISY_PROBE_RELIABILITIES = [0.55, 0.65, 0.75, 0.85, 0.90]
 NOISY_PROBE_SELECTORS = ["raw", "noisy_probe_repair", "observable_repair", "combined_repair", "random", "oracle"]
 PROBE_COSTS = [0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.30]
@@ -506,6 +508,46 @@ def _pilot_training_candidates(
     return candidates
 
 
+def _pilot_eval_specs(seed: int):
+    domain_scene, domain_generator_scenario, n_objects, occlusion, hidden_property, crossing = _domain_randomized_scene(
+        40_000 + seed
+    )
+    return [
+        (
+            "raw_heldout",
+            _scene_for_scenario(340_000 + seed, "raw"),
+            "raw",
+            {"n_objects": 4, "occlusion_flag": 1, "hidden_property_flag": 1, "crossing_flag": 1},
+        ),
+        (
+            "domain_randomized_heldout",
+            domain_scene,
+            domain_generator_scenario,
+            {
+                "n_objects": n_objects,
+                "occlusion_flag": int(occlusion),
+                "hidden_property_flag": int(hidden_property),
+                "crossing_flag": int(crossing),
+            },
+        ),
+        (
+            "target_id_1_heldout",
+            retarget_scene(
+                make_scene(
+                    seed=360_000 + seed,
+                    n_objects=4,
+                    occlusion=True,
+                    hidden_property=True,
+                    crossing=True,
+                ),
+                target_id=1,
+            ),
+            "raw",
+            {"n_objects": 4, "occlusion_flag": 1, "hidden_property_flag": 1, "crossing_flag": 1},
+        ),
+    ]
+
+
 def _run_pilot_calibration_panel(
     generator: ObjectCentricFutureGenerator,
     train_seeds: list[int],
@@ -516,44 +558,7 @@ def _run_pilot_calibration_panel(
     calibrator = fit_pilot_calibrator(train_candidates, ridge=2e-3)
     rows: list[dict[str, float | int | str]] = []
     for seed in eval_seeds:
-        domain_scene, domain_generator_scenario, n_objects, occlusion, hidden_property, crossing = _domain_randomized_scene(
-            40_000 + seed
-        )
-        eval_specs = [
-            (
-                "raw_heldout",
-                _scene_for_scenario(340_000 + seed, "raw"),
-                "raw",
-                {"n_objects": 4, "occlusion_flag": 1, "hidden_property_flag": 1, "crossing_flag": 1},
-            ),
-            (
-                "domain_randomized_heldout",
-                domain_scene,
-                domain_generator_scenario,
-                {
-                    "n_objects": n_objects,
-                    "occlusion_flag": int(occlusion),
-                    "hidden_property_flag": int(hidden_property),
-                    "crossing_flag": int(crossing),
-                },
-            ),
-            (
-                "target_id_1_heldout",
-                retarget_scene(
-                    make_scene(
-                        seed=360_000 + seed,
-                        n_objects=4,
-                        occlusion=True,
-                        hidden_property=True,
-                        crossing=True,
-                    ),
-                    target_id=1,
-                ),
-                "raw",
-                {"n_objects": 4, "occlusion_flag": 1, "hidden_property_flag": 1, "crossing_flag": 1},
-            ),
-        ]
-        for scenario_label, scene, generator_scenario, flags in eval_specs:
+        for scenario_label, scene, generator_scenario, flags in _pilot_eval_specs(seed):
             candidates = generator.generate_candidates(
                 scene,
                 n=n,
@@ -586,6 +591,68 @@ def _run_pilot_calibration_panel(
                 )
                 rows.append(record)
     return pd.DataFrame(rows), calibrator
+
+
+def _run_pilot_budget_panel(
+    generator: ObjectCentricFutureGenerator,
+    train_seeds: list[int],
+    eval_seeds: list[int],
+    n: int,
+    budgets: list[int],
+) -> tuple[pd.DataFrame, list[dict[str, object]]]:
+    train_candidates = _pilot_training_candidates(generator, train_seeds=train_seeds, n=n)
+    rng = np.random.default_rng(540_001)
+    order = rng.permutation(len(train_candidates))
+    rows: list[dict[str, float | int | str]] = []
+    calibrators: list[dict[str, object]] = []
+    eval_cases = []
+    for seed in eval_seeds:
+        for scenario_label, scene, generator_scenario, flags in _pilot_eval_specs(80_000 + seed):
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=generator_scenario,
+                seed=547_999 + seed * 907 + len(scenario_label),
+            )
+            eval_cases.append((seed, scenario_label, scene, generator_scenario, flags, candidates))
+    for budget in budgets:
+        budget_n = int(min(budget, len(train_candidates)))
+        subset = [train_candidates[int(idx)] for idx in order[:budget_n]]
+        calibrator = fit_pilot_calibrator(subset, ridge=5e-3)
+        calibrators.append({"pilot_label_budget": budget_n, "calibrator": calibrator})
+        for seed, scenario_label, scene, generator_scenario, flags, candidates in eval_cases:
+            pilot_scores = np.asarray([pilot_calibrated_score(candidate, calibrator) for candidate in candidates])
+            for selector_name in PILOT_CALIBRATION_SELECTORS:
+                if selector_name == "pilot_calibrated":
+                    selected = _select_by_scores_with_label(
+                        candidates,
+                        pilot_scores,
+                        seed=seed + n + budget_n,
+                        label=selector_name,
+                    )
+                else:
+                    selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                record = selection_record(
+                    "W_pilot_label_budget",
+                    scenario_label,
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "pilot_label_budget": budget_n,
+                        "pilot_train_candidates": int(calibrator["n_train_candidates"]),
+                        "pilot_train_mae": float(calibrator["train_mae"]),
+                        "pilot_train_correlation": float(calibrator["train_correlation"]),
+                        "generator_scenario": generator_scenario,
+                        **flags,
+                    }
+                )
+                rows.append(record)
+    return pd.DataFrame(rows), calibrators
 
 
 def _run_leave_one_failure_out_panel(
@@ -836,6 +903,16 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         n=max(ns),
     )
     pilot_metrics = pilot_calibration_summary(pilot_seed_df)
+    pilot_budget_train_seeds = list(range(4)) if mode == "smoke" else list(range(32))
+    pilot_budget_eval_seeds = list(range(4)) if mode == "smoke" else list(range(48))
+    pilot_budget_seed_df, pilot_budget_calibrators = _run_pilot_budget_panel(
+        generator,
+        train_seeds=pilot_budget_train_seeds,
+        eval_seeds=pilot_budget_eval_seeds,
+        n=max(ns),
+        budgets=PILOT_BUDGETS,
+    )
+    pilot_budget_metrics = pilot_budget_summary(pilot_budget_seed_df)
     loso_train_seeds = list(range(3)) if mode == "smoke" else list(range(24))
     loso_eval_seeds = list(range(3)) if mode == "smoke" else list(range(40))
     loso_seed_df, loso_calibrators = _run_leave_one_failure_out_panel(
@@ -859,6 +936,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         family_seed_df=family_seed_df,
         counterfactual_seed_df=counter_seed_df,
         pilot_seed_df=pilot_seed_df,
+        pilot_budget_seed_df=pilot_budget_seed_df,
         leave_one_failure_seed_df=loso_seed_df,
         noisy_probe_seed_df=noisy_probe_seed_df,
         probe_cost_seed_df=probe_cost_seed_df,
@@ -897,6 +975,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_metrics.to_csv(tables / "counterfactual_target_metrics.csv", index=False)
     pilot_seed_df.to_csv(tables / "pilot_calibration_seed_metrics.csv", index=False)
     pilot_metrics.to_csv(tables / "pilot_calibration_metrics.csv", index=False)
+    pilot_budget_seed_df.to_csv(tables / "pilot_budget_seed_metrics.csv", index=False)
+    pilot_budget_metrics.to_csv(tables / "pilot_budget_metrics.csv", index=False)
     loso_seed_df.to_csv(tables / "leave_one_failure_seed_metrics.csv", index=False)
     loso_metrics.to_csv(tables / "leave_one_failure_metrics.csv", index=False)
     noisy_probe_seed_df.to_csv(tables / "noisy_probe_seed_metrics.csv", index=False)
@@ -911,6 +991,18 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "calibrator": pilot_calibrator,
     }
     (results / "pilot_calibration_summary.json").write_text(json.dumps(pilot_summary, indent=2), encoding="utf-8")
+    pilot_budget_summary_payload = {
+        "mode": mode,
+        "train_seeds": pilot_budget_train_seeds,
+        "eval_seeds": pilot_budget_eval_seeds,
+        "budgets": PILOT_BUDGETS,
+        "n_eval_rows": int(pilot_budget_seed_df.shape[0]),
+        "calibrators": pilot_budget_calibrators,
+    }
+    (results / "pilot_budget_summary.json").write_text(
+        json.dumps(pilot_budget_summary_payload, indent=2),
+        encoding="utf-8",
+    )
     loso_summary = {
         "mode": mode,
         "train_seeds": loso_train_seeds,
@@ -949,6 +1041,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         domain_df=domain_metrics,
         counterfactual_df=counter_metrics,
         pilot_df=pilot_metrics,
+        pilot_budget_df=pilot_budget_metrics,
         leave_one_failure_df=loso_metrics,
         noisy_probe_df=noisy_probe_metrics,
         probe_cost_df=probe_cost_metrics,
@@ -1026,6 +1119,21 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     counter_raw = counter_metrics[counter_metrics["selector"] == "raw"]
     pilot_calibrated = pilot_metrics[pilot_metrics["selector"] == "pilot_calibrated"]
     pilot_raw = pilot_metrics[pilot_metrics["selector"] == "raw"]
+    mature_pilot_budget = pilot_budget_metrics[
+        (pilot_budget_metrics["selector"] == "pilot_calibrated")
+        & (pilot_budget_metrics["pilot_label_budget"] >= 128)
+    ]
+    smallest_pilot_budget = pilot_budget_metrics[
+        (pilot_budget_metrics["selector"] == "pilot_calibrated")
+        & (pilot_budget_metrics["pilot_label_budget"] == min(PILOT_BUDGETS))
+    ]
+    largest_actual_pilot_budget = (
+        int(pilot_budget_metrics["pilot_label_budget"].max()) if not pilot_budget_metrics.empty else max(PILOT_BUDGETS)
+    )
+    largest_pilot_budget = pilot_budget_metrics[
+        (pilot_budget_metrics["selector"] == "pilot_calibrated")
+        & (pilot_budget_metrics["pilot_label_budget"] == largest_actual_pilot_budget)
+    ]
     loso_pilot = loso_metrics[loso_metrics["selector"] == "pilot_calibrated"]
     loso_raw = loso_metrics[loso_metrics["selector"] == "raw"]
     noisy_probe_repair = noisy_probe_metrics[noisy_probe_metrics["selector"] == "noisy_probe_repair"]
@@ -1072,6 +1180,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_domain_randomization_rows": int(domain_seed_df.shape[0]),
         "n_counterfactual_target_rows": int(counter_seed_df.shape[0]),
         "n_pilot_calibration_rows": int(pilot_seed_df.shape[0]),
+        "n_pilot_budget_rows": int(pilot_budget_seed_df.shape[0]),
         "n_leave_one_failure_rows": int(loso_seed_df.shape[0]),
         "n_noisy_probe_rows": int(noisy_probe_seed_df.shape[0]),
         "n_probe_cost_rows": int(probe_cost_seed_df.shape[0]),
@@ -1135,6 +1244,12 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "pilot_calibrated_max_oracle_gap": float(pilot_calibrated["pilot_oracle_gap_mean"].max()) if not pilot_calibrated.empty else None,
         "pilot_calibration_train_mae": float(pilot_calibrator["train_mae"]),
         "pilot_calibration_train_correlation": float(pilot_calibrator["train_correlation"]),
+        "pilot_budget_mature_mean_utility": float(mature_pilot_budget["selected_real_utility_mean"].mean()) if not mature_pilot_budget.empty else None,
+        "pilot_budget_mature_vs_raw_gain": float(mature_pilot_budget["pilot_budget_vs_raw_gain_mean"].mean()) if not mature_pilot_budget.empty else None,
+        "pilot_budget_mature_min_win_rate": float(mature_pilot_budget["pilot_budget_win_rate"].min()) if not mature_pilot_budget.empty else None,
+        "pilot_budget_smallest_vs_raw_gain": float(smallest_pilot_budget["pilot_budget_vs_raw_gain_mean"].mean()) if not smallest_pilot_budget.empty else None,
+        "pilot_budget_largest_vs_raw_gain": float(largest_pilot_budget["pilot_budget_vs_raw_gain_mean"].mean()) if not largest_pilot_budget.empty else None,
+        "pilot_budget_largest_max_oracle_gap": float(largest_pilot_budget["pilot_budget_oracle_gap_mean"].max()) if not largest_pilot_budget.empty else None,
         "leave_one_failure_raw_mean_utility": float(loso_raw["selected_real_utility_mean"].mean()) if not loso_raw.empty else None,
         "leave_one_failure_pilot_mean_utility": float(loso_pilot["selected_real_utility_mean"].mean()) if not loso_pilot.empty else None,
         "leave_one_failure_pilot_vs_raw_gain": float(loso_pilot["pilot_vs_raw_gain_mean"].mean()) if not loso_pilot.empty else None,

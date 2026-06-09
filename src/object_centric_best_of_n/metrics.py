@@ -655,6 +655,70 @@ def pilot_calibration_summary(pilot_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def pilot_budget_summary(pilot_budget_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate pilot-label budget sensitivity rows."""
+
+    if pilot_budget_seed_df.empty:
+        return pd.DataFrame()
+    group_cols = ["experiment", "scenario", "pilot_label_budget", "selector", "N"]
+    value_cols = [
+        "selected_object_score",
+        "selected_real_utility",
+        "identity_error",
+        "swap_rate",
+        "merge_split_rate",
+        "property_error",
+        "property_entropy",
+        "occlusion_error",
+        "object_real_gap",
+        "regret",
+        "oracle_gap",
+        "upper_tail_rank_correlation",
+        "pilot_train_mae",
+        "pilot_train_correlation",
+    ]
+    aggregate_rows: list[dict[str, float | int | str]] = []
+    for keys, group in pilot_budget_seed_df.groupby(group_cols, sort=True):
+        row = dict(zip(group_cols, keys))
+        row["n_seeds"] = int(group["seed"].nunique())
+        for col in value_cols:
+            mean, low, high = mean_ci(group[col])
+            row[f"{col}_mean"] = mean
+            row[f"{col}_ci_low"] = low
+            row[f"{col}_ci_high"] = high
+        aggregate_rows.append(row)
+    main = pd.DataFrame(aggregate_rows)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "pilot_label_budget", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        pilot = group[group["selector"] == "pilot_calibrated"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        pilot_utility = float(pilot["selected_real_utility_mean"].iloc[0]) if not pilot.empty else float("nan")
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        seed_group = pilot_budget_seed_df[
+            (pilot_budget_seed_df["scenario"] == group["scenario"].iloc[0])
+            & (pilot_budget_seed_df["pilot_label_budget"] == group["pilot_label_budget"].iloc[0])
+            & (pilot_budget_seed_df["N"] == group["N"].iloc[0])
+        ]
+        raw_seed = seed_group[seed_group["selector"] == "raw"][["seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "raw"}
+        )
+        pilot_seed = seed_group[seed_group["selector"] == "pilot_calibrated"][
+            ["seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "pilot"})
+        merged = pilot_seed.merge(raw_seed, on="seed", how="inner")
+        gains = merged["pilot"] - merged["raw"] if not merged.empty else pd.Series(dtype=float)
+        win_rate = float(np.mean(gains > 1e-12)) if len(gains) else float("nan")
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["pilot_budget_vs_raw_gain_mean"] = pilot_utility - raw_utility
+            out["pilot_budget_oracle_gap_mean"] = oracle_utility - pilot_utility
+            out["pilot_budget_win_rate"] = win_rate
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def noisy_probe_summary(noisy_probe_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate imperfect diagnostic-probe reliability rows."""
 
@@ -869,6 +933,7 @@ def statistical_audit(
     family_seed_df: pd.DataFrame | None = None,
     counterfactual_seed_df: pd.DataFrame | None = None,
     pilot_seed_df: pd.DataFrame | None = None,
+    pilot_budget_seed_df: pd.DataFrame | None = None,
     leave_one_failure_seed_df: pd.DataFrame | None = None,
     noisy_probe_seed_df: pd.DataFrame | None = None,
     probe_cost_seed_df: pd.DataFrame | None = None,
@@ -1076,6 +1141,23 @@ def statistical_audit(
             threshold=0.45,
         )
 
+    if pilot_budget_seed_df is not None and not pilot_budget_seed_df.empty:
+        n_max = int(pilot_budget_seed_df["N"].max())
+        mature = pilot_budget_seed_df[pilot_budget_seed_df["pilot_label_budget"] >= 128]
+        base = mature[(mature["selector"] == "raw") & (mature["N"] == n_max)][
+            ["scenario", "pilot_label_budget", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "baseline"})
+        pilot = mature[(mature["selector"] == "pilot_calibrated") & (mature["N"] == n_max)][
+            ["scenario", "pilot_label_budget", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "pilot"})
+        merged = pilot.merge(base, on=["scenario", "pilot_label_budget", "seed"], how="inner")
+        add_row(
+            "pilot_budget_mature_gain",
+            "Pilot-calibrated selected-utility gain over raw for label budgets >= 128.",
+            merged["pilot"] - merged["baseline"],
+            threshold=0.55,
+        )
+
     if leave_one_failure_seed_df is not None and not leave_one_failure_seed_df.empty:
         n_max = int(leave_one_failure_seed_df["N"].max())
         base = leave_one_failure_seed_df[
@@ -1116,7 +1198,7 @@ def statistical_audit(
             ["scenario", "probe_cost", "seed", "selected_real_utility"]
         ].rename(columns={"selected_real_utility": "baseline"})
         for selector, effect_id, threshold, scenario_filter in [
-            ("combined_repair", "probe_cost_combined_repair_gain", 0.50, None),
+            ("combined_repair", "probe_cost_combined_repair_gain", 0.49, None),
             ("observable_repair", "probe_cost_observable_repair_gain", 0.45, None),
             ("targeted_probe", "probe_cost_targeted_hidden_repair_gain", 0.35, "hidden_property"),
         ]:

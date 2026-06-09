@@ -496,6 +496,48 @@ def figure25_probe_cost_sensitivity(probe_cost: pd.DataFrame, out: Path) -> None
     _save(fig, out / "figure25_probe_cost_sensitivity.png")
 
 
+def figure26_pilot_budget(pilot_budget: pd.DataFrame, out: Path) -> None:
+    if pilot_budget.empty:
+        return
+    df = pilot_budget[pilot_budget["selector"] == "pilot_calibrated"]
+    if df.empty:
+        return
+    grouped = df.groupby("pilot_label_budget", as_index=False).agg(
+        selected_real_utility_mean=("selected_real_utility_mean", "mean"),
+        pilot_budget_vs_raw_gain_mean=("pilot_budget_vs_raw_gain_mean", "mean"),
+        pilot_budget_oracle_gap_mean=("pilot_budget_oracle_gap_mean", "mean"),
+    )
+    fig, ax = plt.subplots(figsize=(8.8, 4.6))
+    ax.plot(
+        grouped["pilot_label_budget"],
+        grouped["selected_real_utility_mean"],
+        marker="o",
+        linewidth=2,
+        label="selected utility",
+    )
+    ax.plot(
+        grouped["pilot_label_budget"],
+        grouped["pilot_budget_vs_raw_gain_mean"],
+        marker="o",
+        linewidth=2,
+        label="gain over raw",
+    )
+    ax.plot(
+        grouped["pilot_label_budget"],
+        grouped["pilot_budget_oracle_gap_mean"],
+        marker="o",
+        linewidth=2,
+        label="oracle gap",
+    )
+    ax.set_xlabel("pilot-labeled candidate budget")
+    ax.set_ylabel("mean metric")
+    ax.set_title("Pilot-label budget sensitivity")
+    ax.set_xscale("log", base=2)
+    ax.grid(alpha=0.25)
+    ax.legend(frameon=False, fontsize=8)
+    _save(fig, out / "figure26_pilot_label_budget.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -517,6 +559,7 @@ def write_all_figures(
     domain_df: pd.DataFrame | None = None,
     counterfactual_df: pd.DataFrame | None = None,
     pilot_df: pd.DataFrame | None = None,
+    pilot_budget_df: pd.DataFrame | None = None,
     leave_one_failure_df: pd.DataFrame | None = None,
     noisy_probe_df: pd.DataFrame | None = None,
     probe_cost_df: pd.DataFrame | None = None,
@@ -568,3 +611,5 @@ def write_all_figures(
         figure24_extreme_object_count(extreme_object_df, out)
     if probe_cost_df is not None:
         figure25_probe_cost_sensitivity(probe_cost_df, out)
+    if pilot_budget_df is not None:
+        figure26_pilot_budget(pilot_budget_df, out)
