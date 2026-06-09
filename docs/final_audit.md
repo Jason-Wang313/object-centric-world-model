@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 62.251s; strict claim audit passed; pilot-calibrated held-out gain 0.8320271408001559; leave-one-failure pilot gain 0.7047098791315347)
-- bash scripts/run_all.sh: pass (full experiment runtime 284.008s; 16 main seeds, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 pilot calibration eval seeds, 864 pilot calibration rows, 40 leave-one-failure eval seeds per held-out family, 1200 leave-one-failure rows, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, bootstrap statistical audit, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, domain-randomization checks, counterfactual target-swap checks, pilot-calibration checks, leave-one-failure calibration checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
-- pytest: pass (16 passed in 8.50s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 41.731s; strict claim audit passed; pilot-calibrated held-out gain 0.8320271408001559; leave-one-failure pilot gain 0.7047098791315347; noisy-probe reliable gain 0.8110300082552486)
+- bash scripts/run_all.sh: pass (full experiment runtime 308.824s; 16 main seeds, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 pilot calibration eval seeds, 864 pilot calibration rows, 40 leave-one-failure eval seeds per held-out family, 1200 leave-one-failure rows, 48 noisy-probe reliability seeds, 1440 noisy-probe rows, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, noisy-probe reliability panel, bootstrap statistical audit, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, domain-randomization checks, counterfactual target-swap checks, pilot-calibration checks, leave-one-failure calibration checks, noisy-probe checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
+- pytest: pass (16 passed in 9.37s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -25,6 +25,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. Combined-vs-raw gain 0.816906396281512.
 - Pilot-label calibration artifact: figure20_pilot_calibration.png, pilot_calibration_metrics.csv, and pilot_calibration_summary.json. Held-out calibrated-vs-raw gain 0.8192029444060406.
 - Leave-one-failure-out artifact: figure21_leave_one_failure_out.png, leave_one_failure_metrics.csv, and leave_one_failure_summary.json. Held-out-family calibrated-vs-raw gain 0.7758011252035516.
+- Noisy-probe artifact: figure22_noisy_probe_reliability.png and noisy_probe_metrics.csv. Reliable-probe gain 0.8667438725697415.
 - Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. Combined-vs-best-proxy gain 0.5504614056934154.
 - Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. Minimum bootstrap CI margin 0.08294730684862575.
 
@@ -33,8 +34,8 @@ The repo reuses the finite Best-of-N law pattern only. It changes the scientific
 The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.
 
 ## Remaining Weaknesses
-- Synthetic scenes remain controlled, though the default run now uses 16 main seeds, 32 stress seeds, held-out domain-randomized stress, held-out pilot-label calibration, and leave-one-failure-out calibration.
-- Observable-only and pilot-calibrated repair reduce direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.
+- Synthetic scenes remain controlled, though the default run now uses 16 main seeds, 32 stress seeds, held-out domain-randomized stress, held-out pilot-label calibration, leave-one-failure-out calibration, and noisy-probe reliability stress.
+- Observable-only, pilot-calibrated, and noisy-probe repair reduce direct hidden-property truth alignment, but all probe and slot diagnostics still come from the toy generator.
 - No real-robot or broad benchmark evidence is claimed.
 
 ## Artifact Inventory
@@ -53,6 +54,8 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\model_family_proxy_metrics.csv
 - results\tables\model_family_proxy_seed_metrics.csv
 - results\tables\negative_control.csv
+- results\tables\noisy_probe_metrics.csv
+- results\tables\noisy_probe_seed_metrics.csv
 - results\tables\observable_repair_metrics.csv
 - results\tables\ood_metrics.csv
 - results\tables\ood_seed_metrics.csv
@@ -84,6 +87,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure1_selected_tail_binding_failure.png
 - figures\figure20_pilot_calibration.png
 - figures\figure21_leave_one_failure_out.png
+- figures\figure22_noisy_probe_reliability.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png
 - figures\figure4_targeted_probe_before_after.png

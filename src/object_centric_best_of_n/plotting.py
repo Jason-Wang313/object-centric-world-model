@@ -408,6 +408,35 @@ def figure21_leave_one_failure_out(loso: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure21_leave_one_failure_out.png")
 
 
+def figure22_noisy_probe_reliability(noisy_probe: pd.DataFrame, out: Path) -> None:
+    if noisy_probe.empty:
+        return
+    selectors = ["raw", "noisy_probe_repair", "observable_repair", "combined_repair", "oracle"]
+    df = noisy_probe[
+        (noisy_probe["selector"].isin(selectors))
+        & (noisy_probe["N"] == noisy_probe["N"].max())
+    ].copy()
+    fig, ax = plt.subplots(figsize=(8.8, 4.7))
+    for selector in selectors:
+        group = df[df["selector"] == selector].sort_values("probe_reliability")
+        if group.empty:
+            continue
+        ax.plot(
+            group["probe_reliability"],
+            group["selected_real_utility_mean"],
+            marker="o",
+            linewidth=2,
+            label=selector,
+        )
+    ax.set_xlabel("diagnostic probe reliability")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Noisy diagnostic-probe reliability stress")
+    ax.set_ylim(0.0, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure22_noisy_probe_reliability.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -429,6 +458,7 @@ def write_all_figures(
     counterfactual_df: pd.DataFrame | None = None,
     pilot_df: pd.DataFrame | None = None,
     leave_one_failure_df: pd.DataFrame | None = None,
+    noisy_probe_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -468,3 +498,5 @@ def write_all_figures(
         figure20_pilot_calibration(pilot_df, out)
     if leave_one_failure_df is not None:
         figure21_leave_one_failure_out(leave_one_failure_df, out)
+    if noisy_probe_df is not None:
+        figure22_noisy_probe_reliability(noisy_probe_df, out)

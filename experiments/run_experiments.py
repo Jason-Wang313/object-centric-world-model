@@ -28,6 +28,7 @@ from object_centric_best_of_n.metrics import (
     ood_summary,
     paired_selector_effects,
     pilot_calibration_summary,
+    noisy_probe_summary,
     repair_ablation_summary,
     score_calibration_table,
     selection_record,
@@ -38,7 +39,14 @@ from object_centric_best_of_n.metrics import (
 )
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
 from object_centric_best_of_n.plotting import write_all_figures
-from object_centric_best_of_n.repair import combined_repair_score, fit_pilot_calibrator, pilot_calibrated_score
+from object_centric_best_of_n.repair import (
+    combined_repair_score,
+    fit_pilot_calibrator,
+    pilot_calibrated_score,
+    property_posterior_update,
+    property_prior_from_candidate,
+    temporal_identity_consistency,
+)
 from object_centric_best_of_n.selection import SELECTORS
 from object_centric_best_of_n.theory import law_validation_row
 
@@ -76,6 +84,8 @@ MODEL_FAMILY_SELECTORS = [
 DOMAIN_RANDOMIZATION_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 COUNTERFACTUAL_TARGET_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
+NOISY_PROBE_RELIABILITIES = [0.55, 0.65, 0.75, 0.85, 0.90]
+NOISY_PROBE_SELECTORS = ["raw", "noisy_probe_repair", "observable_repair", "combined_repair", "random", "oracle"]
 
 
 def _parse_ints(value: str | None, default: list[int]) -> list[int]:
@@ -127,6 +137,41 @@ def _select_by_scores_with_label(candidates, scores: np.ndarray, seed: int, labe
     rng = np.random.default_rng(seed)
     chosen = candidates[int(rng.choice(tied))]
     return chosen.with_score(max_score, label)
+
+
+def _noisy_probe_repair_score(candidate, scene, reliability: float, seed: int) -> float:
+    rng = np.random.default_rng(seed + candidate.candidate_id * 997 + int(reliability * 10_000))
+    true_heavy = scene.target().hidden_mass >= 0.70
+    if rng.random() < reliability:
+        observation = "heavy" if true_heavy else "light"
+    else:
+        observation = "light" if true_heavy else "heavy"
+    prior = property_prior_from_candidate(candidate)
+    posterior = property_posterior_update(prior, observation, reliability=reliability)
+    consistency = temporal_identity_consistency(candidate)
+    merge = _diagnostic(candidate, "merge_evidence")
+    slot_support = _diagnostic(candidate, "slot_support", 0.5)
+    instability = _diagnostic(candidate, "identity_instability", 0.5)
+    property_surprise = _diagnostic(candidate, "property_surprise", candidate.property_entropy)
+    posterior_confidence = max(posterior, 1.0 - posterior)
+    return float(
+        0.20 * candidate.score
+        + 0.82 * consistency
+        + 0.34 * slot_support
+        + 0.16 * posterior_confidence
+        + 0.10 * (1.0 - candidate.property_entropy)
+        - 0.82 * merge
+        - 0.40 * instability
+        - 0.22 * property_surprise
+    )
+
+
+def _select_noisy_probe_repair(candidates, scene, reliability: float, seed: int):
+    scores = np.asarray(
+        [_noisy_probe_repair_score(candidate, scene, reliability=reliability, seed=seed) for candidate in candidates],
+        dtype=float,
+    )
+    return _select_by_scores_with_label(candidates, scores, seed=seed, label="noisy_probe_repair")
 
 
 def _diagnostic(candidate, name: str, default: float = 0.0) -> float:
@@ -552,6 +597,50 @@ def _run_leave_one_failure_out_panel(
     return pd.DataFrame(rows), calibrator_summaries
 
 
+def _run_noisy_probe_panel(
+    generator: ObjectCentricFutureGenerator,
+    probe_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in probe_seeds:
+        scene = _scene_for_scenario(470_000 + seed, "raw")
+        candidates = generator.generate_candidates(
+            scene,
+            n=n,
+            scenario="raw",
+            seed=463_997 + seed * 971 + n,
+        )
+        for reliability in NOISY_PROBE_RELIABILITIES:
+            for selector_name in NOISY_PROBE_SELECTORS:
+                if selector_name == "noisy_probe_repair":
+                    selected = _select_noisy_probe_repair(
+                        candidates,
+                        scene,
+                        reliability=reliability,
+                        seed=seed + n + int(reliability * 1000),
+                    )
+                else:
+                    selected = SELECTORS[selector_name](candidates, scene, seed=seed + n)
+                record = selection_record(
+                    "T_noisy_probe_reliability",
+                    "noisy_probe",
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "probe_reliability": float(reliability),
+                        "probe_noise_rate": float(1.0 - reliability),
+                    }
+                )
+                rows.append(record)
+    return pd.DataFrame(rows)
+
+
 def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, object]:
     start = time.time()
     results = root / "results"
@@ -647,6 +736,9 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         n=max(ns),
     )
     loso_metrics = pilot_calibration_summary(loso_seed_df)
+    probe_seeds = list(range(4)) if mode == "smoke" else list(range(48))
+    noisy_probe_seed_df = _run_noisy_probe_panel(generator, probe_seeds=probe_seeds, n=max(ns))
+    noisy_probe_metrics = noisy_probe_summary(noisy_probe_seed_df)
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
@@ -655,6 +747,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         counterfactual_seed_df=counter_seed_df,
         pilot_seed_df=pilot_seed_df,
         leave_one_failure_seed_df=loso_seed_df,
+        noisy_probe_seed_df=noisy_probe_seed_df,
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
@@ -690,6 +783,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     pilot_metrics.to_csv(tables / "pilot_calibration_metrics.csv", index=False)
     loso_seed_df.to_csv(tables / "leave_one_failure_seed_metrics.csv", index=False)
     loso_metrics.to_csv(tables / "leave_one_failure_metrics.csv", index=False)
+    noisy_probe_seed_df.to_csv(tables / "noisy_probe_seed_metrics.csv", index=False)
+    noisy_probe_metrics.to_csv(tables / "noisy_probe_metrics.csv", index=False)
     pilot_summary = {
         "mode": mode,
         "train_seeds": pilot_train_seeds,
@@ -735,6 +830,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         counterfactual_df=counter_metrics,
         pilot_df=pilot_metrics,
         leave_one_failure_df=loso_metrics,
+        noisy_probe_df=noisy_probe_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -792,6 +888,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     pilot_raw = pilot_metrics[pilot_metrics["selector"] == "raw"]
     loso_pilot = loso_metrics[loso_metrics["selector"] == "pilot_calibrated"]
     loso_raw = loso_metrics[loso_metrics["selector"] == "raw"]
+    noisy_probe_repair = noisy_probe_metrics[noisy_probe_metrics["selector"] == "noisy_probe_repair"]
+    noisy_probe_focus = noisy_probe_repair[noisy_probe_repair["probe_reliability"] >= 0.75]
     statistical_pass_margin = None
     if not statistical_metrics.empty:
         statistical_pass_margin = float(
@@ -820,6 +918,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_counterfactual_target_rows": int(counter_seed_df.shape[0]),
         "n_pilot_calibration_rows": int(pilot_seed_df.shape[0]),
         "n_leave_one_failure_rows": int(loso_seed_df.shape[0]),
+        "n_noisy_probe_rows": int(noisy_probe_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -876,6 +975,10 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "leave_one_failure_pilot_min_win_rate": float(loso_pilot["pilot_win_rate"].min()) if not loso_pilot.empty else None,
         "leave_one_failure_pilot_max_oracle_gap": float(loso_pilot["pilot_oracle_gap_mean"].max()) if not loso_pilot.empty else None,
         "leave_one_failure_min_train_correlation": float(min(item["calibrator"]["train_correlation"] for item in loso_calibrators)) if loso_calibrators else None,
+        "noisy_probe_min_reliable_utility": float(noisy_probe_focus["selected_real_utility_mean"].min()) if not noisy_probe_focus.empty else None,
+        "noisy_probe_mean_reliable_gain": float(noisy_probe_focus["noisy_probe_vs_raw_gain_mean"].mean()) if not noisy_probe_focus.empty else None,
+        "noisy_probe_min_reliable_win_rate": float(noisy_probe_focus["noisy_probe_win_rate"].min()) if not noisy_probe_focus.empty else None,
+        "noisy_probe_max_reliable_oracle_gap": float(noisy_probe_focus["noisy_probe_oracle_gap_mean"].max()) if not noisy_probe_focus.empty else None,
         "statistical_audit_all_pass": bool(statistical_metrics["passes"].all()) if not statistical_metrics.empty else None,
         "statistical_audit_min_ci_margin": statistical_pass_margin,
         "learned_metrics": learned_row,

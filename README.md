@@ -31,8 +31,9 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Counterfactual target-identity stress that retargets the true object away from object zero.
 - Held-out pilot-label calibration for a learned utility selector trained from labeled object candidates.
 - Leave-one-failure-out pilot calibration, where each binding failure family is held out during pilot-calibrator training.
+- Noisy diagnostic-probe reliability stress for observable repair under imperfect hidden-property observations.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, counterfactual target, pilot calibration, leave-one-failure calibration, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, counterfactual target, pilot calibration, leave-one-failure calibration, noisy-probe repair, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -69,6 +70,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/pilot_calibration_metrics.csv`
 - `results/tables/leave_one_failure_seed_metrics.csv`
 - `results/tables/leave_one_failure_metrics.csv`
+- `results/tables/noisy_probe_seed_metrics.csv`
+- `results/tables/noisy_probe_metrics.csv`
 - `results/tables/model_family_proxy_seed_metrics.csv`
 - `results/tables/model_family_proxy_metrics.csv`
 - `results/tables/statistical_audit.csv`
@@ -101,6 +104,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure19_counterfactual_target.png`
 - `figures/figure20_pilot_calibration.png`
 - `figures/figure21_leave_one_failure_out.png`
+- `figures/figure22_noisy_probe_reliability.png`
 
 ## Claim Boundaries
 

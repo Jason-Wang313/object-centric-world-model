@@ -45,10 +45,10 @@
       "id": "C3",
       "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
       "status": "strongly_supported",
-      "evidence": "figure2, figure4, figure19, figure20, figure21, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, and leave_one_failure_metrics.csv",
+      "evidence": "figure2, figure4, figure19, figure20, figure21, figure22, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, pilot_calibration_metrics.csv, leave_one_failure_metrics.csv, and noisy_probe_metrics.csv",
       "strength": {
         "passes": true,
-        "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+        "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, held-out pilot-label calibration succeeds, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
         "observed": {
           "combined_raw_nmax_gain": 0.8803086375224858,
           "combined_raw_nmax_win_rate": 1.0,
@@ -92,6 +92,10 @@
           "leave_one_failure_pilot_min_win_rate": 1.0,
           "leave_one_failure_pilot_max_oracle_gap": 0.1150950379779143,
           "leave_one_failure_min_train_correlation": 0.9818478546301981,
+          "noisy_probe_min_reliable_utility": 0.864985119143049,
+          "noisy_probe_mean_reliable_gain": 0.8667438725697415,
+          "noisy_probe_min_reliable_win_rate": 1.0,
+          "noisy_probe_max_reliable_oracle_gap": 0.0412941274911788,
           "model_family_combined_vs_best_proxy_gain": 0.5504614056934154,
           "model_family_min_combined_vs_best_proxy_gain": 0.3399964978763068,
           "model_family_max_combined_oracle_gap": 0.1058960383796072,
@@ -133,7 +137,7 @@
   "forbidden_supported_overclaims": [],
   "paper_text_overclaims": [],
   "artifact_verification": {
-    "checked_count": 58,
+    "checked_count": 61,
     "problems": [],
     "passes": true
   },

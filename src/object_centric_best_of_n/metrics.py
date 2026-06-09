@@ -608,6 +608,95 @@ def pilot_calibration_summary(pilot_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def noisy_probe_summary(noisy_probe_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate imperfect diagnostic-probe reliability rows."""
+
+    if noisy_probe_seed_df.empty:
+        return pd.DataFrame()
+    group_cols = ["experiment", "scenario", "probe_reliability", "selector", "N"]
+    value_cols = [
+        "selected_object_score",
+        "selected_real_utility",
+        "identity_error",
+        "swap_rate",
+        "merge_split_rate",
+        "property_error",
+        "property_entropy",
+        "occlusion_error",
+        "object_real_gap",
+        "regret",
+        "oracle_gap",
+        "upper_tail_rank_correlation",
+    ]
+    aggregate_rows: list[dict[str, float | int | str]] = []
+    for keys, group in noisy_probe_seed_df.groupby(group_cols, sort=True):
+        row = dict(zip(group_cols, keys))
+        row["probe_noise_rate"] = float(1.0 - row["probe_reliability"])
+        row["n_seeds"] = int(group["seed"].nunique())
+        for col in value_cols:
+            mean, low, high = mean_ci(group[col])
+            row[f"{col}_mean"] = mean
+            row[f"{col}_ci_low"] = low
+            row[f"{col}_ci_high"] = high
+        aggregate_rows.append(row)
+    main = pd.DataFrame(aggregate_rows)
+    pair_rows: list[dict[str, float | int | str]] = []
+    for keys, group in noisy_probe_seed_df.groupby(["experiment", "scenario", "probe_reliability", "N"], sort=True):
+        experiment, scenario, reliability, n = keys
+        raw = group[group["selector"] == "raw"][["seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "raw"}
+        )
+        noisy = group[group["selector"] == "noisy_probe_repair"][["seed", "selected_real_utility"]].rename(
+            columns={"selected_real_utility": "noisy"}
+        )
+        merged = noisy.merge(raw, on="seed", how="inner")
+        gains = merged["noisy"] - merged["raw"] if not merged.empty else pd.Series(dtype=float)
+        wins = int(np.sum(gains > 1e-12))
+        pair_rows.append(
+            {
+                "experiment": experiment,
+                "scenario": scenario,
+                "probe_reliability": float(reliability),
+                "N": int(n),
+                "noisy_probe_vs_raw_gain_mean": float(np.mean(gains)) if len(gains) else float("nan"),
+                "noisy_probe_win_rate": float(wins / len(gains)) if len(gains) else float("nan"),
+            }
+        )
+    pair_df = pd.DataFrame(pair_rows)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "probe_reliability", "N"], sort=True):
+        noisy = group[group["selector"] == "noisy_probe_repair"]
+        observable = group[group["selector"] == "observable_repair"]
+        combined = group[group["selector"] == "combined_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        noisy_utility = float(noisy["selected_real_utility_mean"].iloc[0]) if not noisy.empty else float("nan")
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        pair = pair_df[
+            (pair_df["scenario"] == group["scenario"].iloc[0])
+            & (pair_df["probe_reliability"] == group["probe_reliability"].iloc[0])
+            & (pair_df["N"] == group["N"].iloc[0])
+        ]
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["noisy_probe_vs_raw_gain_mean"] = (
+                float(pair["noisy_probe_vs_raw_gain_mean"].iloc[0]) if not pair.empty else float("nan")
+            )
+            out["noisy_probe_win_rate"] = (
+                float(pair["noisy_probe_win_rate"].iloc[0]) if not pair.empty else float("nan")
+            )
+            out["noisy_probe_vs_observable_gap_mean"] = observable_utility - noisy_utility
+            out["noisy_probe_vs_combined_gap_mean"] = combined_utility - noisy_utility
+            out["noisy_probe_oracle_gap_mean"] = oracle_utility - noisy_utility
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate toy model-family proxy selectors against combined repair.
 
@@ -650,6 +739,7 @@ def statistical_audit(
     counterfactual_seed_df: pd.DataFrame | None = None,
     pilot_seed_df: pd.DataFrame | None = None,
     leave_one_failure_seed_df: pd.DataFrame | None = None,
+    noisy_probe_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -836,6 +926,23 @@ def statistical_audit(
             "Leave-one-failure-out pilot-calibrated selected-utility gain over raw.",
             merged["pilot"] - merged["baseline"],
             threshold=0.40,
+        )
+
+    if noisy_probe_seed_df is not None and not noisy_probe_seed_df.empty:
+        n_max = int(noisy_probe_seed_df["N"].max())
+        reliable = noisy_probe_seed_df[noisy_probe_seed_df["probe_reliability"] >= 0.75]
+        base = reliable[(reliable["selector"] == "raw") & (reliable["N"] == n_max)][
+            ["probe_reliability", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "baseline"})
+        noisy = reliable[(reliable["selector"] == "noisy_probe_repair") & (reliable["N"] == n_max)][
+            ["probe_reliability", "seed", "selected_real_utility"]
+        ].rename(columns={"selected_real_utility": "noisy"})
+        merged = noisy.merge(base, on=["probe_reliability", "seed"], how="inner")
+        add_row(
+            "noisy_probe_repair_gain",
+            "Noisy diagnostic-probe repair selected-utility gain over raw for reliability >= 0.75.",
+            merged["noisy"] - merged["baseline"],
+            threshold=0.45,
         )
 
     return pd.DataFrame(rows)

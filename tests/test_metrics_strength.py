@@ -6,6 +6,7 @@ from object_centric_best_of_n.metrics import (
     domain_randomization_summary,
     model_family_proxy_summary,
     negative_control_summary,
+    noisy_probe_summary,
     observable_repair_summary,
     ood_summary,
     paired_selector_effects,
@@ -96,6 +97,23 @@ def test_paired_effects_and_stress_summary_are_computed():
     pilot = pilot_calibration_summary(df)
     assert "pilot_vs_raw_gain_mean" in pilot.columns
     assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0
+    noisy_probe = noisy_probe_summary(
+        pd.DataFrame(
+            [
+                {**row, "probe_reliability": 0.75, "probe_noise_rate": 0.25}
+                for row in rows
+            ]
+        )
+    )
+    assert "noisy_probe_vs_raw_gain_mean" in noisy_probe.columns
+    assert noisy_probe[noisy_probe["selector"] == "noisy_probe_repair"].empty
+    noisy_rows = rows + [
+        {**rows[0], "selector": "noisy_probe_repair", "selected_real_utility": 0.84}
+        for _ in range(4)
+    ]
+    noisy_df = pd.DataFrame([{**row, "probe_reliability": 0.75, "probe_noise_rate": 0.25} for row in noisy_rows])
+    noisy_probe = noisy_probe_summary(noisy_df)
+    assert noisy_probe[noisy_probe["selector"] == "noisy_probe_repair"]["noisy_probe_win_rate"].iloc[0] == 1.0
     family = model_family_proxy_summary(
         pd.DataFrame(
             rows
@@ -122,9 +140,11 @@ def test_paired_effects_and_stress_summary_are_computed():
         ),
         pilot_seed_df=df,
         leave_one_failure_seed_df=df,
+        noisy_probe_seed_df=noisy_df,
         bootstrap_reps=50,
     )
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
     assert "combined_repair_raw_gain" in set(stats["effect_id"])
     assert "pilot_calibrated_repair_gain" in set(stats["effect_id"])
     assert "leave_one_failure_pilot_gain" in set(stats["effect_id"])
+    assert "noisy_probe_repair_gain" in set(stats["effect_id"])

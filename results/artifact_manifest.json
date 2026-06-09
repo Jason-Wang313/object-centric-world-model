@@ -1,10 +1,10 @@
 {
-  "artifact_count": 58,
+  "artifact_count": 61,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 2661,
-      "sha256": "d8eee0b5c276126916608f221bf68fb7b7d9dad5ed98df5ca28cfea0fffb5684"
+      "bytes": 2710,
+      "sha256": "9cfb86ea67b6d362826871802908ff27fc9971feaab2ba1b9418c9f63efe5d48"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -38,8 +38,8 @@
     },
     {
       "path": "figures/figure16_statistical_audit.png",
-      "bytes": 134357,
-      "sha256": "23e0d2a29453005d199e1587ec3a6ff74742bd4124d95e9dd323e003f3888cc0"
+      "bytes": 138737,
+      "sha256": "e5dd731acd9d0e59f658e02f84daf73f23f2ebbc12122581c748d451891573b5"
     },
     {
       "path": "figures/figure17_observable_repair.png",
@@ -70,6 +70,11 @@
       "path": "figures/figure21_leave_one_failure_out.png",
       "bytes": 65042,
       "sha256": "b69ce65c0db1da8a1442aba071fbfacdd90b02a3b0343e668e3fd1094deca344"
+    },
+    {
+      "path": "figures/figure22_noisy_probe_reliability.png",
+      "bytes": 55243,
+      "sha256": "10d8b9ae2ead6a75f66bcbaeac37664f4ec930d287e91983cac2d49ef66f5d61"
     },
     {
       "path": "figures/figure2_repair_comparison.png",
@@ -128,8 +133,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 4629,
-      "sha256": "e0bb621b9e4732accf1f762e1a60e4006a05700bb0894be05f3facd21b924946"
+      "bytes": 4883,
+      "sha256": "6fc759be23de3e94536f8eae45ee45aeb87fdd7a16566613c7a9495a05fe9134"
     },
     {
       "path": "results/tables/counterfactual_target_metrics.csv",
@@ -200,6 +205,16 @@
       "path": "results/tables/negative_control.csv",
       "bytes": 277,
       "sha256": "42bfdbfcc2a1c0666c6df62fb5bdcd35e0732094c415b39f00beefd56711dbed"
+    },
+    {
+      "path": "results/tables/noisy_probe_metrics.csv",
+      "bytes": 21282,
+      "sha256": "52785c64f397da5f7e8fb4c40f10ef8cd72cc482647ac7ad6bcf921dc7ff74f3"
+    },
+    {
+      "path": "results/tables/noisy_probe_seed_metrics.csv",
+      "bytes": 398089,
+      "sha256": "3b3b17b6ef3f2f146138f085e03cd6ca04b1d88d7f0b43a5d0b45e395a1b6b99"
     },
     {
       "path": "results/tables/observable_repair_metrics.csv",
@@ -273,8 +288,8 @@
     },
     {
       "path": "results/tables/statistical_audit.csv",
-      "bytes": 2203,
-      "sha256": "35b466b34af90d902f844b5e9539a4844c2454b9d95fd5133827db50cfd1c34f"
+      "bytes": 2391,
+      "sha256": "97af018307c1cb56f7bf6a4624b72d50166f85c5757058bce079fba82a36c977"
     },
     {
       "path": "results/tables/stress_metrics.csv",
@@ -288,8 +303,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 1090,
-      "sha256": "54e2d7483b78b5e73061dc0b9a9fb5a17b0254001062bb94b8610c2838e1bab1"
+      "bytes": 1244,
+      "sha256": "9f35229ea50cf4ea7f8a0fe5f0b31aeb8bb28210e207fe7ea90c4168e1cbd238"
     }
   ]
 }

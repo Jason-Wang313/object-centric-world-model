@@ -12,6 +12,10 @@ Response: Correct. Claims are limited to controlled synthetic and semi-learned C
 
 Response: Correct for the strongest controlled stack: it uses diagnostic signals such as identity instability, merge evidence, property entropy, and targeted probe observations. The upgraded run also reports `observable_repair_metrics.csv`, where an observable-only repair score uses slot diagnostics and probe posterior information without comparing to the scene's true hidden property. This is still a synthetic mechanism study, not a deployment claim.
 
+## Attack: Diagnostic probes are unrealistically clean.
+
+Response: `noisy_probe_metrics.csv` varies the diagnostic observation reliability from barely better than chance to clean-probe settings. The noisy-probe selector uses observable slot diagnostics and the noisy posterior, not direct hidden-property truth alignment, and the audit requires selected utility, raw gain, win rate, oracle gap, and bootstrap lower-bound checks for reliability at or above 0.75.
+
 ## Attack: The deployment gate says to collect pilot labels, but labels are not tested.
 
 Response: `pilot_calibration_metrics.csv` evaluates a held-out selector trained from pilot-labeled candidates using observable object features. The train seeds are separate from the held-out raw, randomized-domain, and target-swap evaluation seeds. The upgraded run also writes `leave_one_failure_metrics.csv`, where each raw, occlusion, hidden-property, swap, or merge/split failure family is held out during pilot-calibrator training and then evaluated as the test family. The audit requires calibrated selected utility, paired raw gain, win rate, oracle gap, leave-one-failure transfer, and bootstrap lower-bound checks before counting the evidence.
