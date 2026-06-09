@@ -30,6 +30,7 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_selection_metrics.csv": ("scenario", "selector", "learned_identity_vs_raw_gain_mean", "learned_identity_vs_reward_gain_mean"),
     "results/tables/learned_repair_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "learned_repair_policy_train_correlation"),
     "results/tables/learned_repair_policy_metrics.csv": ("scenario", "selector", "learned_repair_policy_vs_raw_gain_mean", "learned_repair_policy_vs_learned_identity_gain_mean"),
+    "results/tables/paper_claim_coverage.csv": ("claim_id", "claim_role", "audit_status", "coverage_status", "paper_locations"),
     "results/tables/synthetic_benchmark_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "suite_variant"),
     "results/tables/synthetic_benchmark_metrics.csv": ("scenario", "selector", "suite_variant", "synthetic_benchmark_combined_vs_raw_gain_mean", "synthetic_benchmark_observable_vs_raw_gain_mean"),
     "results/tables/deployment_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "gate_action", "delegated_selector"),
@@ -112,6 +113,7 @@ REQUIRED_JSON = (
     "results/learned_object_model_summary.json",
     "results/pilot_calibration_summary.json",
     "results/learned_repair_policy_summary.json",
+    "results/paper_claim_coverage.json",
     "results/pilot_budget_summary.json",
     "results/leave_one_failure_summary.json",
     "results/verification_log.json",
@@ -1011,10 +1013,15 @@ def write_artifact_manifest(root: str | Path) -> dict[str, object]:
             "results/run_summary.json",
             "results/learned_object_model_summary.json",
             "results/learned_repair_policy_summary.json",
+            "results/paper_claim_coverage.json",
             "results/pilot_calibration_summary.json",
             "results/leave_one_failure_summary.json",
             "results/verification_log.json",
+            "results/claims_status.json",
+            "results/claims_status.md",
             "docs/results_digest.md",
+            "docs/paper_claim_coverage.md",
+            "docs/final_audit.md",
         }
     )
     files = []
@@ -1078,11 +1085,140 @@ def scan_text_overclaims(root: str | Path) -> list[str]:
     return problems
 
 
+PAPER_CLAIM_COVERAGE_ROWS = (
+    {
+        "claim_id": "C1",
+        "claim_role": "positive_paper_claim",
+        "paper_locations": "paper/abstract.md;paper/theory.md;docs/theory.md",
+        "coverage_note": "Exact finite tie-aware law is a positive paper claim.",
+    },
+    {
+        "claim_id": "C2",
+        "claim_role": "positive_paper_claim",
+        "paper_locations": "paper/abstract.md;paper/intro.md;paper/experiments.md",
+        "coverage_note": "Selected-tail binding failure is a positive paper claim.",
+    },
+    {
+        "claim_id": "C3",
+        "claim_role": "positive_paper_claim",
+        "paper_locations": "paper/abstract.md;paper/method.md;paper/experiments.md",
+        "coverage_note": "Object-specific repair improvements are positive paper claims.",
+    },
+    {
+        "claim_id": "C4",
+        "claim_role": "positive_paper_claim",
+        "paper_locations": "paper/abstract.md;paper/method.md;paper/experiments.md",
+        "coverage_note": "CPU NumPy semi-learned object-centric evidence is a positive paper claim.",
+    },
+    {
+        "claim_id": "C5",
+        "claim_role": "unsupported_boundary_nonclaim",
+        "paper_locations": "paper/limitations.md;docs/claims.md;README.md",
+        "coverage_note": "Real-robot validation is explicitly not claimed.",
+    },
+    {
+        "claim_id": "C6",
+        "claim_role": "unsupported_boundary_nonclaim",
+        "paper_locations": "paper/limitations.md;paper/related_work.md;docs/claims.md;README.md",
+        "coverage_note": "Broad benchmark superiority is explicitly not claimed.",
+    },
+)
+
+
+def paper_claim_coverage(
+    claims: Iterable[dict[str, object]],
+    text_overclaims: Iterable[str] | None = None,
+) -> dict[str, object]:
+    """Map positive paper claims and boundary nonclaims to audit statuses."""
+
+    claim_by_id = {str(claim.get("id")): claim for claim in claims}
+    text_problem_count = len(list(text_overclaims or []))
+    rows: list[dict[str, object]] = []
+    problems: list[str] = []
+    for template in PAPER_CLAIM_COVERAGE_ROWS:
+        claim_id = template["claim_id"]
+        role = template["claim_role"]
+        claim = claim_by_id.get(claim_id, {})
+        audit_status = str(claim.get("status", "not_claimed"))
+        if role == "positive_paper_claim":
+            coverage_status = "covered_strongly" if audit_status == "strongly_supported" else "not_strongly_supported"
+            if coverage_status != "covered_strongly":
+                problems.append(f"{claim_id}: positive paper claim is {audit_status}")
+        else:
+            coverage_status = "explicitly_not_claimed" if audit_status == "unsupported" else "boundary_status_problem"
+            if coverage_status != "explicitly_not_claimed":
+                problems.append(f"{claim_id}: boundary nonclaim has status {audit_status}")
+        if not template["paper_locations"]:
+            problems.append(f"{claim_id}: missing paper locations")
+        row = {
+            **template,
+            "audit_status": audit_status,
+            "coverage_status": coverage_status,
+            "claim_text": str(claim.get("claim", template["coverage_note"])),
+        }
+        rows.append(row)
+    if text_problem_count:
+        problems.append(f"paper text overclaim scanner reported {text_problem_count} problems")
+    return {
+        "rows": rows,
+        "problems": problems,
+        "passes": not problems,
+        "positive_paper_claims": [
+            row["claim_id"] for row in rows if row["claim_role"] == "positive_paper_claim"
+        ],
+        "boundary_nonclaims": [
+            row["claim_id"] for row in rows if row["claim_role"] == "unsupported_boundary_nonclaim"
+        ],
+    }
+
+
+def write_paper_claim_coverage(
+    root: str | Path,
+    claims: Iterable[dict[str, object]],
+    text_overclaims: Iterable[str] | None = None,
+) -> dict[str, object]:
+    root = Path(root)
+    coverage = paper_claim_coverage(claims, text_overclaims=text_overclaims)
+    rows = list(coverage["rows"])
+    tables = root / "results" / "tables"
+    tables.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(tables / "paper_claim_coverage.csv", index=False)
+    (root / "results" / "paper_claim_coverage.json").write_text(
+        json.dumps(coverage, indent=2),
+        encoding="utf-8",
+    )
+    lines = [
+        "# Paper Claim Coverage",
+        "",
+        "This generated matrix separates positive paper claims from unsupported boundary nonclaims.",
+        "",
+        "| Claim | Role | Audit Status | Coverage Status | Locations |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['claim_id']} | {row['claim_role']} | {row['audit_status']} | "
+            f"{row['coverage_status']} | {row['paper_locations']} |"
+        )
+    lines.extend(
+        [
+            "",
+            "Positive paper claims must be `strongly_supported`. Boundary nonclaims must stay unsupported and are not counted as supported paper results.",
+        ]
+    )
+    if coverage["problems"]:
+        lines.extend(["", "## Problems"])
+        lines.extend(f"- {problem}" for problem in coverage["problems"])
+    (root / "docs" / "paper_claim_coverage.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return coverage
+
+
 def write_results_digest(root: str | Path) -> None:
     root = Path(root)
     summary = _read_json(root / "results" / "run_summary.json")
     claims = _read_json(root / "results" / "claims_status.json")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
+    coverage = _read_json(root / "results" / "paper_claim_coverage.json")
     lines = [
         "# Results Digest",
         "",
@@ -1146,6 +1282,19 @@ def write_results_digest(root: str | Path) -> None:
     lines.extend(["", "## Claim Status"])
     for claim in claims.get("claims", []):
         lines.append(f"- {claim.get('id')}: {claim.get('status')} - {claim.get('claim')}")
+    if coverage:
+        rows = coverage.get("rows", [])
+        positive = [row for row in rows if row.get("claim_role") == "positive_paper_claim"]
+        boundaries = [row for row in rows if row.get("claim_role") == "unsupported_boundary_nonclaim"]
+        lines.extend(
+            [
+                "",
+                "## Paper Claim Coverage",
+                f"- Positive paper claims strongly covered: {sum(row.get('coverage_status') == 'covered_strongly' for row in positive)} / {len(positive)}",
+                f"- Unsupported boundary nonclaims explicit: {sum(row.get('coverage_status') == 'explicitly_not_claimed' for row in boundaries)} / {len(boundaries)}",
+                f"- Coverage audit passes: {coverage.get('passes')}",
+            ]
+        )
     lines.extend(
         [
             "",
@@ -1169,6 +1318,7 @@ def artifact_inventory(root: str | Path) -> dict[str, list[str]]:
         "results/run_summary.json",
         "results/learned_object_model_summary.json",
         "results/learned_repair_policy_summary.json",
+        "results/paper_claim_coverage.json",
         "results/pilot_calibration_summary.json",
         "results/pilot_budget_summary.json",
         "results/leave_one_failure_summary.json",
@@ -1185,10 +1335,11 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
     root = Path(root)
     results = root / "results"
     results.mkdir(parents=True, exist_ok=True)
-    write_artifact_manifest(root)
     claims = claim_inventory(root)
     problems = scan_forbidden_overclaims(claims)
     text_overclaims = scan_text_overclaims(root)
+    coverage = write_paper_claim_coverage(root, claims, text_overclaims=text_overclaims)
+    write_artifact_manifest(root)
     artifact_verification = verify_artifacts(root)
     weak_supported = [
         f"{claim['id']}: {claim['status']}"
@@ -1199,9 +1350,16 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
         "claims": claims,
         "forbidden_supported_overclaims": problems,
         "paper_text_overclaims": text_overclaims,
+        "paper_claim_coverage": coverage,
         "artifact_verification": artifact_verification,
         "weak_or_missing_core_claims": weak_supported,
-        "passes_claim_audit": not problems and not weak_supported and not text_overclaims and artifact_verification["passes"],
+        "passes_claim_audit": (
+            not problems
+            and not weak_supported
+            and not text_overclaims
+            and coverage["passes"]
+            and artifact_verification["passes"]
+        ),
     }
     (results / "claims_status.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -1228,14 +1386,22 @@ def write_claim_status(root: str | Path) -> dict[str, object]:
     if text_overclaims:
         lines.append("## Paper text overclaims")
         lines.extend(f"- {problem}" for problem in text_overclaims)
+    if not coverage["passes"]:
+        lines.append("## Paper claim coverage problems")
+        lines.extend(f"- {problem}" for problem in coverage["problems"])
     if not artifact_verification["passes"]:
         lines.append("## Artifact verification problems")
         lines.extend(f"- {problem}" for problem in artifact_verification["problems"])
     lines.append("")
+    lines.append(
+        f"Paper claim coverage checked {len(coverage['rows'])} rows: "
+        f"{len(coverage['positive_paper_claims'])} positive claims and "
+        f"{len(coverage['boundary_nonclaims'])} boundary nonclaims."
+    )
     lines.append(f"Artifact verification checked {artifact_verification['checked_count']} required artifacts.")
-    if not problems and not text_overclaims and artifact_verification["passes"]:
+    if not problems and not text_overclaims and coverage["passes"] and artifact_verification["passes"]:
         lines.append("")
-        lines.append("No paper-text or artifact overclaim problems detected.")
+        lines.append("No paper-text, paper-claim coverage, or artifact overclaim problems detected.")
     (results / "claims_status.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return payload
 
@@ -1335,6 +1501,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Combined-vs-best-proxy gain {summary_payload.get('model_family_combined_vs_best_proxy_gain', 'unknown')}.",
             "- Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. "
             f"Minimum bootstrap CI margin {summary_payload.get('statistical_audit_min_ci_margin', 'unknown')}.",
+            "- Paper-claim coverage artifact: docs/paper_claim_coverage.md, results/paper_claim_coverage.json, "
+            "and paper_claim_coverage.csv. Positive paper claims map to C1-C4; real-robot and broad-benchmark rows are boundary nonclaims.",
             "",
             "## Differentiation",
             "The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",
@@ -1367,6 +1535,7 @@ def main() -> int:
     payload = write_claim_status(args.root)
     write_results_digest(args.root)
     write_final_audit(args.root)
+    write_artifact_manifest(args.root)
     if not payload["passes_claim_audit"]:
         return 1
     return 0

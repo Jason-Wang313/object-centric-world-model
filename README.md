@@ -27,6 +27,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
+- Paper-claim coverage audit separating strongly supported positive claims from unsupported boundary nonclaims.
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
 - Negative controls for the non-corrupted setting and learned feature ablations.
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.
@@ -60,6 +61,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/learned_selection_metrics.csv`
 - `results/tables/learned_repair_policy_seed_metrics.csv`
 - `results/tables/learned_repair_policy_metrics.csv`
+- `results/tables/paper_claim_coverage.csv`
 - `results/tables/synthetic_benchmark_seed_metrics.csv`
 - `results/tables/synthetic_benchmark_metrics.csv`
 - `results/tables/deployment_policy_seed_metrics.csv`
@@ -105,11 +107,13 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/run_summary.json`
 - `results/learned_object_model_summary.json`
 - `results/learned_repair_policy_summary.json`
+- `results/paper_claim_coverage.json`
 - `results/pilot_calibration_summary.json`
 - `results/pilot_budget_summary.json`
 - `results/leave_one_failure_summary.json`
 - `results/verification_log.json`
 - `results/artifact_manifest.json`
+- `docs/paper_claim_coverage.md`
 - `docs/results_digest.md`
 - `figures/figure1_selected_tail_binding_failure.png`
 - `figures/figure2_repair_comparison.png`

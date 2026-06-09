@@ -3,6 +3,7 @@ from pathlib import Path
 
 from object_centric_best_of_n.audit import (
     claim_inventory,
+    paper_claim_coverage,
     scan_forbidden_overclaims,
     scan_text_overclaims,
     verify_artifacts,
@@ -21,6 +22,7 @@ def test_required_docs_paper_and_readme_exist():
         "docs/differentiation_from_prior_projects.md",
         "docs/reviewer_attacks.md",
         "docs/final_audit.md",
+        "docs/paper_claim_coverage.md",
         "paper/abstract.md",
         "paper/intro.md",
         "paper/method.md",
@@ -85,10 +87,12 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/probe_cost_metrics.csv",
         "results/tables/model_family_proxy_seed_metrics.csv",
         "results/tables/model_family_proxy_metrics.csv",
+        "results/tables/paper_claim_coverage.csv",
         "results/tables/statistical_audit.csv",
         "results/run_summary.json",
         "results/learned_object_model_summary.json",
         "results/learned_repair_policy_summary.json",
+        "results/paper_claim_coverage.json",
         "results/pilot_calibration_summary.json",
         "results/pilot_budget_summary.json",
         "results/leave_one_failure_summary.json",
@@ -146,6 +150,21 @@ def test_claim_audit_keeps_forbidden_claims_unsupported():
         unsupported = {claim["claim"]: claim["status"] for claim in payload["claims"] if "real robot" in claim["claim"].lower() or "benchmark" in claim["claim"].lower()}
         assert unsupported
         assert all(status == "unsupported" for status in unsupported.values())
+        coverage = payload["paper_claim_coverage"]
+        assert coverage["passes"], coverage["problems"]
+        positive = [row for row in coverage["rows"] if row["claim_role"] == "positive_paper_claim"]
+        assert {row["claim_id"] for row in positive} == {"C1", "C2", "C3", "C4"}
+        assert all(row["coverage_status"] == "covered_strongly" for row in positive)
+
+
+def test_paper_claim_coverage_separates_boundaries_from_claims():
+    claims = claim_inventory(ROOT)
+    coverage = paper_claim_coverage(claims, text_overclaims=[])
+    assert coverage["passes"], coverage["problems"]
+    rows = {row["claim_id"]: row for row in coverage["rows"]}
+    assert all(rows[claim_id]["coverage_status"] == "covered_strongly" for claim_id in ["C1", "C2", "C3", "C4"])
+    assert rows["C5"]["coverage_status"] == "explicitly_not_claimed"
+    assert rows["C6"]["coverage_status"] == "explicitly_not_claimed"
 
 
 def test_learned_repair_policy_summary_records_conservative_blend():

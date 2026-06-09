@@ -59,5 +59,10 @@ This digest is generated from the current result artifacts.
 - C5: unsupported - The method is validated on real robot systems.
 - C6: unsupported - The method establishes broad benchmark superiority over graph physics, latent, or diffusion world models.
 
+## Paper Claim Coverage
+- Positive paper claims strongly covered: 4 / 4
+- Unsupported boundary nonclaims explicit: 2 / 2
+- Coverage audit passes: True
+
 ## Boundaries
 Real-robot validation and broad benchmark superiority remain unsupported and are not claimed as supported paper results.

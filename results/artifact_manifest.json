@@ -1,10 +1,20 @@
 {
-  "artifact_count": 88,
+  "artifact_count": 94,
   "files": [
     {
+      "path": "docs/final_audit.md",
+      "bytes": 14300,
+      "sha256": "1f3dd0473585501ca17f6b87cdac1de788a16baa8a0ad691582ae88e0b1ce571"
+    },
+    {
+      "path": "docs/paper_claim_coverage.md",
+      "bytes": 1141,
+      "sha256": "be26c70607436ea5387e919fa5542e2f7d2ed520faf5148c2bf40b5622f78992"
+    },
+    {
       "path": "docs/results_digest.md",
-      "bytes": 3758,
-      "sha256": "3936423501d4cf12e382281aa8d43bfcae87a58eeb3f44cf08aa32f73bfb500d"
+      "bytes": 3915,
+      "sha256": "b4a1b057dd65089d68b9ae797f8b12cf19a4ff5e35027dafc29b944f4ccfcceb"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -162,6 +172,16 @@
       "sha256": "ce7b9d529fefcdf97b0bcc2331e7ecb4c47e30b72bf65dbd0faa67eb085a5896"
     },
     {
+      "path": "results/claims_status.json",
+      "bytes": 18123,
+      "sha256": "7342a7572202ea7a8890104f417979554ce9e998f8369b66faae266105a16a8b"
+    },
+    {
+      "path": "results/claims_status.md",
+      "bytes": 13452,
+      "sha256": "726fdc4170591deb10733ae610eefc41880a23480e7683166fa2f686e1c0f9f5"
+    },
+    {
       "path": "results/learned_object_model_summary.json",
       "bytes": 890,
       "sha256": "0b893ea85d6dfb721fd25c99b32c0d80c0a9c988efb3bd6805c5908cb5e1f62b"
@@ -175,6 +195,11 @@
       "path": "results/leave_one_failure_summary.json",
       "bytes": 11307,
       "sha256": "c0bd37f9472e887dab03e4bf386fea5d5f8f9585fc3452750a22fb3f90c59430"
+    },
+    {
+      "path": "results/paper_claim_coverage.json",
+      "bytes": 3092,
+      "sha256": "b958ac62107b74dd34175941ed266c00687a27c7c386716967cc84ce5628842b"
     },
     {
       "path": "results/pilot_calibration_summary.json",
@@ -332,6 +357,11 @@
       "sha256": "884e9352c5475af9abfaf460c40de46eacbdd5f9b9f08220cfbcb85e6dda485e"
     },
     {
+      "path": "results/tables/paper_claim_coverage.csv",
+      "bytes": 1835,
+      "sha256": "22aef720a320c8020b43e69966963c8a97fcd37137300d71475648f58f8f0383"
+    },
+    {
       "path": "results/tables/pilot_budget_metrics.csv",
       "bytes": 79751,
       "sha256": "63fb083e085eea460876fb9f601ac96ed8ce55191871a9a4617d42121d1cb504"
@@ -438,8 +468,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 3367,
-      "sha256": "68501b9557deffbf61fe2135ad3ef33eb93a992ec68c4331a4cc782ae709a806"
+      "bytes": 3475,
+      "sha256": "70cade1b521efbcdf33f36e176d0905338e7c3f1b98be1e8600496623dd258a9"
     }
   ]
 }

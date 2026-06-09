@@ -204,6 +204,7 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 89 required artifacts.
+Paper claim coverage checked 6 rows: 4 positive claims and 2 boundary nonclaims.
+Artifact verification checked 91 required artifacts.
 
-No paper-text or artifact overclaim problems detected.
+No paper-text, paper-claim coverage, or artifact overclaim problems detected.

@@ -5,8 +5,8 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 ## Command Results
 - bash scripts/run_smoke.sh: pass (smoke experiment runtime 95.981s; strict claim audit passed; conservative learned repair-policy mean utility 0.8489640266219249; learned repair-policy raw gain 0.7376876264430621; learned repair-policy over learned-identity gain 0.2118973030297409; learned repair-policy mean learned-identity win rate 0.5714285714285714; deployment-policy corrupted gain 0.7185166981979354; deployment-policy corrupted stop-early gain 0.7341964238363273; synthetic task-suite combined gain 0.7553141399022321; synthetic task-suite observable gain 0.7476931390088214; learned-selection identity gain 0.6509536400923468; target-sweep combined gain 0.7895870042905537)
 - bash scripts/run_all.sh: pass (full experiment runtime 763.869s; 16 main seeds, learned domain-shift panel with min property margin 0.125 and min identity margin 0.4458333333333333, learned-selection transfer with 32 eval seeds and 1344 rows, conservative learned repair-policy transfer with 32 eval seeds and 2016 rows, learned repair-policy mean utility 0.8457892245396742, learned repair-policy min variant utility 0.8194152353962161, learned repair-policy raw gain 0.8234771981724383, learned repair-policy over learned-identity gain 0.2252909624035247, learned repair-policy mean learned-identity win rate 0.6294642857142857, learned repair-policy min learned-identity win rate 0.375, benchmark-style synthetic task suite with 32 seeds and 1120 rows, deployment-policy panel with 384 rows, deployment-policy corrupted gain 0.7883015801574633, deployment-policy corrupted stop-early gain 0.5368058036226959, deployment-policy min corrupted utility 0.7880296839171549, deployment-policy min win rate 0.9375, synthetic task-suite combined gain 0.8161407808398964, synthetic task-suite observable gain 0.8160747948047943, learned-selection identity gain 0.6583388223801652, learned-selection identity-over-reward gain 0.3596642896057789, 48 domain-randomized seeds, 48 counterfactual target seeds, 48 target-identity sweep seeds over 6 target IDs, 1440 target-sweep rows, 48 pilot calibration eval seeds, 864 pilot calibration rows, 48 pilot-budget eval seeds, 5184 pilot-budget rows, 40 leave-one-failure eval seeds per held-out family, 1200 leave-one-failure rows, 48 noisy-probe reliability seeds, 1440 noisy-probe rows, 48 probe-cost seeds, 3360 probe-cost rows, 16 OOD dense-object seeds, 24 extreme object-count seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, bootstrap statistical audit, target-sweep combined gain 0.8102272022985341, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported after conservative learned repair-policy blend; artifact verifier, hashes, paper-text scan, learned repair-policy checks, deployment-policy checks, learned domain-shift checks, learned-selection transfer checks, synthetic task-suite checks, OOD checks, extreme object-count checks, domain-randomization checks, counterfactual target-swap checks, target-identity sweep checks, pilot-calibration checks, pilot-budget checks, leave-one-failure calibration checks, noisy-probe checks, probe-cost checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
-- pytest: pass (17 passed in 14.27s after conservative learned repair-policy blend)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported after conservative learned repair-policy blend; paper-claim coverage matrix passed with 4/4 positive claims strongly covered and 2/2 boundary nonclaims explicit; artifact verifier, hashes, paper-text scan, learned repair-policy checks, deployment-policy checks, learned domain-shift checks, learned-selection transfer checks, synthetic task-suite checks, OOD checks, extreme object-count checks, domain-randomization checks, counterfactual target-swap checks, target-identity sweep checks, pilot-calibration checks, pilot-budget checks, leave-one-failure calibration checks, noisy-probe checks, probe-cost checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
+- pytest: pass (18 passed in 7.93s after paper-claim coverage audit addition)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -37,6 +37,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Probe-cost artifact: figure25_probe_cost_sensitivity.png and probe_cost_metrics.csv. Low-cost combined-vs-raw gain 0.77494187977645 and max-cost gain 0.51744187977645.
 - Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. Combined-vs-best-proxy gain 0.5504614056934154.
 - Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. Minimum bootstrap CI margin 0.08294730684862575.
+- Paper-claim coverage artifact: docs/paper_claim_coverage.md, results/paper_claim_coverage.json, and paper_claim_coverage.csv. Positive paper claims map to C1-C4; real-robot and broad-benchmark rows are boundary nonclaims.
 
 ## Differentiation
 The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.
@@ -78,6 +79,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results\tables\ood_metrics.csv
 - results\tables\ood_seed_metrics.csv
 - results\tables\paired_effects.csv
+- results\tables\paper_claim_coverage.csv
 - results\tables\pilot_budget_metrics.csv
 - results\tables\pilot_budget_seed_metrics.csv
 - results\tables\pilot_calibration_metrics.csv
@@ -136,6 +138,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - docs\differentiation_from_best_of_n_wam.md
 - docs\differentiation_from_prior_projects.md
 - docs\final_audit.md
+- docs\paper_claim_coverage.md
 - docs\results_digest.md
 - docs\reviewer_attacks.md
 - docs\theory.md
@@ -152,6 +155,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - results/run_summary.json
 - results/learned_object_model_summary.json
 - results/learned_repair_policy_summary.json
+- results/paper_claim_coverage.json
 - results/pilot_calibration_summary.json
 - results/pilot_budget_summary.json
 - results/leave_one_failure_summary.json
