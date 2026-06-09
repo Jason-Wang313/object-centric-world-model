@@ -210,54 +210,66 @@
         "claim_id": "C1",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/theory.md;docs/theory.md",
+        "location_anchor_terms": "best-of-n|tie-aware|selected utility|law",
         "coverage_note": "Exact finite tie-aware law is a positive paper claim.",
         "audit_status": "strongly_supported",
         "coverage_status": "covered_strongly",
+        "locations_verified": true,
         "claim_text": "Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations."
       },
       {
         "claim_id": "C2",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/intro.md;paper/experiments.md",
+        "location_anchor_terms": "binding|selected real utility|object score|swap|occlusion",
         "coverage_note": "Selected-tail binding failure is a positive paper claim.",
         "audit_status": "strongly_supported",
         "coverage_status": "covered_strongly",
+        "locations_verified": true,
         "claim_text": "In controlled object-centric scenes, high-N selection can increase object score while real utility stagnates or falls due to binding failures."
       },
       {
         "claim_id": "C3",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/method.md;paper/experiments.md",
+        "location_anchor_terms": "repair|identity|probe|calibration|selector",
         "coverage_note": "Object-specific repair improvements are positive paper claims.",
         "audit_status": "strongly_supported",
         "coverage_status": "covered_strongly",
+        "locations_verified": true,
         "claim_text": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting."
       },
       {
         "claim_id": "C4",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/method.md;paper/experiments.md",
+        "location_anchor_terms": "learned|numpy|identity-alignment|transition|repair-policy",
         "coverage_note": "CPU NumPy semi-learned object-centric evidence is a positive paper claim.",
         "audit_status": "strongly_supported",
         "coverage_status": "covered_strongly",
+        "locations_verified": true,
         "claim_text": "A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories."
       },
       {
         "claim_id": "C5",
         "claim_role": "unsupported_boundary_nonclaim",
         "paper_locations": "paper/limitations.md;docs/claims.md;README.md",
+        "location_anchor_terms": "real-robot|real robot",
         "coverage_note": "Real-robot validation is explicitly not claimed.",
         "audit_status": "unsupported",
         "coverage_status": "explicitly_not_claimed",
+        "locations_verified": true,
         "claim_text": "The method is validated on real robot systems."
       },
       {
         "claim_id": "C6",
         "claim_role": "unsupported_boundary_nonclaim",
         "paper_locations": "paper/limitations.md;paper/related_work.md;docs/claims.md;README.md",
+        "location_anchor_terms": "benchmark|graph physics|latent|diffusion",
         "coverage_note": "Broad benchmark superiority is explicitly not claimed.",
         "audit_status": "unsupported",
         "coverage_status": "explicitly_not_claimed",
+        "locations_verified": true,
         "claim_text": "The method establishes broad benchmark superiority over graph physics, latent, or diffusion world models."
       }
     ],

@@ -3,18 +3,18 @@
   "files": [
     {
       "path": "docs/final_audit.md",
-      "bytes": 14300,
-      "sha256": "1f3dd0473585501ca17f6b87cdac1de788a16baa8a0ad691582ae88e0b1ce571"
+      "bytes": 14356,
+      "sha256": "0c7fe0e7c78b8090396f93ee30234d21f177c4eb6fc2d654d82438f8bcb2ed0b"
     },
     {
       "path": "docs/paper_claim_coverage.md",
-      "bytes": 1141,
-      "sha256": "be26c70607436ea5387e919fa5542e2f7d2ed520faf5148c2bf40b5622f78992"
+      "bytes": 1295,
+      "sha256": "d0731997b60bf72db8f319d89930a81e205f61ad9dfe73ca11ce0c59f30c1f86"
     },
     {
       "path": "docs/results_digest.md",
-      "bytes": 3915,
-      "sha256": "b4a1b057dd65089d68b9ae797f8b12cf19a4ff5e35027dafc29b944f4ccfcceb"
+      "bytes": 3956,
+      "sha256": "3dc1a58ca4bf75cab233636ecf3bcf0b432b4244a873fecf9b50410a08726a1f"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -173,8 +173,8 @@
     },
     {
       "path": "results/claims_status.json",
-      "bytes": 18123,
-      "sha256": "7342a7572202ea7a8890104f417979554ce9e998f8369b66faae266105a16a8b"
+      "bytes": 18830,
+      "sha256": "06659e5e5b6e56859a9cfface2bd2cf7ea8b5dfaa49ac15be44bb5c2d86ad5bc"
     },
     {
       "path": "results/claims_status.md",
@@ -198,8 +198,8 @@
     },
     {
       "path": "results/paper_claim_coverage.json",
-      "bytes": 3092,
-      "sha256": "b958ac62107b74dd34175941ed266c00687a27c7c386716967cc84ce5628842b"
+      "bytes": 3775,
+      "sha256": "45a79d83e754ee59880247eab9851f57c99bd90d7eb6e8db3c56726b89140d04"
     },
     {
       "path": "results/pilot_calibration_summary.json",
@@ -358,8 +358,8 @@
     },
     {
       "path": "results/tables/paper_claim_coverage.csv",
-      "bytes": 1835,
-      "sha256": "22aef720a320c8020b43e69966963c8a97fcd37137300d71475648f58f8f0383"
+      "bytes": 2169,
+      "sha256": "8f13263139c6f8a4f2cb066daccb8ab1ca3fb8e66d25021bb5e3857827175b32"
     },
     {
       "path": "results/tables/pilot_budget_metrics.csv",
@@ -468,8 +468,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 3475,
-      "sha256": "70cade1b521efbcdf33f36e176d0905338e7c3f1b98be1e8600496623dd258a9"
+      "bytes": 3531,
+      "sha256": "d7921dd4c79841f860b910f211945acba44b36bfd4cd63e7eeaedcc1eb6e673f"
     }
   ]
 }

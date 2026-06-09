@@ -155,16 +155,18 @@ def test_claim_audit_keeps_forbidden_claims_unsupported():
         positive = [row for row in coverage["rows"] if row["claim_role"] == "positive_paper_claim"]
         assert {row["claim_id"] for row in positive} == {"C1", "C2", "C3", "C4"}
         assert all(row["coverage_status"] == "covered_strongly" for row in positive)
+        assert all(row["locations_verified"] for row in coverage["rows"])
 
 
 def test_paper_claim_coverage_separates_boundaries_from_claims():
     claims = claim_inventory(ROOT)
-    coverage = paper_claim_coverage(claims, text_overclaims=[])
+    coverage = paper_claim_coverage(claims, root=ROOT, text_overclaims=[])
     assert coverage["passes"], coverage["problems"]
     rows = {row["claim_id"]: row for row in coverage["rows"]}
     assert all(rows[claim_id]["coverage_status"] == "covered_strongly" for claim_id in ["C1", "C2", "C3", "C4"])
     assert rows["C5"]["coverage_status"] == "explicitly_not_claimed"
     assert rows["C6"]["coverage_status"] == "explicitly_not_claimed"
+    assert all(row["locations_verified"] for row in rows.values())
 
 
 def test_learned_repair_policy_summary_records_conservative_blend():

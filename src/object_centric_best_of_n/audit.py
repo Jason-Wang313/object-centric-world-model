@@ -30,7 +30,7 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_selection_metrics.csv": ("scenario", "selector", "learned_identity_vs_raw_gain_mean", "learned_identity_vs_reward_gain_mean"),
     "results/tables/learned_repair_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "learned_repair_policy_train_correlation"),
     "results/tables/learned_repair_policy_metrics.csv": ("scenario", "selector", "learned_repair_policy_vs_raw_gain_mean", "learned_repair_policy_vs_learned_identity_gain_mean"),
-    "results/tables/paper_claim_coverage.csv": ("claim_id", "claim_role", "audit_status", "coverage_status", "paper_locations"),
+    "results/tables/paper_claim_coverage.csv": ("claim_id", "claim_role", "audit_status", "coverage_status", "paper_locations", "locations_verified"),
     "results/tables/synthetic_benchmark_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "suite_variant"),
     "results/tables/synthetic_benchmark_metrics.csv": ("scenario", "selector", "suite_variant", "synthetic_benchmark_combined_vs_raw_gain_mean", "synthetic_benchmark_observable_vs_raw_gain_mean"),
     "results/tables/deployment_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "gate_action", "delegated_selector"),
@@ -1090,47 +1090,71 @@ PAPER_CLAIM_COVERAGE_ROWS = (
         "claim_id": "C1",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/theory.md;docs/theory.md",
+        "location_anchor_terms": ("best-of-n", "tie-aware", "selected utility", "law"),
         "coverage_note": "Exact finite tie-aware law is a positive paper claim.",
     },
     {
         "claim_id": "C2",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/intro.md;paper/experiments.md",
+        "location_anchor_terms": ("binding", "selected real utility", "object score", "swap", "occlusion"),
         "coverage_note": "Selected-tail binding failure is a positive paper claim.",
     },
     {
         "claim_id": "C3",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/method.md;paper/experiments.md",
+        "location_anchor_terms": ("repair", "identity", "probe", "calibration", "selector"),
         "coverage_note": "Object-specific repair improvements are positive paper claims.",
     },
     {
         "claim_id": "C4",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/method.md;paper/experiments.md",
+        "location_anchor_terms": ("learned", "numpy", "identity-alignment", "transition", "repair-policy"),
         "coverage_note": "CPU NumPy semi-learned object-centric evidence is a positive paper claim.",
     },
     {
         "claim_id": "C5",
         "claim_role": "unsupported_boundary_nonclaim",
         "paper_locations": "paper/limitations.md;docs/claims.md;README.md",
+        "location_anchor_terms": ("real-robot", "real robot"),
         "coverage_note": "Real-robot validation is explicitly not claimed.",
     },
     {
         "claim_id": "C6",
         "claim_role": "unsupported_boundary_nonclaim",
         "paper_locations": "paper/limitations.md;paper/related_work.md;docs/claims.md;README.md",
+        "location_anchor_terms": ("benchmark", "graph physics", "latent", "diffusion"),
         "coverage_note": "Broad benchmark superiority is explicitly not claimed.",
     },
 )
 
 
+def _verify_paper_locations(root: Path, locations: str, anchor_terms: Iterable[str]) -> tuple[bool, list[str]]:
+    terms = tuple(str(term).lower() for term in anchor_terms)
+    if not terms:
+        return False, ["missing location anchor terms"]
+    problems: list[str] = []
+    for rel in [part.strip() for part in locations.split(";") if part.strip()]:
+        path = root / rel
+        if not path.exists():
+            problems.append(f"{rel} is missing")
+            continue
+        text = path.read_text(encoding="utf-8").lower()
+        if not any(term in text for term in terms):
+            problems.append(f"{rel} lacks anchors {terms}")
+    return not problems, problems
+
+
 def paper_claim_coverage(
     claims: Iterable[dict[str, object]],
+    root: str | Path | None = None,
     text_overclaims: Iterable[str] | None = None,
 ) -> dict[str, object]:
     """Map positive paper claims and boundary nonclaims to audit statuses."""
 
+    root_path = Path(root) if root is not None else None
     claim_by_id = {str(claim.get("id")): claim for claim in claims}
     text_problem_count = len(list(text_overclaims or []))
     rows: list[dict[str, object]] = []
@@ -1150,10 +1174,22 @@ def paper_claim_coverage(
                 problems.append(f"{claim_id}: boundary nonclaim has status {audit_status}")
         if not template["paper_locations"]:
             problems.append(f"{claim_id}: missing paper locations")
+        if root_path is not None:
+            locations_verified, location_problems = _verify_paper_locations(
+                root_path,
+                str(template["paper_locations"]),
+                template["location_anchor_terms"],
+            )
+            if not locations_verified:
+                problems.extend(f"{claim_id}: {problem}" for problem in location_problems)
+        else:
+            locations_verified = bool(template["paper_locations"])
         row = {
             **template,
             "audit_status": audit_status,
             "coverage_status": coverage_status,
+            "locations_verified": bool(locations_verified),
+            "location_anchor_terms": "|".join(template["location_anchor_terms"]),
             "claim_text": str(claim.get("claim", template["coverage_note"])),
         }
         rows.append(row)
@@ -1178,7 +1214,7 @@ def write_paper_claim_coverage(
     text_overclaims: Iterable[str] | None = None,
 ) -> dict[str, object]:
     root = Path(root)
-    coverage = paper_claim_coverage(claims, text_overclaims=text_overclaims)
+    coverage = paper_claim_coverage(claims, root=root, text_overclaims=text_overclaims)
     rows = list(coverage["rows"])
     tables = root / "results" / "tables"
     tables.mkdir(parents=True, exist_ok=True)
@@ -1192,18 +1228,18 @@ def write_paper_claim_coverage(
         "",
         "This generated matrix separates positive paper claims from unsupported boundary nonclaims.",
         "",
-        "| Claim | Role | Audit Status | Coverage Status | Locations |",
-        "| --- | --- | --- | --- | --- |",
+        "| Claim | Role | Audit Status | Coverage Status | Locations Verified | Locations |",
+        "| --- | --- | --- | --- | --- | --- |",
     ]
     for row in rows:
         lines.append(
             f"| {row['claim_id']} | {row['claim_role']} | {row['audit_status']} | "
-            f"{row['coverage_status']} | {row['paper_locations']} |"
+            f"{row['coverage_status']} | {row['locations_verified']} | {row['paper_locations']} |"
         )
     lines.extend(
         [
             "",
-            "Positive paper claims must be `strongly_supported`. Boundary nonclaims must stay unsupported and are not counted as supported paper results.",
+            "Positive paper claims must be `strongly_supported`. Boundary nonclaims must stay unsupported and are not counted as supported paper results. Each listed location must exist and contain at least one claim-specific anchor term.",
         ]
     )
     if coverage["problems"]:
@@ -1286,12 +1322,14 @@ def write_results_digest(root: str | Path) -> None:
         rows = coverage.get("rows", [])
         positive = [row for row in rows if row.get("claim_role") == "positive_paper_claim"]
         boundaries = [row for row in rows if row.get("claim_role") == "unsupported_boundary_nonclaim"]
+        verified = [row for row in rows if row.get("locations_verified")]
         lines.extend(
             [
                 "",
                 "## Paper Claim Coverage",
                 f"- Positive paper claims strongly covered: {sum(row.get('coverage_status') == 'covered_strongly' for row in positive)} / {len(positive)}",
                 f"- Unsupported boundary nonclaims explicit: {sum(row.get('coverage_status') == 'explicitly_not_claimed' for row in boundaries)} / {len(boundaries)}",
+                f"- Cited claim locations verified: {len(verified)} / {len(rows)}",
                 f"- Coverage audit passes: {coverage.get('passes')}",
             ]
         )

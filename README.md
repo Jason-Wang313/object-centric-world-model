@@ -27,7 +27,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.
-- Paper-claim coverage audit separating strongly supported positive claims from unsupported boundary nonclaims.
+- Paper-claim coverage audit separating strongly supported positive claims from unsupported boundary nonclaims, with cited claim locations verified.
 - Raw-score calibration, score-noise sensitivity analysis, and deterministic artifact hashes.
 - Negative controls for the non-corrupted setting and learned feature ablations.
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.

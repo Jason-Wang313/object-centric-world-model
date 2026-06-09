@@ -62,6 +62,7 @@ This digest is generated from the current result artifacts.
 ## Paper Claim Coverage
 - Positive paper claims strongly covered: 4 / 4
 - Unsupported boundary nonclaims explicit: 2 / 2
+- Cited claim locations verified: 6 / 6
 - Coverage audit passes: True
 
 ## Boundaries
