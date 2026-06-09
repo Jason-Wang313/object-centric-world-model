@@ -147,6 +147,11 @@
       0.15883751048037495,
       0.07749252468943776
     ],
+    "selection_score_blend": {
+      "ridge_utility": 0.65,
+      "learned_identity_reward": 0.15,
+      "normalized_observable_repair": 0.2
+    },
     "ridge": 0.004,
     "n_train_candidates": 10240,
     "train_mae": 0.045142743375572,

@@ -159,7 +159,7 @@ Evidence: learned_object_model_summary.json, learned_metrics.csv, learned_learni
 
 Strength: {
   "passes": true,
-  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.72, min variant utility >= 0.65, raw gain >= 0.55, gain over learned identity+reward >= 0.12, raw win rates passing, mean learned-identity win rate >= 0.50, oracle gap <= 0.28, train correlation >= 0.80, and bootstrap lower bounds passing",
+  "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
   "observed": {
     "property_margin": 0.24583333333333335,
     "identity_alignment_margin": 0.48750000000000004,
@@ -176,16 +176,16 @@ Strength: {
     "learned_selection_identity_vs_raw_gain": 0.6583388223801652,
     "learned_selection_identity_vs_reward_gain": 0.35966428960577884,
     "learned_selection_identity_min_win_rate": 0.78125,
-    "learned_repair_policy_mean_utility": 0.8415137654981076,
-    "learned_repair_policy_min_variant_utility": 0.8162228455914597,
-    "learned_repair_policy_vs_raw_gain": 0.8192017391308719,
-    "learned_repair_policy_vs_learned_identity_gain": 0.22101550336195816,
+    "learned_repair_policy_mean_utility": 0.8457892245396742,
+    "learned_repair_policy_min_variant_utility": 0.8194152353962161,
+    "learned_repair_policy_vs_raw_gain": 0.8234771981724383,
+    "learned_repair_policy_vs_learned_identity_gain": 0.2252909624035247,
     "learned_repair_policy_min_win_rate": 1.0,
-    "learned_repair_policy_mean_learned_identity_win_rate": 0.6026785714285714,
-    "learned_repair_policy_min_learned_identity_win_rate": 0.1875,
-    "learned_repair_policy_max_oracle_gap": 0.101150263658343,
+    "learned_repair_policy_mean_learned_identity_win_rate": 0.6294642857142857,
+    "learned_repair_policy_min_learned_identity_win_rate": 0.375,
+    "learned_repair_policy_max_oracle_gap": 0.0979578738535866,
     "learned_repair_policy_train_correlation": 0.984585387941474,
-    "learned_selection_bootstrap_min_ci_margin": 0.08061652641809
+    "learned_selection_bootstrap_min_ci_margin": 0.0849170953633546
   }
 }
 

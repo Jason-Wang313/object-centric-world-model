@@ -680,6 +680,15 @@ LEARNED_REPAIR_POLICY_FEATURE_NAMES = [
 ]
 
 
+def _minmax_normalize(values: np.ndarray) -> np.ndarray:
+    values = np.asarray(values, dtype=float)
+    low = float(np.min(values))
+    high = float(np.max(values))
+    if high - low < 1e-12:
+        return np.full_like(values, 0.5, dtype=float)
+    return (values - low) / (high - low)
+
+
 def _learned_repair_policy_features(
     candidate,
     learned_scores: dict[str, np.ndarray],
@@ -761,6 +770,11 @@ def _fit_learned_repair_policy(
         "feature_mean": feature_mean.tolist(),
         "feature_scale": feature_scale.tolist(),
         "weights": weights.tolist(),
+        "selection_score_blend": {
+            "ridge_utility": 0.65,
+            "learned_identity_reward": 0.15,
+            "normalized_observable_repair": 0.20,
+        },
         "ridge": ridge,
         "n_train_candidates": int(len(labels)),
         "train_mae": float(np.mean(np.abs(train_pred - y))),
@@ -783,7 +797,17 @@ def _predict_learned_repair_policy(
     ]
     x = np.vstack(rows)
     z = (x - feature_mean) / feature_scale
-    return np.clip(weights[0] + z @ weights[1:], 0.0, 1.0)
+    ridge_utility = np.clip(weights[0] + z @ weights[1:], 0.0, 1.0)
+    blend = policy.get("selection_score_blend", {})
+    ridge_weight = float(blend.get("ridge_utility", 1.0))
+    identity_weight = float(blend.get("learned_identity_reward", 0.0))
+    observable_weight = float(blend.get("normalized_observable_repair", 0.0))
+    score = (
+        ridge_weight * ridge_utility
+        + identity_weight * np.asarray(learned_scores["learned_identity_reward"], dtype=float)
+        + observable_weight * _minmax_normalize(observable_scores)
+    )
+    return np.clip(score, 0.0, 1.0)
 
 
 def _run_learned_repair_policy_panel(
@@ -1943,6 +1967,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "learned_repair_policy_vs_learned_identity_gain": float(learned_repair_policy_policy["learned_repair_policy_vs_learned_identity_gain_mean"].mean()) if not learned_repair_policy_policy.empty else None,
         "learned_repair_policy_vs_pilot_gain": float(learned_repair_policy_policy["learned_repair_policy_vs_pilot_gain_mean"].mean()) if not learned_repair_policy_policy.empty else None,
         "learned_repair_policy_min_win_rate": float(learned_repair_policy_policy["learned_repair_policy_win_rate"].min()) if not learned_repair_policy_policy.empty else None,
+        "learned_repair_policy_mean_learned_identity_win_rate": float(learned_repair_policy_policy["learned_repair_policy_over_learned_identity_win_rate"].mean()) if not learned_repair_policy_policy.empty else None,
         "learned_repair_policy_min_learned_identity_win_rate": float(learned_repair_policy_policy["learned_repair_policy_over_learned_identity_win_rate"].min()) if not learned_repair_policy_policy.empty else None,
         "learned_repair_policy_pilot_mean_utility": float(learned_repair_policy_pilot["selected_real_utility_mean"].mean()) if not learned_repair_policy_pilot.empty else None,
         "learned_repair_policy_train_correlation": float(learned_repair_policy["train_correlation"]),

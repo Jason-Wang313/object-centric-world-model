@@ -23,7 +23,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
 - Held-out learned domain-shift checks for dense, occluded, crossing, and mixed object-count synthetic variants.
 - Learned selection transfer, where the CPU NumPy reward and identity-alignment heads score held-out candidate futures.
-- Learned repair-policy transfer, where observable diagnostics plus CPU learned heads train a small repair selector and test it on held-out synthetic benchmark variants.
+- Learned repair-policy transfer, where observable diagnostics plus CPU learned heads train a ridge utility policy that is conservatively blended with learned identity-reward and observable repair scores on held-out synthetic benchmark variants.
 - A repair comparison over raw scoring, identity consistency, property calibration, targeted probing, observable-only repair, combined repair, random selection, and oracle selection.
 - Paired per-seed repair statistics, a high-N stress panel, and threshold-based claim auditing.
 - Repair ablations, seed-block robustness checks, paper-text overclaim scanning, and artifact verification.

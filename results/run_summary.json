@@ -130,13 +130,14 @@
   "learned_selection_identity_min_win_rate": 0.78125,
   "learned_repair_policy_raw_mean_utility": 0.02231202636723584,
   "learned_repair_policy_learned_identity_mean_utility": 0.6204982621361496,
-  "learned_repair_policy_mean_utility": 0.8415137654981076,
-  "learned_repair_policy_min_variant_utility": 0.8162228455914597,
-  "learned_repair_policy_vs_raw_gain": 0.8192017391308719,
-  "learned_repair_policy_vs_learned_identity_gain": 0.22101550336195824,
-  "learned_repair_policy_vs_pilot_gain": 0.01599407415858253,
+  "learned_repair_policy_mean_utility": 0.8457892245396742,
+  "learned_repair_policy_min_variant_utility": 0.8194152353962161,
+  "learned_repair_policy_vs_raw_gain": 0.8234771981724383,
+  "learned_repair_policy_vs_learned_identity_gain": 0.2252909624035247,
+  "learned_repair_policy_vs_pilot_gain": 0.020269533200149015,
   "learned_repair_policy_min_win_rate": 1.0,
-  "learned_repair_policy_min_learned_identity_win_rate": 0.1875,
+  "learned_repair_policy_mean_learned_identity_win_rate": 0.6294642857142857,
+  "learned_repair_policy_min_learned_identity_win_rate": 0.375,
   "learned_repair_policy_pilot_mean_utility": 0.8255196913395252,
   "learned_repair_policy_train_correlation": 0.984585387941474,
   "learned_repair_policy_train_mae": 0.045142743375572,
@@ -216,7 +217,7 @@
   "probe_cost_max_cost_observable_vs_raw_gain": 0.5165809550049456,
   "probe_cost_low_cost_raw_mean_utility": 0.06339235257364377,
   "statistical_audit_all_pass": true,
-  "statistical_audit_min_ci_margin": 0.08061652641809006,
+  "statistical_audit_min_ci_margin": 0.08294730684862575,
   "learned_metrics": {
     "property_accuracy": 0.9958333333333333,
     "random_property_accuracy": 0.75,
@@ -229,5 +230,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 837.973
+  "runtime_seconds": 763.869
 }

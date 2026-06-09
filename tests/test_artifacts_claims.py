@@ -146,3 +146,16 @@ def test_claim_audit_keeps_forbidden_claims_unsupported():
         unsupported = {claim["claim"]: claim["status"] for claim in payload["claims"] if "real robot" in claim["claim"].lower() or "benchmark" in claim["claim"].lower()}
         assert unsupported
         assert all(status == "unsupported" for status in unsupported.values())
+
+
+def test_learned_repair_policy_summary_records_conservative_blend():
+    summary_path = ROOT / "results" / "learned_repair_policy_summary.json"
+    if summary_path.exists():
+        payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        blend = payload["policy"]["selection_score_blend"]
+        assert blend == {
+            "ridge_utility": 0.65,
+            "learned_identity_reward": 0.15,
+            "normalized_observable_repair": 0.20,
+        }
+        assert abs(sum(blend.values()) - 1.0) < 1e-12

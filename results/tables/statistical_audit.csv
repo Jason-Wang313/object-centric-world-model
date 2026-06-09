@@ -22,8 +22,8 @@ probe_cost_observable_repair_gain,Probe-cost-adjusted observable_repair selected
 probe_cost_targeted_hidden_repair_gain,Probe-cost-adjusted targeted_probe selected-utility gain over raw for cost <= 0.10.,0.7036355640826374,0.6744246394423294,0.732055550641455,0.35,lower,192,True
 learned_selection_identity_gain,Learned identity+reward selector selected-utility gain over raw.,0.6583388223801651,0.6177346559843349,0.6965478861027736,0.35,lower,224,True
 learned_selection_identity_over_reward_gain,Learned identity+reward selector selected-utility gain over learned reward-only selector.,0.3596642896057789,0.30997998473958316,0.40900935898510027,0.12,lower,224,True
-learned_repair_policy_gain,Learned repair-policy selected-utility gain over raw on benchmark-style held-out variants.,0.8192017391308717,0.8077189984565315,0.8294967442147282,0.5,lower,224,True
-learned_repair_policy_over_learned_identity_gain,Learned repair-policy selected-utility gain over the learned identity+reward selector.,0.22101550336195816,0.18061652641809006,0.26657236053517525,0.1,lower,224,True
+learned_repair_policy_gain,Learned repair-policy selected-utility gain over raw on benchmark-style held-out variants.,0.8234771981724383,0.8124202148399401,0.833812384551211,0.5,lower,224,True
+learned_repair_policy_over_learned_identity_gain,Learned repair-policy selected-utility gain over the learned identity+reward selector.,0.22529096240352464,0.18491709536335466,0.27043197396356367,0.1,lower,224,True
 synthetic_benchmark_combined_repair_gain,Benchmark-style synthetic task-suite combined repair selected-utility gain over raw.,0.8161407808398964,0.8063476695077779,0.8253837344014596,0.55,lower,224,True
 synthetic_benchmark_observable_repair_gain,Benchmark-style synthetic task-suite observable-only repair selected-utility gain over raw.,0.8160747948047941,0.8061943112612676,0.8251114034642487,0.5,lower,224,True
 deployment_policy_gate_gain,Conservative deployment-gate policy selected-utility gain over raw high-N selection in corrupted scenes.,0.7883015801574633,0.7442473261357344,0.8234529560678132,0.5,lower,80,True

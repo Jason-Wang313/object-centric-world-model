@@ -843,18 +843,18 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 and float(learned_identity_selector["learned_identity_vs_reward_gain_mean"].mean()) >= 0.15
                 and float(learned_identity_selector["learned_identity_win_rate"].min()) >= 0.70
                 and not learned_policy_selector.empty
-                and float(learned_policy_selector["selected_real_utility_mean"].mean()) >= 0.72
-                and float(learned_policy_selector["selected_real_utility_mean"].min()) >= 0.65
-                and float(learned_policy_selector["learned_repair_policy_vs_raw_gain_mean"].mean()) >= 0.55
-                and float(learned_policy_selector["learned_repair_policy_vs_learned_identity_gain_mean"].mean()) >= 0.12
-                and float(learned_policy_selector["learned_repair_policy_win_rate"].min()) >= 0.85
-                and float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].mean()) >= 0.50
-                and float(learned_policy_selector["learned_repair_policy_oracle_gap_mean"].max()) <= 0.28
+                and float(learned_policy_selector["selected_real_utility_mean"].mean()) >= 0.80
+                and float(learned_policy_selector["selected_real_utility_mean"].min()) >= 0.75
+                and float(learned_policy_selector["learned_repair_policy_vs_raw_gain_mean"].mean()) >= 0.70
+                and float(learned_policy_selector["learned_repair_policy_vs_learned_identity_gain_mean"].mean()) >= 0.18
+                and float(learned_policy_selector["learned_repair_policy_win_rate"].min()) >= 0.90
+                and float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].mean()) >= 0.55
+                and float(learned_policy_selector["learned_repair_policy_oracle_gap_mean"].max()) <= 0.15
                 and float(learned_repair_policy_summary.get("policy", {}).get("train_correlation", 0.0)) >= 0.80
                 and not learned_selection_stats.empty
                 and bool(learned_selection_stats["passes"].all())
             ),
-            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.72, min variant utility >= 0.65, raw gain >= 0.55, gain over learned identity+reward >= 0.12, raw win rates passing, mean learned-identity win rate >= 0.50, oracle gap <= 0.28, train correlation >= 0.80, and bootstrap lower bounds passing",
+            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
             "observed": {
                 "property_margin": float(prop_margin),
                 "identity_alignment_margin": float(identity_margin),

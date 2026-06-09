@@ -22,8 +22,8 @@ This digest is generated from the current result artifacts.
 - Learned shift min identity margin: 0.4458333333333333
 - Learned selection identity-vs-raw gain: 0.6583388223801652
 - Learned selection identity-vs-reward gain: 0.3596642896057789
-- Learned repair-policy raw gain: 0.8192017391308719
-- Learned repair-policy over learned-identity gain: 0.22101550336195824
+- Learned repair-policy raw gain: 0.8234771981724383
+- Learned repair-policy over learned-identity gain: 0.2252909624035247
 - Synthetic task-suite combined-vs-raw gain: 0.8161407808398964
 - Synthetic task-suite observable-vs-raw gain: 0.8160747948047943
 - Deployment policy corrupted gate-vs-raw gain: 0.7883015801574633
@@ -43,7 +43,7 @@ This digest is generated from the current result artifacts.
 - Probe-cost low-cost combined-vs-raw gain: 0.77494187977645
 - Probe-cost max-cost combined-vs-raw gain: 0.51744187977645
 - Toy proxy combined-vs-best-proxy gain: 0.5504614056934154
-- Bootstrap audit minimum CI margin: 0.08061652641809006
+- Bootstrap audit minimum CI margin: 0.08294730684862575
 
 ## Learned Model
 - Property accuracy: 0.9958333333333333 versus baseline 0.75

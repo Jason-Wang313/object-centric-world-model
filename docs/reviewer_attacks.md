@@ -78,7 +78,7 @@ Response: `learned_selection_metrics.csv` uses the CPU NumPy reward and identity
 
 ## Attack: The learned model is disconnected from the repair stack.
 
-Response: `learned_repair_policy_metrics.csv` trains a small ridge repair policy from observable candidate diagnostics plus CPU learned reward, identity-alignment, and hidden-property confidence heads, then evaluates it on held-out benchmark-style synthetic variants. The audit requires the learned repair policy to beat both raw selection and the learned identity+reward selector with bootstrap lower-bound checks, while remaining close to oracle.
+Response: `learned_repair_policy_metrics.csv` trains a small ridge repair policy from observable candidate diagnostics plus CPU learned reward, identity-alignment, and hidden-property confidence heads, then selects with a conservative blend of ridge utility, learned identity-reward, and normalized observable repair scores on held-out benchmark-style synthetic variants. The audit requires the learned repair policy to beat both raw selection and the learned identity+reward selector with bootstrap lower-bound checks, while remaining close to oracle.
 
 ## Attack: Oracle rows make repairs look weak or strong.
 
