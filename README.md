@@ -28,8 +28,9 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 - Negative controls for the non-corrupted setting and learned feature ablations.
 - Dense-object OOD synthetic stress for 6- and 8-object scenes.
 - Held-out domain-randomized synthetic stress with varied object counts and corruption flags.
+- Counterfactual target-identity stress that retargets the true object away from object zero.
 - A controlled toy model-family proxy panel for latent-global, relational-slot, and diffusion-score selectors.
-- A bootstrap statistical audit for the main failure, repair, OOD, and toy-proxy effects.
+- A bootstrap statistical audit for the main failure, repair, OOD, counterfactual target, and toy-proxy effects.
 
 ## What This Is Not
 
@@ -60,6 +61,8 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `results/tables/ood_metrics.csv`
 - `results/tables/domain_randomization_seed_metrics.csv`
 - `results/tables/domain_randomization_metrics.csv`
+- `results/tables/counterfactual_target_seed_metrics.csv`
+- `results/tables/counterfactual_target_metrics.csv`
 - `results/tables/model_family_proxy_seed_metrics.csv`
 - `results/tables/model_family_proxy_metrics.csv`
 - `results/tables/statistical_audit.csv`
@@ -87,6 +90,7 @@ The project borrows only the abstract finite Best-of-N law pattern and audit dis
 - `figures/figure16_statistical_audit.png`
 - `figures/figure17_observable_repair.png`
 - `figures/figure18_domain_randomization.png`
+- `figures/figure19_counterfactual_target.png`
 
 ## Claim Boundaries
 

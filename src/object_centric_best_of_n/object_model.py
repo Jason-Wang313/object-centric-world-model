@@ -168,7 +168,9 @@ class ObjectCentricFutureGenerator:
         property_error = float(rng.random() < min(0.90, property_prob))
         swap = float(identity_error and rng.random() < 0.80)
         target_id = scene.target_id
-        predicted_target_id = 1 if identity_error else target_id
+        wrong_target_ids = [obj.obj_id for obj in scene.objects if obj.obj_id != target_id]
+        wrong_target_id = wrong_target_ids[0] if wrong_target_ids else None
+        predicted_target_id = wrong_target_id if identity_error else target_id
         if merge_split and rng.random() < 0.20:
             predicted_target_id = None
 

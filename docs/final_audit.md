@@ -3,10 +3,10 @@
 Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; needs benchmark validation for broader claims.
 
 ## Command Results
-- bash scripts/run_smoke.sh: pass (smoke experiment runtime 31.935s; strict claim audit passed)
-- bash scripts/run_all.sh: pass (full experiment runtime 142.598s; 16 main seeds, 48 domain-randomized seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, bootstrap statistical audit, gate block_high_n)
-- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, domain-randomization checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
-- pytest: pass (13 passed in 17.91s on final run)
+- bash scripts/run_smoke.sh: pass (smoke experiment runtime 32.343s; strict claim audit passed; counterfactual target-swap raw utility 0.0 and combined utility 0.8515667335888697)
+- bash scripts/run_all.sh: pass (full experiment runtime 152.982s; 16 main seeds, 48 domain-randomized seeds, 48 counterfactual target seeds, 16 OOD dense-object seeds, 16 model-family proxy seeds, 24 sensitivity seeds, 32 stress seeds, observable repair panel, bootstrap statistical audit, gate block_high_n)
+- bash scripts/run_claim_audit.sh: pass (all core claims strongly_supported; artifact verifier, hashes, paper-text scan, OOD checks, domain-randomization checks, counterfactual target-swap checks, toy proxy checks, observable repair checks, and bootstrap checks passed)
+- pytest: pass (15 passed in 14.36s on final run)
 
 ## Strongest Artifacts
 - Failure artifact: figure1_selected_tail_binding_failure.png and raw high-N rows in main_metrics.csv. Raw score gain 0.5759192453426587 and raw utility drop 0.36397088780796794.
@@ -22,6 +22,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. Full-minus-no-mass property gain 0.1229166666666666.
 - OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. Dense corrupted OOD combined-vs-raw gain 0.8411636120707556.
 - Domain-randomized artifact: figure18_domain_randomization.png and domain_randomization_metrics.csv. Combined-vs-raw gain 0.8343878574844603.
+- Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. Combined-vs-raw gain 0.816906396281512.
 - Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. Combined-vs-best-proxy gain 0.5504614056934154.
 - Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. Minimum bootstrap CI margin 0.08294730684862575.
 
@@ -36,6 +37,8 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 
 ## Artifact Inventory
 ### tables
+- results\tables\counterfactual_target_metrics.csv
+- results\tables\counterfactual_target_seed_metrics.csv
 - results\tables\domain_randomization_metrics.csv
 - results\tables\domain_randomization_seed_metrics.csv
 - results\tables\exact_law_validation.csv
@@ -71,6 +74,7 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure16_statistical_audit.png
 - figures\figure17_observable_repair.png
 - figures\figure18_domain_randomization.png
+- figures\figure19_counterfactual_target.png
 - figures\figure1_selected_tail_binding_failure.png
 - figures\figure2_repair_comparison.png
 - figures\figure3_tail_diagnostics.png

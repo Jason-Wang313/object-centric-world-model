@@ -7,7 +7,7 @@ and merge/split artifacts without claiming real-robot coverage.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -133,6 +133,16 @@ def make_scene(
         crossing=crossing,
         notes=tuple(notes),
     )
+
+
+def retarget_scene(scene: ObjectScene, target_id: int) -> ObjectScene:
+    """Return a scene with a different true target identity."""
+
+    if target_id not in {obj.obj_id for obj in scene.objects}:
+        raise ValueError(f"target_id {target_id} is not present in scene")
+    objects = tuple(replace(obj, is_target=obj.obj_id == target_id) for obj in scene.objects)
+    notes = tuple(scene.notes) + (f"counterfactual target id {target_id}",)
+    return replace(scene, objects=objects, target_id=int(target_id), notes=notes)
 
 
 def trajectory(scene: ObjectScene, steps: int = 8) -> dict[int, list[tuple[float, float]]]:

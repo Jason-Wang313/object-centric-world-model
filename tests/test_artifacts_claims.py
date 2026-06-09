@@ -58,6 +58,8 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "results/tables/ood_metrics.csv",
         "results/tables/domain_randomization_seed_metrics.csv",
         "results/tables/domain_randomization_metrics.csv",
+        "results/tables/counterfactual_target_seed_metrics.csv",
+        "results/tables/counterfactual_target_metrics.csv",
         "results/tables/model_family_proxy_seed_metrics.csv",
         "results/tables/model_family_proxy_metrics.csv",
         "results/tables/statistical_audit.csv",
@@ -86,6 +88,7 @@ def test_generated_artifacts_exist_after_smoke_or_full_run():
         "figures/figure16_statistical_audit.png",
         "figures/figure17_observable_repair.png",
         "figures/figure18_domain_randomization.png",
+        "figures/figure19_counterfactual_target.png",
     ]
     missing = [rel for rel in required if not (ROOT / rel).exists()]
     assert not missing

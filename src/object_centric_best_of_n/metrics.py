@@ -522,6 +522,53 @@ def domain_randomization_summary(domain_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def counterfactual_target_summary(counter_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate target-swap rows where the true target is not object zero."""
+
+    if counter_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(counter_seed_df)
+    paired = paired_selector_effects(counter_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        combined = group[group["selector"] == "combined_repair"]
+        observable = group[group["selector"] == "observable_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        combined_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "combined_repair")
+        ]
+        observable_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "observable_repair")
+        ]
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["counterfactual_combined_vs_raw_gain_mean"] = combined_utility - raw_utility
+            out["counterfactual_observable_vs_raw_gain_mean"] = observable_utility - raw_utility
+            out["counterfactual_combined_oracle_gap_mean"] = oracle_utility - combined_utility
+            out["counterfactual_observable_oracle_gap_mean"] = oracle_utility - observable_utility
+            out["counterfactual_combined_win_rate"] = (
+                float(combined_pair["win_rate"].iloc[0]) if not combined_pair.empty else float("nan")
+            )
+            out["counterfactual_observable_win_rate"] = (
+                float(observable_pair["win_rate"].iloc[0]) if not observable_pair.empty else float("nan")
+            )
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def model_family_proxy_summary(family_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate toy model-family proxy selectors against combined repair.
 
@@ -561,6 +608,7 @@ def statistical_audit(
     seed_df: pd.DataFrame,
     ood_seed_df: pd.DataFrame | None = None,
     family_seed_df: pd.DataFrame | None = None,
+    counterfactual_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -689,6 +737,32 @@ def statistical_audit(
             "Combined repair selected-utility gain over the best toy model-family proxy.",
             merged["combined"] - merged["best_proxy"],
             threshold=0.20,
+        )
+
+    if counterfactual_seed_df is not None and not counterfactual_seed_df.empty:
+        n_max = int(counterfactual_seed_df["N"].max())
+        base = counterfactual_seed_df[
+            (counterfactual_seed_df["selector"] == "raw") & (counterfactual_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "baseline"})
+        combined = counterfactual_seed_df[
+            (counterfactual_seed_df["selector"] == "combined_repair") & (counterfactual_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "combined"})
+        combined_merged = combined.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "counterfactual_combined_repair_gain",
+            "Retargeted true-object stress combined repair selected-utility gain over raw.",
+            combined_merged["combined"] - combined_merged["baseline"],
+            threshold=0.50,
+        )
+        observable = counterfactual_seed_df[
+            (counterfactual_seed_df["selector"] == "observable_repair") & (counterfactual_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "observable"})
+        observable_merged = observable.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "counterfactual_observable_repair_gain",
+            "Retargeted true-object stress observable-only repair selected-utility gain over raw.",
+            observable_merged["observable"] - observable_merged["baseline"],
+            threshold=0.45,
         )
 
     return pd.DataFrame(rows)

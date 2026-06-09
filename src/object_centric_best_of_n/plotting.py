@@ -343,6 +343,29 @@ def figure18_domain_randomization(domain: pd.DataFrame, out: Path) -> None:
     _save(fig, out / "figure18_domain_randomization.png")
 
 
+def figure19_counterfactual_target(counterfactual: pd.DataFrame, out: Path) -> None:
+    if counterfactual.empty:
+        return
+    selectors = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
+    df = counterfactual[
+        (counterfactual["selector"].isin(selectors)) & (counterfactual["N"] == counterfactual["N"].max())
+    ]
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(8.4, 4.4))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#6f8f3c", "#3c7c5a", "#707070", "#2f6f9f"])
+    ax.set_xlabel("retargeted true-object scene")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Counterfactual target-identity stress")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure19_counterfactual_target.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -361,6 +384,7 @@ def write_all_figures(
     statistical_df: pd.DataFrame | None = None,
     observable_df: pd.DataFrame | None = None,
     domain_df: pd.DataFrame | None = None,
+    counterfactual_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -394,3 +418,5 @@ def write_all_figures(
         figure17_observable_repair(observable_df, out)
     if domain_df is not None:
         figure18_domain_randomization(domain_df, out)
+    if counterfactual_df is not None:
+        figure19_counterfactual_target(counterfactual_df, out)

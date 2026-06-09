@@ -32,6 +32,10 @@ Response: `ood_metrics.csv` evaluates dense 6- and 8-object variants, including 
 
 Response: `domain_randomization_metrics.csv` evaluates a held-out randomized synthetic domain with varied object counts, occlusion, crossing, and hidden-property flags. The audit requires raw selection to remain unsafe while observable and combined repair recover utility on this randomized panel.
 
+## Attack: The target identity is hard-coded.
+
+Response: `retarget_scene` creates a counterfactual scene where the true target is object 1 rather than object 0, and the generator now chooses wrong identities relative to the scene target rather than a fixed object ID. `counterfactual_target_metrics.csv` and `figure19_counterfactual_target.png` require raw high-N selection to fail while observable and combined repair recover utility on this target-swap panel.
+
 ## Attack: Repairs only beat weak selector baselines.
 
 Response: `model_family_proxy_metrics.csv` adds controlled toy proxy selectors with latent-global, relational-slot, and diffusion-score scoring rules. The audit requires combined repair to keep a positive scenario-wise margin over the best proxy while staying close to oracle. This is a diagnostic panel, not evidence for broad benchmark superiority.

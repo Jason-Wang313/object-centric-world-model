@@ -44,6 +44,8 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/model_family_proxy_metrics.csv": ("scenario", "selector", "best_proxy_utility_mean", "combined_vs_best_proxy_gain_mean"),
     "results/tables/domain_randomization_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "n_objects"),
     "results/tables/domain_randomization_metrics.csv": ("scenario", "selector", "domain_combined_vs_raw_gain_mean", "domain_observable_vs_raw_gain_mean"),
+    "results/tables/counterfactual_target_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "counterfactual_target_id"),
+    "results/tables/counterfactual_target_metrics.csv": ("scenario", "selector", "counterfactual_combined_vs_raw_gain_mean", "counterfactual_observable_vs_raw_gain_mean"),
     "results/tables/statistical_audit.csv": ("effect_id", "estimate", "bootstrap_ci_low", "bootstrap_ci_high", "threshold", "passes"),
     "results/tables/exact_law_validation.csv": ("N", "predicted_selected_utility", "empirical_selected_utility", "absolute_error"),
 }
@@ -67,6 +69,7 @@ REQUIRED_FIGURES = (
     "figures/figure16_statistical_audit.png",
     "figures/figure17_observable_repair.png",
     "figures/figure18_domain_randomization.png",
+    "figures/figure19_counterfactual_target.png",
 )
 
 REQUIRED_JSON = (
@@ -112,6 +115,7 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
     ood = _read_csv(tables / "ood_metrics.csv")
     family = _read_csv(tables / "model_family_proxy_metrics.csv")
     domain = _read_csv(tables / "domain_randomization_metrics.csv")
+    counterfactual = _read_csv(tables / "counterfactual_target_metrics.csv")
     statistical = _read_csv(tables / "statistical_audit.csv")
     learned = _read_json(root / "results" / "learned_object_model_summary.json")
 
@@ -276,6 +280,20 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
             and float(domain_observable["domain_observable_vs_raw_gain_mean"].iloc[0]) >= 0.55
             and float(domain_combined["domain_combined_win_rate"].iloc[0]) >= 0.85
         )
+        counter_combined = counterfactual[counterfactual["selector"] == "combined_repair"] if not counterfactual.empty else pd.DataFrame()
+        counter_observable = counterfactual[counterfactual["selector"] == "observable_repair"] if not counterfactual.empty else pd.DataFrame()
+        counter_raw = counterfactual[counterfactual["selector"] == "raw"] if not counterfactual.empty else pd.DataFrame()
+        counterfactual_pass = (
+            not counter_combined.empty
+            and not counter_observable.empty
+            and not counter_raw.empty
+            and float(counter_raw["selected_real_utility_mean"].iloc[0]) <= 0.25
+            and float(counter_combined["selected_real_utility_mean"].iloc[0]) >= 0.70
+            and float(counter_observable["selected_real_utility_mean"].iloc[0]) >= 0.65
+            and float(counter_combined["counterfactual_combined_vs_raw_gain_mean"].iloc[0]) >= 0.55
+            and float(counter_observable["counterfactual_observable_vs_raw_gain_mean"].iloc[0]) >= 0.50
+            and float(counter_combined["counterfactual_combined_win_rate"].iloc[0]) >= 0.85
+        )
         family_combined = (
             family[
                 (family["selector"] == "combined_repair")
@@ -300,6 +318,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                         "ood_combined_repair_gain",
                         "ood_observable_repair_gain",
                         "model_family_proxy_gain",
+                        "counterfactual_combined_repair_gain",
+                        "counterfactual_observable_repair_gain",
                     ]
                 )
             ]
@@ -308,8 +328,8 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
         )
         statistical_pass = not c3_stats.empty and bool(c3_stats["passes"].all())
         strengths["C3"] = {
-            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and domain_pass and family_pass and statistical_pass),
-            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, held-out domain-randomized stress succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+            "passes": bool(raw_pass and probe_pass and stress_pass and ablation_pass and observable_pass and robustness_pass and sensitivity_pass and ood_pass and domain_pass and counterfactual_pass and family_pass and statistical_pass),
+            "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD repair succeeds, held-out domain-randomized stress succeeds, counterfactual target-swap stress succeeds, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
             "observed": {
                 "combined_raw_nmax_gain": float(raw_gain["mean_gain"].iloc[0]) if not raw_gain.empty else None,
                 "combined_raw_nmax_win_rate": float(raw_gain["win_rate"].iloc[0]) if not raw_gain.empty else None,
@@ -335,6 +355,12 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "domain_combined_vs_raw_gain": float(domain_combined["domain_combined_vs_raw_gain_mean"].iloc[0]) if not domain_combined.empty else None,
                 "domain_observable_vs_raw_gain": float(domain_observable["domain_observable_vs_raw_gain_mean"].iloc[0]) if not domain_observable.empty else None,
                 "domain_combined_win_rate": float(domain_combined["domain_combined_win_rate"].iloc[0]) if not domain_combined.empty else None,
+                "counterfactual_raw_utility": float(counter_raw["selected_real_utility_mean"].iloc[0]) if not counter_raw.empty else None,
+                "counterfactual_combined_utility": float(counter_combined["selected_real_utility_mean"].iloc[0]) if not counter_combined.empty else None,
+                "counterfactual_observable_utility": float(counter_observable["selected_real_utility_mean"].iloc[0]) if not counter_observable.empty else None,
+                "counterfactual_combined_vs_raw_gain": float(counter_combined["counterfactual_combined_vs_raw_gain_mean"].iloc[0]) if not counter_combined.empty else None,
+                "counterfactual_observable_vs_raw_gain": float(counter_observable["counterfactual_observable_vs_raw_gain_mean"].iloc[0]) if not counter_observable.empty else None,
+                "counterfactual_combined_win_rate": float(counter_combined["counterfactual_combined_win_rate"].iloc[0]) if not counter_combined.empty else None,
                 "model_family_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].mean()) if not family_combined.empty else None,
                 "model_family_min_combined_vs_best_proxy_gain": float(family_combined["combined_vs_best_proxy_gain_mean"].min()) if not family_combined.empty else None,
                 "model_family_max_combined_oracle_gap": float(family_combined["combined_oracle_gap_mean"].max()) if not family_combined.empty else None,
@@ -400,7 +426,7 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
             "id": "C3",
             "claim": "Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.",
             "status": _status(strengths.get("C3", {}).get("passes") if root is not None else None),
-            "evidence": "figure2, figure4, paired_effects.csv, and stress_metrics.csv",
+            "evidence": "figure2, figure4, figure19, paired_effects.csv, stress_metrics.csv, and counterfactual_target_metrics.csv",
             "strength": strengths.get("C3", {}),
         },
         {
@@ -597,6 +623,7 @@ def write_results_digest(root: str | Path) -> None:
         f"- OOD combined mean selected utility: {summary.get('ood_combined_mean_selected_utility', 'unknown')}",
         f"- OOD combined-vs-raw gain: {summary.get('ood_combined_vs_raw_gain', 'unknown')}",
         f"- Domain-randomized combined-vs-raw gain: {summary.get('domain_randomized_combined_vs_raw_gain', 'unknown')}",
+        f"- Counterfactual target-swap combined-vs-raw gain: {summary.get('counterfactual_combined_vs_raw_gain', 'unknown')}",
         f"- Toy proxy combined-vs-best-proxy gain: {summary.get('model_family_combined_vs_best_proxy_gain', 'unknown')}",
         f"- Bootstrap audit minimum CI margin: {summary.get('statistical_audit_min_ci_margin', 'unknown')}",
         "",
@@ -765,6 +792,8 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"Dense corrupted OOD combined-vs-raw gain {summary_payload.get('ood_combined_vs_raw_gain', 'unknown')}.",
             "- Domain-randomized artifact: figure18_domain_randomization.png and domain_randomization_metrics.csv. "
             f"Combined-vs-raw gain {summary_payload.get('domain_randomized_combined_vs_raw_gain', 'unknown')}.",
+            "- Counterfactual target artifact: figure19_counterfactual_target.png and counterfactual_target_metrics.csv. "
+            f"Combined-vs-raw gain {summary_payload.get('counterfactual_combined_vs_raw_gain', 'unknown')}.",
             "- Toy proxy artifact: figure15_model_family_proxies.png and model_family_proxy_metrics.csv. "
             f"Combined-vs-best-proxy gain {summary_payload.get('model_family_combined_vs_best_proxy_gain', 'unknown')}.",
             "- Statistical audit artifact: figure16_statistical_audit.png and statistical_audit.csv. "
