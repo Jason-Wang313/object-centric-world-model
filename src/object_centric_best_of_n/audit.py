@@ -29,7 +29,7 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "results/tables/learned_selection_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "learned_reward_mean"),
     "results/tables/learned_selection_metrics.csv": ("scenario", "selector", "learned_identity_vs_raw_gain_mean", "learned_identity_vs_reward_gain_mean"),
     "results/tables/learned_repair_policy_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "learned_repair_policy_train_correlation"),
-    "results/tables/learned_repair_policy_metrics.csv": ("scenario", "selector", "learned_repair_policy_vs_raw_gain_mean", "learned_repair_policy_vs_learned_identity_gain_mean"),
+    "results/tables/learned_repair_policy_metrics.csv": ("scenario", "selector", "learned_repair_policy_vs_raw_gain_mean", "learned_repair_policy_vs_learned_identity_gain_mean", "learned_repair_policy_over_learned_identity_nonloss_rate", "learned_repair_policy_worst_learned_identity_loss"),
     "results/tables/paper_claim_coverage.csv": ("claim_id", "claim_role", "audit_status", "coverage_status", "paper_locations", "locations_verified"),
     "results/tables/synthetic_benchmark_seed_metrics.csv": ("scenario", "selector", "seed", "selected_real_utility", "suite_variant"),
     "results/tables/synthetic_benchmark_metrics.csv": ("scenario", "selector", "suite_variant", "synthetic_benchmark_combined_vs_raw_gain_mean", "synthetic_benchmark_observable_vs_raw_gain_mean"),
@@ -851,12 +851,14 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 and float(learned_policy_selector["learned_repair_policy_vs_learned_identity_gain_mean"].mean()) >= 0.18
                 and float(learned_policy_selector["learned_repair_policy_win_rate"].min()) >= 0.90
                 and float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].mean()) >= 0.55
+                and float(learned_policy_selector["learned_repair_policy_over_learned_identity_nonloss_rate"].min()) >= 0.50
+                and float(learned_policy_selector["learned_repair_policy_worst_learned_identity_loss"].max()) <= 0.18
                 and float(learned_policy_selector["learned_repair_policy_oracle_gap_mean"].max()) <= 0.15
                 and float(learned_repair_policy_summary.get("policy", {}).get("train_correlation", 0.0)) >= 0.80
                 and not learned_selection_stats.empty
                 and bool(learned_selection_stats["passes"].all())
             ),
-            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
+            "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, minimum learned-identity non-loss rate >= 0.50, worst learned-identity seed loss <= 0.18, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
             "observed": {
                 "property_margin": float(prop_margin),
                 "identity_alignment_margin": float(identity_margin),
@@ -880,6 +882,9 @@ def evaluate_claim_strength(root: str | Path) -> dict[str, dict[str, object]]:
                 "learned_repair_policy_min_win_rate": float(learned_policy_selector["learned_repair_policy_win_rate"].min()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_mean_learned_identity_win_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].mean()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_min_learned_identity_win_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_win_rate"].min()) if not learned_policy_selector.empty else None,
+                "learned_repair_policy_mean_learned_identity_nonloss_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_nonloss_rate"].mean()) if not learned_policy_selector.empty else None,
+                "learned_repair_policy_min_learned_identity_nonloss_rate": float(learned_policy_selector["learned_repair_policy_over_learned_identity_nonloss_rate"].min()) if not learned_policy_selector.empty else None,
+                "learned_repair_policy_max_learned_identity_loss": float(learned_policy_selector["learned_repair_policy_worst_learned_identity_loss"].max()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_max_oracle_gap": float(learned_policy_selector["learned_repair_policy_oracle_gap_mean"].max()) if not learned_policy_selector.empty else None,
                 "learned_repair_policy_train_correlation": float(learned_repair_policy_summary.get("policy", {}).get("train_correlation", 0.0)) if learned_repair_policy_summary else None,
                 "learned_selection_bootstrap_min_ci_margin": float((learned_selection_stats["bootstrap_ci_low"] - learned_selection_stats["threshold"]).min()) if not learned_selection_stats.empty else None,
@@ -1284,6 +1289,8 @@ def write_results_digest(root: str | Path) -> None:
         f"- Learned selection identity-vs-reward gain: {summary.get('learned_selection_identity_vs_reward_gain', 'unknown')}",
         f"- Learned repair-policy raw gain: {summary.get('learned_repair_policy_vs_raw_gain', 'unknown')}",
         f"- Learned repair-policy over learned-identity gain: {summary.get('learned_repair_policy_vs_learned_identity_gain', 'unknown')}",
+        f"- Learned repair-policy min learned-identity non-loss rate: {summary.get('learned_repair_policy_min_learned_identity_nonloss_rate', 'unknown')}",
+        f"- Learned repair-policy worst learned-identity seed loss: {summary.get('learned_repair_policy_max_learned_identity_loss', 'unknown')}",
         f"- Synthetic task-suite combined-vs-raw gain: {summary.get('synthetic_benchmark_combined_vs_raw_gain', 'unknown')}",
         f"- Synthetic task-suite observable-vs-raw gain: {summary.get('synthetic_benchmark_observable_vs_raw_gain', 'unknown')}",
         f"- Deployment policy corrupted gate-vs-raw gain: {summary.get('deployment_policy_corrupted_vs_raw_gain', summary.get('deployment_policy_vs_raw_gain', 'unknown'))}",
@@ -1510,7 +1517,9 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             f"and identity-over-reward gain {summary_payload.get('learned_selection_identity_vs_reward_gain', 'unknown')}.",
             "- Learned repair-policy artifact: figure31_learned_repair_policy_transfer.png and learned_repair_policy_metrics.csv. "
             f"Policy-vs-raw gain {summary_payload.get('learned_repair_policy_vs_raw_gain', 'unknown')} "
-            f"and policy-vs-learned-identity gain {summary_payload.get('learned_repair_policy_vs_learned_identity_gain', 'unknown')}.",
+            f"and policy-vs-learned-identity gain {summary_payload.get('learned_repair_policy_vs_learned_identity_gain', 'unknown')}; "
+            f"minimum learned-identity non-loss rate {summary_payload.get('learned_repair_policy_min_learned_identity_nonloss_rate', 'unknown')} "
+            f"and worst learned-identity seed loss {summary_payload.get('learned_repair_policy_max_learned_identity_loss', 'unknown')}.",
             "- Synthetic task-suite artifact: figure29_synthetic_benchmark_suite.png and synthetic_benchmark_metrics.csv. "
             f"Combined-vs-raw gain {summary_payload.get('synthetic_benchmark_combined_vs_raw_gain', 'unknown')} "
             f"and minimum combined variant utility {summary_payload.get('synthetic_benchmark_combined_min_variant_utility', 'unknown')}.",

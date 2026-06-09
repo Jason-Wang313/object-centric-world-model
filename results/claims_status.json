@@ -159,7 +159,7 @@
       "evidence": "learned_object_model_summary.json, learned_metrics.csv, learned_learning_curve.csv, learned_ablation.csv, learned_domain_shift.csv, learned_selection_metrics.csv, learned_repair_policy_metrics.csv, figure28_learned_selection_transfer.png, and figure31_learned_repair_policy_transfer.png",
       "strength": {
         "passes": true,
-        "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
+        "threshold": "property and identity margins >= 0.15, transition MSE <= 25% baseline, reward correlation >= 0.75, learned feature ablations show object information matters, held-out learned domain-shift variants retain property margin >= 0.12, identity margin >= 0.15, transition ratio <= 0.30, and reward correlation >= 0.70, the learned identity+reward selector transfers to held-out candidate selection with mean utility >= 0.50, min scenario utility >= 0.35, mean raw gain >= 0.40, identity-over-reward gain >= 0.15, win rate >= 0.70, and a learned repair policy trained on observable diagnostics plus learned heads transfers to benchmark-style variants with mean utility >= 0.80, min variant utility >= 0.75, raw gain >= 0.70, gain over learned identity+reward >= 0.18, raw win rates passing, mean learned-identity win rate >= 0.55, minimum learned-identity non-loss rate >= 0.50, worst learned-identity seed loss <= 0.18, oracle gap <= 0.15, train correlation >= 0.80, and bootstrap lower bounds passing",
         "observed": {
           "property_margin": 0.24583333333333335,
           "identity_alignment_margin": 0.48750000000000004,
@@ -183,6 +183,9 @@
           "learned_repair_policy_min_win_rate": 1.0,
           "learned_repair_policy_mean_learned_identity_win_rate": 0.6294642857142857,
           "learned_repair_policy_min_learned_identity_win_rate": 0.375,
+          "learned_repair_policy_mean_learned_identity_nonloss_rate": 0.7544642857142857,
+          "learned_repair_policy_min_learned_identity_nonloss_rate": 0.65625,
+          "learned_repair_policy_max_learned_identity_loss": 0.1424497166038502,
           "learned_repair_policy_max_oracle_gap": 0.0979578738535866,
           "learned_repair_policy_train_correlation": 0.984585387941474,
           "learned_selection_bootstrap_min_ci_margin": 0.0849170953633546

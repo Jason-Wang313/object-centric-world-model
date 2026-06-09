@@ -24,6 +24,8 @@ This digest is generated from the current result artifacts.
 - Learned selection identity-vs-reward gain: 0.3596642896057789
 - Learned repair-policy raw gain: 0.8234771981724383
 - Learned repair-policy over learned-identity gain: 0.2252909624035247
+- Learned repair-policy min learned-identity non-loss rate: 0.65625
+- Learned repair-policy worst learned-identity seed loss: 0.1424497166038502
 - Synthetic task-suite combined-vs-raw gain: 0.8161407808398964
 - Synthetic task-suite observable-vs-raw gain: 0.8160747948047943
 - Deployment policy corrupted gate-vs-raw gain: 0.7883015801574633

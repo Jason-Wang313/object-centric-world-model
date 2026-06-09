@@ -199,6 +199,12 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert learned_repair_policy[
         learned_repair_policy["selector"] == "learned_repair_policy"
     ]["learned_repair_policy_over_learned_identity_win_rate"].iloc[0] == 1.0
+    assert learned_repair_policy[
+        learned_repair_policy["selector"] == "learned_repair_policy"
+    ]["learned_repair_policy_over_learned_identity_nonloss_rate"].iloc[0] == 1.0
+    assert learned_repair_policy[
+        learned_repair_policy["selector"] == "learned_repair_policy"
+    ]["learned_repair_policy_worst_learned_identity_loss"].iloc[0] == 0.0
     synthetic_benchmark_df = pd.DataFrame(
         [
             {

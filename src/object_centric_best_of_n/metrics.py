@@ -830,6 +830,12 @@ def learned_repair_policy_summary(policy_seed_df: pd.DataFrame) -> pd.DataFrame:
             identity_pair["policy"] - identity_pair["identity"] if not identity_pair.empty else pd.Series(dtype=float)
         )
         pilot_gains = pilot_pair["policy"] - pilot_pair["pilot"] if not pilot_pair.empty else pd.Series(dtype=float)
+        identity_nonloss_rate = (
+            float(np.mean(identity_gains >= -1e-12)) if len(identity_gains) else float("nan")
+        )
+        worst_identity_loss = (
+            float(max(0.0, -float(identity_gains.min()))) if len(identity_gains) else float("nan")
+        )
         for _, row in group.iterrows():
             selector_seed = seed_group[seed_group["selector"] == row["selector"]]
             out = row.copy()
@@ -846,6 +852,8 @@ def learned_repair_policy_summary(policy_seed_df: pd.DataFrame) -> pd.DataFrame:
             out["learned_repair_policy_over_learned_identity_win_rate"] = (
                 float(np.mean(identity_gains > 1e-12)) if len(identity_gains) else float("nan")
             )
+            out["learned_repair_policy_over_learned_identity_nonloss_rate"] = identity_nonloss_rate
+            out["learned_repair_policy_worst_learned_identity_loss"] = worst_identity_loss
             out["learned_repair_policy_over_pilot_win_rate"] = (
                 float(np.mean(pilot_gains > 1e-12)) if len(pilot_gains) else float("nan")
             )

@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "docs/final_audit.md",
-      "bytes": 14550,
-      "sha256": "235a487477c0dde443b25e6ac59a1eaeba5eec94855effa29e0439f334315a38"
+      "bytes": 14654,
+      "sha256": "62c656bce434f3f280076f7193d2558ad2b091b08eb5e04b117f62e9993b0302"
     },
     {
       "path": "docs/paper_claim_coverage.md",
@@ -13,8 +13,8 @@
     },
     {
       "path": "docs/results_digest.md",
-      "bytes": 3956,
-      "sha256": "8a77cae34086ef1dfd743168e8b5c438202f474b4cd8ee5455c29e6f487fad4c"
+      "bytes": 4103,
+      "sha256": "e003589b5bfd42d4097862d3b03e102d38a87d88d0242c64b635e16a1684a34a"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -173,13 +173,13 @@
     },
     {
       "path": "results/claims_status.json",
-      "bytes": 18831,
-      "sha256": "5e12f295caaa1f26002f1cf7f07737357b2167285cfbcebcb7931172896560de"
+      "bytes": 19173,
+      "sha256": "6652e6e25e2918ca8953c36ec19f57a05a7bc53f9f1cab659cde5a3e11ea345a"
     },
     {
       "path": "results/claims_status.md",
-      "bytes": 13453,
-      "sha256": "63780a72b5e32441995f3242c6c5bc9478fd25659df62957210abe45a8264ba7"
+      "bytes": 13777,
+      "sha256": "641150333c67520f7dcdca90d6c5179698c747122d6abfff8ae4a14b05558a4f"
     },
     {
       "path": "results/learned_object_model_summary.json",
@@ -208,8 +208,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 10162,
-      "sha256": "f91d6843e94817c2b3e47411763340bc93af1bfcaa4196467cd9d19ba38797ab"
+      "bytes": 10391,
+      "sha256": "543b42dde101a984f1fa66611a377dac978a2e9b9f40180973d69143ebca83ad"
     },
     {
       "path": "results/tables/counterfactual_target_metrics.csv",
@@ -278,8 +278,8 @@
     },
     {
       "path": "results/tables/learned_repair_policy_metrics.csv",
-      "bytes": 50946,
-      "sha256": "ac9a7eaef1850659637ebcaa8d3b3f012b0f54cce5e143de2ffac26c6167cc09"
+      "bytes": 52727,
+      "sha256": "8bb518aabc8ade10f24f9f28156a23e579929834305b244936c7e500e0c60fa1"
     },
     {
       "path": "results/tables/learned_repair_policy_seed_metrics.csv",
@@ -468,8 +468,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 3725,
-      "sha256": "fcb92df71b6d37b4e6f2ba15846c668094cecc29d9823ea8fdc42ee6a4069ce5"
+      "bytes": 3733,
+      "sha256": "4aaa8c30f033db35b8bd5c3c3fdf48169e10f2b2d750a574009e64c1c9bac816"
     }
   ]
 }

@@ -22,7 +22,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Learned-ablation artifact: figure13_learned_ablation.png and learned_ablation.csv. Full-minus-no-mass property gain 0.1229166666666666.
 - Learned domain-shift artifact: figure23_learned_domain_shift.png and learned_domain_shift.csv. Minimum shifted property margin 0.125 and identity margin 0.4458333333333333.
 - Learned selection transfer artifact: figure28_learned_selection_transfer.png and learned_selection_metrics.csv. Identity+reward learned selector raw gain 0.6583388223801652 and identity-over-reward gain 0.3596642896057789.
-- Learned repair-policy artifact: figure31_learned_repair_policy_transfer.png and learned_repair_policy_metrics.csv. Policy-vs-raw gain 0.8234771981724383 and policy-vs-learned-identity gain 0.2252909624035247.
+- Learned repair-policy artifact: figure31_learned_repair_policy_transfer.png and learned_repair_policy_metrics.csv. Policy-vs-raw gain 0.8234771981724383 and policy-vs-learned-identity gain 0.2252909624035247; minimum learned-identity non-loss rate 0.65625 and worst learned-identity seed loss 0.1424497166038502.
 - Synthetic task-suite artifact: figure29_synthetic_benchmark_suite.png and synthetic_benchmark_metrics.csv. Combined-vs-raw gain 0.8161407808398964 and minimum combined variant utility 0.7999228162650984.
 - Deployment-policy artifact: figure30_deployment_gate_policy.png and deployment_policy_metrics.csv. Corrupted gate-vs-raw gain 0.7883015801574633 and corrupted gate-vs-stop-early gain 0.5368058036226959.
 - OOD artifact: figure14_ood_object_count_stress.png and ood_metrics.csv. Dense corrupted OOD combined-vs-raw gain 0.8411636120707556.
