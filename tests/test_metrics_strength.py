@@ -21,6 +21,7 @@ from object_centric_best_of_n.metrics import (
     sensitivity_summary,
     statistical_audit,
     stress_summary,
+    synthetic_benchmark_summary,
     target_identity_sweep_summary,
 )
 
@@ -159,6 +160,28 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert learned_selection[
         learned_selection["selector"] == "learned_identity_reward"
     ]["learned_identity_vs_reward_gain_mean"].iloc[0] > 0.0
+    synthetic_benchmark_df = pd.DataFrame(
+        [
+            {
+                **row,
+                "experiment": "Z_synthetic_task_suite",
+                "suite_variant": row["scenario"],
+                "n_objects": 6,
+                "occlusion_flag": 1,
+                "hidden_property_flag": 1,
+                "crossing_flag": 1,
+                "generator_scenario": "raw",
+                "target_id": 0,
+            }
+            for row in rows
+            if row["selector"] in {"raw", "observable_repair", "combined_repair", "random", "oracle"}
+        ]
+    )
+    synthetic_benchmark = synthetic_benchmark_summary(synthetic_benchmark_df)
+    assert "synthetic_benchmark_combined_vs_raw_gain_mean" in synthetic_benchmark.columns
+    assert synthetic_benchmark[
+        synthetic_benchmark["selector"] == "combined_repair"
+    ]["synthetic_benchmark_combined_win_rate"].iloc[0] == 1.0
     pilot = pilot_calibration_summary(df)
     assert "pilot_vs_raw_gain_mean" in pilot.columns
     assert pilot[pilot["selector"] == "pilot_calibrated"]["pilot_win_rate"].iloc[0] == 1.0
@@ -243,6 +266,7 @@ def test_paired_effects_and_stress_summary_are_computed():
         noisy_probe_seed_df=noisy_df,
         probe_cost_seed_df=probe_cost_df,
         learned_selection_seed_df=learned_selection_df,
+        synthetic_benchmark_seed_df=synthetic_benchmark_df,
         bootstrap_reps=50,
     )
     assert {"effect_id", "bootstrap_ci_low", "passes"}.issubset(stats.columns)
@@ -256,5 +280,7 @@ def test_paired_effects_and_stress_summary_are_computed():
     assert "target_sweep_observable_repair_gain" in set(stats["effect_id"])
     assert "learned_selection_identity_gain" in set(stats["effect_id"])
     assert "learned_selection_identity_over_reward_gain" in set(stats["effect_id"])
+    assert "synthetic_benchmark_combined_repair_gain" in set(stats["effect_id"])
+    assert "synthetic_benchmark_observable_repair_gain" in set(stats["effect_id"])
     assert "probe_cost_combined_repair_gain" in set(stats["effect_id"])
     assert "probe_cost_targeted_hidden_repair_gain" in set(stats["effect_id"])

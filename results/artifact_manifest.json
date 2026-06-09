@@ -1,10 +1,10 @@
 {
-  "artifact_count": 78,
+  "artifact_count": 81,
   "files": [
     {
       "path": "docs/results_digest.md",
-      "bytes": 3357,
-      "sha256": "35cf43a19a6ef2bdcf080f25d2c9bb5588eea06f6b6995f4952b1ec4b2fe2163"
+      "bytes": 3489,
+      "sha256": "b1ec0f3521f0565869fbd2182b458cbf1d1fd36c63559bf820c8e215e2af479e"
     },
     {
       "path": "figures/figure10_score_calibration.png",
@@ -38,8 +38,8 @@
     },
     {
       "path": "figures/figure16_statistical_audit.png",
-      "bytes": 215204,
-      "sha256": "34b8a71c74e2aacabe5e795e26a6f865f3e3ae312e1c149f4770ca34ee803ad9"
+      "bytes": 234122,
+      "sha256": "73b2fa54dc208440f4e078edad63b57f042ae25b598eb0f09a073378cfd7ed98"
     },
     {
       "path": "figures/figure17_observable_repair.png",
@@ -107,6 +107,11 @@
       "sha256": "c5e6dae52481067172574b733f0ce0f26dfc5941048e4c58ff0a61cce91bd467"
     },
     {
+      "path": "figures/figure29_synthetic_benchmark_suite.png",
+      "bytes": 78061,
+      "sha256": "abb7a0529c0eff6ac79cded86de2e13276a39f13ac784e90641b01f56fa378aa"
+    },
+    {
       "path": "figures/figure2_repair_comparison.png",
       "bytes": 127681,
       "sha256": "c38a8a82bf67c712505e841712175c4de77c7bf47cf20b54a593422603a48605"
@@ -163,8 +168,8 @@
     },
     {
       "path": "results/run_summary.json",
-      "bytes": 7510,
-      "sha256": "200284737a479cd0c38177b000420404daa3bfd470869352415cec5c94e9d35c"
+      "bytes": 8164,
+      "sha256": "6ba91e93e54892cd45ac00f1dacd76869d10f2088ae98dddcd83682f05eac4e2"
     },
     {
       "path": "results/tables/counterfactual_target_metrics.csv",
@@ -363,8 +368,8 @@
     },
     {
       "path": "results/tables/statistical_audit.csv",
-      "bytes": 4310,
-      "sha256": "b9cfee17402c14f0624ec09f88b0710702ee2281e0535f17115d71df9cf446db"
+      "bytes": 4726,
+      "sha256": "34c5aa6f936d484932187906c642532d09bae9d9cb2727ced0555020362e206b"
     },
     {
       "path": "results/tables/stress_metrics.csv",
@@ -375,6 +380,16 @@
       "path": "results/tables/stress_seed_metrics.csv",
       "bytes": 280054,
       "sha256": "2e123ddb510e0a26ac8e5a79fd947bf27a36d4bc4cc729e6bea1b32205d075e3"
+    },
+    {
+      "path": "results/tables/synthetic_benchmark_metrics.csv",
+      "bytes": 23901,
+      "sha256": "d28b23932814fbdad5d55becf44db48b9a1dc0ffdfcc61b025c5341a6d88a6e7"
+    },
+    {
+      "path": "results/tables/synthetic_benchmark_seed_metrics.csv",
+      "bytes": 332176,
+      "sha256": "75782cfc566f810640f2bef1240947b3c41b6171527d4658db890cc1091c06a1"
     },
     {
       "path": "results/tables/target_identity_sweep_metrics.csv",
@@ -388,8 +403,8 @@
     },
     {
       "path": "results/verification_log.json",
-      "bytes": 1957,
-      "sha256": "212f2e2abe332ec3e41bf5953938e772507c072d66487705f031c0b95f41d455"
+      "bytes": 2160,
+      "sha256": "95ac8f1f09f3d26795c2091378b08e72eb6832ac9ed94494da322c724131454e"
     }
   ]
 }

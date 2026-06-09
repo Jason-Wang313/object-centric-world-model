@@ -44,6 +44,10 @@ Response: `ood_metrics.csv` evaluates dense 6- and 8-object variants, including 
 
 Response: `domain_randomization_metrics.csv` evaluates a held-out randomized synthetic domain with varied object counts, occlusion, crossing, and hidden-property flags. The audit requires raw selection to remain unsafe while observable and combined repair recover utility on this randomized panel.
 
+## Attack: The stress tests are isolated cases rather than a suite.
+
+Response: `synthetic_benchmark_metrics.csv` adds a benchmark-style controlled synthetic task suite covering dense clutter, retargeted nonzero-object targets, crossing swaps, occlusion corridors, hidden-mass probing, merge/split clutter, and mixed raw scenes. The audit requires raw high-N selection to collapse across the suite while observable and combined repair recover utility with paired win rates and bootstrap lower-bound checks. This is still a synthetic suite, not a broad external benchmark.
+
 ## Attack: The target identity is hard-coded.
 
 Response: `retarget_scene` creates a counterfactual scene where the true target is object 1 rather than object 0, and the generator now chooses wrong identities relative to the scene target rather than a fixed object ID. `target_identity_sweep_metrics.csv` broadens this to six possible true target identities in 6-object scenes. `counterfactual_target_metrics.csv`, `target_identity_sweep_metrics.csv`, `figure19_counterfactual_target.png`, and `figure27_target_identity_sweep.png` require raw high-N selection to fail while observable and combined repair recover utility.

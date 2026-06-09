@@ -597,6 +597,33 @@ def figure28_learned_selection_transfer(learned_selection: pd.DataFrame, out: Pa
     _save(fig, out / "figure28_learned_selection_transfer.png")
 
 
+def figure29_synthetic_benchmark_suite(synthetic_benchmark: pd.DataFrame, out: Path) -> None:
+    if synthetic_benchmark.empty:
+        return
+    selectors = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
+    df = synthetic_benchmark[
+        (synthetic_benchmark["selector"].isin(selectors))
+        & (synthetic_benchmark["N"] == synthetic_benchmark["N"].max())
+    ]
+    if df.empty:
+        return
+    pivot = df.pivot_table(
+        index="scenario",
+        columns="selector",
+        values="selected_real_utility_mean",
+        aggfunc="mean",
+    ).reindex(columns=selectors)
+    fig, ax = plt.subplots(figsize=(9.6, 4.9))
+    pivot.plot(kind="bar", ax=ax, color=["#b23b3b", "#6f8f3c", "#3c7c5a", "#707070", "#2f6f9f"])
+    ax.set_xlabel("controlled synthetic task-suite variant")
+    ax.set_ylabel("mean selected real utility")
+    ax.set_title("Benchmark-style synthetic task suite")
+    ax.set_ylim(0.0, 1.02)
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    _save(fig, out / "figure29_synthetic_benchmark_suite.png")
+
+
 def write_all_figures(
     main: pd.DataFrame,
     seed_df: pd.DataFrame,
@@ -625,6 +652,7 @@ def write_all_figures(
     probe_cost_df: pd.DataFrame | None = None,
     learned_domain_shift_df: pd.DataFrame | None = None,
     learned_selection_df: pd.DataFrame | None = None,
+    synthetic_benchmark_df: pd.DataFrame | None = None,
 ) -> None:
     out = Path(figure_dir)
     figure1_selected_tail_binding_failure(main, out)
@@ -678,3 +706,5 @@ def write_all_figures(
         figure27_target_identity_sweep(target_sweep_df, out)
     if learned_selection_df is not None:
         figure28_learned_selection_transfer(learned_selection_df, out)
+    if synthetic_benchmark_df is not None:
+        figure29_synthetic_benchmark_suite(synthetic_benchmark_df, out)

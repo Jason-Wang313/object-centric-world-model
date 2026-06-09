@@ -40,6 +40,7 @@ from object_centric_best_of_n.metrics import (
     sensitivity_summary,
     statistical_audit,
     stress_summary,
+    synthetic_benchmark_summary,
     target_identity_sweep_summary,
 )
 from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
@@ -106,6 +107,16 @@ LEARNED_SELECTION_SELECTORS = [
     "combined_repair",
     "oracle",
 ]
+SYNTHETIC_BENCHMARK_VARIANTS = [
+    ("dense_clutter_raw", 9, True, True, True, "raw", 0),
+    ("retarget_green_hidden", 7, True, True, True, "raw", 2),
+    ("crossing_swap", 6, False, False, True, "swap", 0),
+    ("occlusion_corridor", 6, True, False, True, "occlusion", 0),
+    ("hidden_mass_probe", 6, False, True, False, "hidden_property", 0),
+    ("merge_split_clutter", 7, False, False, False, "merge_split", 0),
+    ("mixed_medium_raw", 5, True, True, True, "raw", 3),
+]
+SYNTHETIC_BENCHMARK_SELECTORS = ["raw", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_CALIBRATION_SELECTORS = ["raw", "pilot_calibrated", "observable_repair", "combined_repair", "random", "oracle"]
 PILOT_BUDGETS = [16, 32, 64, 128, 256, 512]
 NOISY_PROBE_RELIABILITIES = [0.55, 0.65, 0.75, 0.85, 0.90]
@@ -623,6 +634,63 @@ def _run_learned_selection_panel(
     return pd.DataFrame(rows)
 
 
+def _run_synthetic_benchmark_panel(
+    generator: ObjectCentricFutureGenerator,
+    benchmark_seeds: list[int],
+    n: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int | str]] = []
+    for seed in benchmark_seeds:
+        for (
+            variant_label,
+            n_objects,
+            occlusion,
+            hidden_property,
+            crossing,
+            generator_scenario,
+            target_id,
+        ) in SYNTHETIC_BENCHMARK_VARIANTS:
+            scene = make_scene(
+                seed=700_000 + seed * 37 + len(variant_label),
+                n_objects=n_objects,
+                occlusion=occlusion,
+                hidden_property=hidden_property,
+                crossing=crossing,
+            )
+            if target_id != scene.target_id:
+                scene = retarget_scene(scene, target_id=target_id)
+            candidates = generator.generate_candidates(
+                scene,
+                n=n,
+                scenario=generator_scenario,
+                seed=711_000 + seed * 997 + len(variant_label),
+            )
+            for selector_name in SYNTHETIC_BENCHMARK_SELECTORS:
+                selected = SELECTORS[selector_name](candidates, scene, seed=seed + n + len(variant_label))
+                record = selection_record(
+                    "Z_synthetic_task_suite",
+                    variant_label,
+                    selector_name,
+                    n,
+                    seed,
+                    selected,
+                    candidates,
+                )
+                record.update(
+                    {
+                        "suite_variant": variant_label,
+                        "n_objects": int(n_objects),
+                        "occlusion_flag": int(occlusion),
+                        "hidden_property_flag": int(hidden_property),
+                        "crossing_flag": int(crossing),
+                        "generator_scenario": generator_scenario,
+                        "target_id": int(scene.target_id),
+                    }
+                )
+                rows.append(record)
+    return pd.DataFrame(rows)
+
+
 def _pilot_training_candidates(
     generator: ObjectCentricFutureGenerator,
     train_seeds: list[int],
@@ -1080,6 +1148,13 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         n=max(ns),
     )
     learned_selection_metrics = learned_selection_summary(learned_selection_seed_df)
+    synthetic_benchmark_seeds = list(range(4)) if mode == "smoke" else list(range(32))
+    synthetic_benchmark_seed_df = _run_synthetic_benchmark_panel(
+        generator,
+        benchmark_seeds=synthetic_benchmark_seeds,
+        n=max(ns),
+    )
+    synthetic_benchmark_metrics = synthetic_benchmark_summary(synthetic_benchmark_seed_df)
     bootstrap_reps = 400 if mode == "smoke" else 2000
     statistical_metrics = statistical_audit(
         seed_df,
@@ -1094,6 +1169,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         noisy_probe_seed_df=noisy_probe_seed_df,
         probe_cost_seed_df=probe_cost_seed_df,
         learned_selection_seed_df=learned_selection_seed_df,
+        synthetic_benchmark_seed_df=synthetic_benchmark_seed_df,
         bootstrap_reps=bootstrap_reps,
         seed=240_001,
     )
@@ -1141,6 +1217,8 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     probe_cost_metrics.to_csv(tables / "probe_cost_metrics.csv", index=False)
     learned_selection_seed_df.to_csv(tables / "learned_selection_seed_metrics.csv", index=False)
     learned_selection_metrics.to_csv(tables / "learned_selection_metrics.csv", index=False)
+    synthetic_benchmark_seed_df.to_csv(tables / "synthetic_benchmark_seed_metrics.csv", index=False)
+    synthetic_benchmark_metrics.to_csv(tables / "synthetic_benchmark_metrics.csv", index=False)
     pilot_summary = {
         "mode": mode,
         "train_seeds": pilot_train_seeds,
@@ -1199,6 +1277,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         probe_cost_df=probe_cost_metrics,
         learned_domain_shift_df=learned_domain_shift,
         learned_selection_df=learned_selection_metrics,
+        synthetic_benchmark_df=synthetic_benchmark_metrics,
     )
     gate = deployment_gate_from_metrics(main)
     raw_tail = main[(main["scenario"] == "raw") & (main["selector"] == "raw")].sort_values("N")
@@ -1234,6 +1313,13 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
     learned_selection_reward = learned_selection_metrics[learned_selection_metrics["selector"] == "learned_reward"]
     learned_selection_identity = learned_selection_metrics[
         learned_selection_metrics["selector"] == "learned_identity_reward"
+    ]
+    synthetic_benchmark_raw = synthetic_benchmark_metrics[synthetic_benchmark_metrics["selector"] == "raw"]
+    synthetic_benchmark_combined = synthetic_benchmark_metrics[
+        synthetic_benchmark_metrics["selector"] == "combined_repair"
+    ]
+    synthetic_benchmark_observable = synthetic_benchmark_metrics[
+        synthetic_benchmark_metrics["selector"] == "observable_repair"
     ]
     ood_combined = ood_metrics[
         (ood_metrics["selector"] == "combined_repair")
@@ -1347,6 +1433,7 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "n_noisy_probe_rows": int(noisy_probe_seed_df.shape[0]),
         "n_probe_cost_rows": int(probe_cost_seed_df.shape[0]),
         "n_learned_selection_rows": int(learned_selection_seed_df.shape[0]),
+        "n_synthetic_benchmark_rows": int(synthetic_benchmark_seed_df.shape[0]),
         "deployment_gate": gate,
         "exact_law_mean_absolute_error": exact_law_prediction_error(law_df),
         "raw_tail_score_gain": raw_tail_score_gain,
@@ -1380,6 +1467,15 @@ def run(root: Path, mode: str, ns: list[int], seeds: list[int]) -> dict[str, obj
         "learned_selection_identity_vs_raw_gain": float(learned_selection_identity["learned_identity_vs_raw_gain_mean"].mean()) if not learned_selection_identity.empty else None,
         "learned_selection_identity_vs_reward_gain": float(learned_selection_identity["learned_identity_vs_reward_gain_mean"].mean()) if not learned_selection_identity.empty else None,
         "learned_selection_identity_min_win_rate": float(learned_selection_identity["learned_identity_win_rate"].min()) if not learned_selection_identity.empty else None,
+        "synthetic_benchmark_raw_mean_utility": float(synthetic_benchmark_raw["selected_real_utility_mean"].mean()) if not synthetic_benchmark_raw.empty else None,
+        "synthetic_benchmark_raw_mean_identity_error": float(synthetic_benchmark_raw["identity_error_mean"].mean()) if not synthetic_benchmark_raw.empty else None,
+        "synthetic_benchmark_combined_mean_utility": float(synthetic_benchmark_combined["selected_real_utility_mean"].mean()) if not synthetic_benchmark_combined.empty else None,
+        "synthetic_benchmark_observable_mean_utility": float(synthetic_benchmark_observable["selected_real_utility_mean"].mean()) if not synthetic_benchmark_observable.empty else None,
+        "synthetic_benchmark_combined_min_variant_utility": float(synthetic_benchmark_combined["selected_real_utility_mean"].min()) if not synthetic_benchmark_combined.empty else None,
+        "synthetic_benchmark_observable_min_variant_utility": float(synthetic_benchmark_observable["selected_real_utility_mean"].min()) if not synthetic_benchmark_observable.empty else None,
+        "synthetic_benchmark_combined_vs_raw_gain": float(synthetic_benchmark_combined["synthetic_benchmark_combined_vs_raw_gain_mean"].mean()) if not synthetic_benchmark_combined.empty else None,
+        "synthetic_benchmark_observable_vs_raw_gain": float(synthetic_benchmark_observable["synthetic_benchmark_observable_vs_raw_gain_mean"].mean()) if not synthetic_benchmark_observable.empty else None,
+        "synthetic_benchmark_combined_min_win_rate": float(synthetic_benchmark_combined["synthetic_benchmark_combined_win_rate"].min()) if not synthetic_benchmark_combined.empty else None,
         "ood_combined_mean_selected_utility": float(ood_combined["selected_real_utility_mean"].mean()) if not ood_combined.empty else None,
         "ood_raw_mean_selected_utility": float(ood_raw["selected_real_utility_mean"].mean()) if not ood_raw.empty else None,
         "ood_combined_vs_raw_gain": float(ood_combined["selected_real_utility_mean"].mean() - ood_raw["selected_real_utility_mean"].mean()) if not ood_combined.empty and not ood_raw.empty else None,

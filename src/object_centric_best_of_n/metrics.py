@@ -776,6 +776,54 @@ def learned_selection_summary(learned_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def synthetic_benchmark_summary(benchmark_seed_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate the benchmark-style controlled synthetic task suite."""
+
+    if benchmark_seed_df.empty:
+        return pd.DataFrame()
+    main = aggregate_seed_metrics(benchmark_seed_df)
+    paired = paired_selector_effects(benchmark_seed_df)
+    rows: list[pd.Series] = []
+    for _, group in main.groupby(["experiment", "scenario", "N"], sort=True):
+        raw = group[group["selector"] == "raw"]
+        combined = group[group["selector"] == "combined_repair"]
+        observable = group[group["selector"] == "observable_repair"]
+        oracle = group[group["selector"] == "oracle"]
+        raw_utility = float(raw["selected_real_utility_mean"].iloc[0]) if not raw.empty else float("nan")
+        combined_utility = (
+            float(combined["selected_real_utility_mean"].iloc[0]) if not combined.empty else float("nan")
+        )
+        observable_utility = (
+            float(observable["selected_real_utility_mean"].iloc[0]) if not observable.empty else float("nan")
+        )
+        oracle_utility = float(oracle["selected_real_utility_mean"].iloc[0]) if not oracle.empty else float("nan")
+        combined_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "combined_repair")
+        ]
+        observable_pair = paired[
+            (paired["scenario"] == group["scenario"].iloc[0])
+            & (paired["N"] == group["N"].iloc[0])
+            & (paired["selector"] == "observable_repair")
+        ]
+        for _, row in group.iterrows():
+            out = row.copy()
+            out["suite_variant"] = row["scenario"]
+            out["synthetic_benchmark_combined_vs_raw_gain_mean"] = combined_utility - raw_utility
+            out["synthetic_benchmark_observable_vs_raw_gain_mean"] = observable_utility - raw_utility
+            out["synthetic_benchmark_combined_oracle_gap_mean"] = oracle_utility - combined_utility
+            out["synthetic_benchmark_observable_oracle_gap_mean"] = oracle_utility - observable_utility
+            out["synthetic_benchmark_combined_win_rate"] = (
+                float(combined_pair["win_rate"].iloc[0]) if not combined_pair.empty else float("nan")
+            )
+            out["synthetic_benchmark_observable_win_rate"] = (
+                float(observable_pair["win_rate"].iloc[0]) if not observable_pair.empty else float("nan")
+            )
+            rows.append(out)
+    return pd.DataFrame(rows)
+
+
 def pilot_calibration_summary(pilot_seed_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate held-out pilot-label calibration rows."""
 
@@ -1099,6 +1147,7 @@ def statistical_audit(
     noisy_probe_seed_df: pd.DataFrame | None = None,
     probe_cost_seed_df: pd.DataFrame | None = None,
     learned_selection_seed_df: pd.DataFrame | None = None,
+    synthetic_benchmark_seed_df: pd.DataFrame | None = None,
     bootstrap_reps: int = 2000,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -1434,6 +1483,35 @@ def statistical_audit(
             "Learned identity+reward selector selected-utility gain over learned reward-only selector.",
             identity_merged["learned"] - identity_merged["reward"],
             threshold=0.12,
+        )
+
+    if synthetic_benchmark_seed_df is not None and not synthetic_benchmark_seed_df.empty:
+        n_max = int(synthetic_benchmark_seed_df["N"].max())
+        base = synthetic_benchmark_seed_df[
+            (synthetic_benchmark_seed_df["selector"] == "raw")
+            & (synthetic_benchmark_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "baseline"})
+        combined = synthetic_benchmark_seed_df[
+            (synthetic_benchmark_seed_df["selector"] == "combined_repair")
+            & (synthetic_benchmark_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "combined"})
+        combined_merged = combined.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "synthetic_benchmark_combined_repair_gain",
+            "Benchmark-style synthetic task-suite combined repair selected-utility gain over raw.",
+            combined_merged["combined"] - combined_merged["baseline"],
+            threshold=0.55,
+        )
+        observable = synthetic_benchmark_seed_df[
+            (synthetic_benchmark_seed_df["selector"] == "observable_repair")
+            & (synthetic_benchmark_seed_df["N"] == n_max)
+        ][["scenario", "seed", "selected_real_utility"]].rename(columns={"selected_real_utility": "observable"})
+        observable_merged = observable.merge(base, on=["scenario", "seed"], how="inner")
+        add_row(
+            "synthetic_benchmark_observable_repair_gain",
+            "Benchmark-style synthetic task-suite observable-only repair selected-utility gain over raw.",
+            observable_merged["observable"] - observable_merged["baseline"],
+            threshold=0.50,
         )
 
     return pd.DataFrame(rows)

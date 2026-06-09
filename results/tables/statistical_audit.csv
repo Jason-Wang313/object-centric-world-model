@@ -22,3 +22,5 @@ probe_cost_observable_repair_gain,Probe-cost-adjusted observable_repair selected
 probe_cost_targeted_hidden_repair_gain,Probe-cost-adjusted targeted_probe selected-utility gain over raw for cost <= 0.10.,0.7036355640826374,0.6744246394423294,0.732055550641455,0.35,lower,192,True
 learned_selection_identity_gain,Learned identity+reward selector selected-utility gain over raw.,0.6583388223801651,0.6177346559843349,0.6965478861027736,0.35,lower,224,True
 learned_selection_identity_over_reward_gain,Learned identity+reward selector selected-utility gain over learned reward-only selector.,0.3596642896057789,0.30997998473958316,0.40900935898510027,0.12,lower,224,True
+synthetic_benchmark_combined_repair_gain,Benchmark-style synthetic task-suite combined repair selected-utility gain over raw.,0.8161407808398964,0.8060868568135443,0.8251289998427028,0.55,lower,224,True
+synthetic_benchmark_observable_repair_gain,Benchmark-style synthetic task-suite observable-only repair selected-utility gain over raw.,0.8160747948047941,0.8060267215294855,0.8257909501363213,0.5,lower,224,True

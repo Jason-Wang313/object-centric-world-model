@@ -17,11 +17,11 @@ Strength: {
 ## C2: strongly_supported
 In controlled object-centric scenes, high-N selection can increase object score while real utility stagnates or falls due to binding failures.
 
-Evidence: figure1, figure14, figure24, figure27, main_metrics.csv, ood_metrics.csv, extreme_object_count_metrics.csv, and target_identity_sweep_metrics.csv
+Evidence: figure1, figure14, figure24, figure27, figure29, main_metrics.csv, ood_metrics.csv, extreme_object_count_metrics.csv, target_identity_sweep_metrics.csv, and synthetic_benchmark_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD, extreme 10/12-object, and target-identity-sweep corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
+  "threshold": "raw high-N score gain >= 0.35, utility drop >= 0.15, tail identity error >= 0.75, all seed blocks pass reduced thresholds, top raw-score calibration bin has gap >= 0.45 with identity error >= 0.55, good negative controls avoid collapse, dense OOD, extreme 10/12-object, target-identity-sweep, and benchmark-style synthetic task-suite corrupted variants collapse, and bootstrap lower bounds for raw score gain and utility drop pass",
   "observed": {
     "raw_tail_score_gain": 0.5759192453426587,
     "raw_tail_utility_drop": 0.3639708878079679,
@@ -42,6 +42,8 @@ Strength: {
     "extreme_corrupted_raw_identity_error": 0.9722222222222222,
     "target_sweep_raw_mean_utility": 0.00010916652326023332,
     "target_sweep_raw_identity_error": 1.0,
+    "synthetic_benchmark_raw_mean_utility": 0.019333590390072087,
+    "synthetic_benchmark_raw_identity_error": 0.9821428571428571,
     "bootstrap_raw_tail_min_ci_margin": 0.0829473068486257
   }
 }
@@ -49,11 +51,11 @@ Strength: {
 ## C3: strongly_supported
 Identity, hidden-property, and targeted-probe repairs improve selected utility in the controlled synthetic setting.
 
-Evidence: figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv
+Evidence: figure2, figure4, figure19, figure20, figure21, figure22, figure24, figure25, figure26, figure27, figure29, paired_effects.csv, stress_metrics.csv, counterfactual_target_metrics.csv, target_identity_sweep_metrics.csv, synthetic_benchmark_metrics.csv, pilot_calibration_metrics.csv, pilot_budget_metrics.csv, leave_one_failure_metrics.csv, noisy_probe_metrics.csv, probe_cost_metrics.csv, and extreme_object_count_metrics.csv
 
 Strength: {
   "passes": true,
-  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap and multi-target identity-sweep stress succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
+  "threshold": "combined raw Nmax gain >= 0.55 with win-rate >= 0.75, targeted hidden-property gain >= 0.12, stress combined mean >= 0.75 and min >= 0.80, raw ablation dominance >= 0.20 with oracle gap <= 0.08, observable-only repair beats raw and remains close to controlled combined repair, all seed blocks repair, combined repair remains strong under score noise <= 0.10, dense OOD and extreme 10/12-object repair succeed, held-out domain-randomized stress succeeds, counterfactual target-swap, multi-target identity-sweep, and benchmark-style synthetic task-suite stress succeed, held-out pilot-label calibration and pilot-label budget sensitivity succeed, leave-one-failure-out pilot calibration succeeds, noisy diagnostic-probe repair succeeds for reliability >= 0.75, combined and observable repair remain beneficial under diagnostic costs <= 0.10 while targeted probing remains beneficial for hidden-property scenes, high-cost margins remain positive, controlled toy model-family proxy comparison has mean margin >= 0.20 with every scenario positive by >= 0.05 and max oracle gap <= 0.12, and bootstrap lower bounds for key repair gains pass",
   "observed": {
     "combined_raw_nmax_gain": 0.8803086375224858,
     "combined_raw_nmax_win_rate": 1.0,
@@ -98,6 +100,14 @@ Strength: {
     "target_sweep_combined_vs_raw_gain": 0.8102272022985341,
     "target_sweep_observable_vs_raw_gain": 0.8117477875240109,
     "target_sweep_combined_min_win_rate": 1.0,
+    "synthetic_benchmark_raw_mean_utility": 0.019333590390072087,
+    "synthetic_benchmark_combined_mean_utility": 0.8354743712299684,
+    "synthetic_benchmark_combined_min_variant_utility": 0.7999228162650984,
+    "synthetic_benchmark_observable_mean_utility": 0.8354083851948663,
+    "synthetic_benchmark_observable_min_variant_utility": 0.7945616741476109,
+    "synthetic_benchmark_combined_vs_raw_gain": 0.8161407808398964,
+    "synthetic_benchmark_observable_vs_raw_gain": 0.8160747948047943,
+    "synthetic_benchmark_combined_min_win_rate": 1.0,
     "pilot_calibrated_mean_utility": 0.827787343785161,
     "pilot_calibrated_min_utility": 0.7851225988354029,
     "pilot_calibrated_vs_raw_gain": 0.8192029444060406,
@@ -179,6 +189,6 @@ Evidence: no broad benchmark suite is present
 Strength: {}
 
 
-Artifact verification checked 79 required artifacts.
+Artifact verification checked 82 required artifacts.
 
 No paper-text or artifact overclaim problems detected.
