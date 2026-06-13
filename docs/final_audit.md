@@ -40,7 +40,7 @@ Paper-readiness judgment: paper-worthy v1 for controlled synthetic evidence; nee
 - Paper-claim coverage artifact: docs/paper_claim_coverage.md, results/paper_claim_coverage.json, and paper_claim_coverage.csv. Positive paper claims map to C1-C4; real-robot and broad-benchmark rows are boundary nonclaims.
 
 ## Differentiation
-The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.
+The repo reuses the finite score-tail law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.
 The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.
 
 ## Remaining Weaknesses
@@ -143,8 +143,8 @@ The toy proxy panel is a controlled diagnostic comparison, not a graph-physics b
 - figures\figure9_seed_block_robustness.png
 ### docs
 - docs\claims.md
-- docs\differentiation_from_best_of_n_wam.md
 - docs\differentiation_from_prior_projects.md
+- docs\differentiation_from_wam.md
 - docs\final_audit.md
 - docs\paper_claim_coverage.md
 - docs\results_digest.md

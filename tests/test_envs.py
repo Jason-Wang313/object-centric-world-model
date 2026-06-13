@@ -1,7 +1,7 @@
 import numpy as np
 
-from object_centric_best_of_n.envs import make_scene, observe_slots, retarget_scene, trajectory
-from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
+from object_binding_tail_audit.envs import make_scene, observe_slots, retarget_scene, trajectory
+from object_binding_tail_audit.object_model import ObjectCentricFutureGenerator
 
 
 def test_scene_exposes_identity_occlusion_hidden_property_and_crossing():

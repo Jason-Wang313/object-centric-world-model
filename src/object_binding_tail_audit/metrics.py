@@ -1,4 +1,4 @@
-"""Metrics and aggregation helpers for object-centric Best-of-N experiments."""
+"""Metrics and aggregation helpers for object-centric score-tail experiments."""
 
 from __future__ import annotations
 
@@ -972,7 +972,7 @@ def target_identity_sweep_summary(target_seed_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def learned_selection_summary(learned_seed_df: pd.DataFrame) -> pd.DataFrame:
-    """Aggregate learned reward and learned identity-reward Best-of-N selectors."""
+    """Aggregate learned reward and learned identity-reward score-tail selectors."""
 
     if learned_seed_df.empty:
         return pd.DataFrame()

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from object_centric_best_of_n.metrics import (
+from object_binding_tail_audit.metrics import (
     aggregate_seed_metrics,
     calibration_diagnostics_summary,
     counterfactual_target_summary,

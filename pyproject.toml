@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "object-centric-best-of-n"
+name = "object-binding-tail-audit"
 version = "0.1.0"
-description = "CPU-first synthetic evidence for Best-of-N inference laws in object-centric world models."
+description = "CPU-first synthetic evidence for score-tail object-binding audits in object-centric world models."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

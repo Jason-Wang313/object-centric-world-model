@@ -1,8 +1,8 @@
 import json
 
-from object_centric_best_of_n.envs import make_scene
-from object_centric_best_of_n.learned_model import learned_candidate_scores, train_and_evaluate
-from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
+from object_binding_tail_audit.envs import make_scene
+from object_binding_tail_audit.learned_model import learned_candidate_scores, train_and_evaluate
+from object_binding_tail_audit.object_model import ObjectCentricFutureGenerator
 
 
 def test_learned_model_improves_over_simple_baselines(tmp_path):

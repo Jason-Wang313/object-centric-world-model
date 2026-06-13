@@ -1,4 +1,4 @@
-"""Object-centric Best-of-N synthetic research package."""
+"""Object-centric score-tail synthetic research package."""
 
 __all__ = [
     "theory",

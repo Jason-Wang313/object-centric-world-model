@@ -54,7 +54,7 @@ This digest is generated from the current result artifacts.
 - Reward correlation: 0.953061460933608
 
 ## Claim Status
-- C1: strongly_supported - Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations.
+- C1: strongly_supported - Exact finite tie-aware score-tail laws predict selected utility on finite object-candidate populations.
 - C2: strongly_supported - In controlled object-centric scenes, high-N selection can increase object score while real utility stagnates or falls due to binding failures.
 - C3: partial - Pilot-label calibrated lower-confidence selection reduces selected-tail hallucination in controlled support-covered regimes, with no-leak deployable evidence separated from support-covered probes and oracle upper bounds.
 - C4: strongly_supported - A CPU NumPy semi-learned object-centric model improves property, identity-alignment, and transition prediction over simple baselines on generated trajectories.

@@ -1,4 +1,4 @@
-"""Run controlled object-centric Best-of-N experiments."""
+"""Run controlled object-centric score-tail experiments."""
 
 from __future__ import annotations
 
@@ -14,10 +14,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import numpy as np
 import pandas as pd
 
-from object_centric_best_of_n.audit import write_claim_status, write_final_audit
-from object_centric_best_of_n.envs import make_scene, retarget_scene
-from object_centric_best_of_n.learned_model import learned_candidate_scores, train_and_evaluate
-from object_centric_best_of_n.metrics import (
+from object_binding_tail_audit.audit import write_claim_status, write_final_audit
+from object_binding_tail_audit.envs import make_scene, retarget_scene
+from object_binding_tail_audit.learned_model import learned_candidate_scores, train_and_evaluate
+from object_binding_tail_audit.metrics import (
     add_repair_metadata,
     aggregate_seed_metrics,
     calibration_diagnostics_summary,
@@ -49,9 +49,9 @@ from object_centric_best_of_n.metrics import (
     synthetic_benchmark_summary,
     target_identity_sweep_summary,
 )
-from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
-from object_centric_best_of_n.plotting import write_all_figures
-from object_centric_best_of_n.repair import (
+from object_binding_tail_audit.object_model import ObjectCentricFutureGenerator
+from object_binding_tail_audit.plotting import write_all_figures
+from object_binding_tail_audit.repair import (
     combined_repair_score,
     conservative_selected_tail_stop_rule,
     empty_pilot_calibrator,
@@ -64,8 +64,8 @@ from object_centric_best_of_n.repair import (
     property_prior_from_candidate,
     temporal_identity_consistency,
 )
-from object_centric_best_of_n.selection import SELECTORS
-from object_centric_best_of_n.theory import law_validation_row
+from object_binding_tail_audit.selection import SELECTORS
+from object_binding_tail_audit.theory import law_validation_row
 
 
 SCENARIOS = ["good", "swap", "merge_split", "occlusion", "hidden_property", "raw"]

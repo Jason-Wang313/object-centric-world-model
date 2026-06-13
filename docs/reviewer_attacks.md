@@ -44,7 +44,7 @@ Response: The upgraded run reports paired per-seed gains in `paired_effects.csv`
 
 Response: `score_calibration.csv` bins raw candidate object scores and measures real utility, object-real gap, and identity-error rate. `sensitivity_metrics.csv` perturbs raw and repaired scores with score noise and requires the combined repair to remain strong under low-noise perturbations.
 
-## Attack: Best-of-N may just be bad in every synthetic scene.
+## Attack: score-tail may just be bad in every synthetic scene.
 
 Response: `negative_control.csv` compares the good non-corrupted setting with corrupted high-N settings. The audit requires the good control to retain utility and low identity error while corrupted settings collapse.
 
@@ -80,9 +80,9 @@ Response: The learned artifact is intentionally CPU NumPy and semi-learned. It n
 
 Response: `learned_ablation.csv` removes object-relevant features such as the mass sensor and identity-pair features, while `learned_domain_shift.csv` tests held-out denser and more occluded object scenes. The audit requires the full object-feature model to beat these ablations and retain margins on shifted synthetic variants.
 
-## Attack: The learned model is disconnected from Best-of-N selection.
+## Attack: The learned model is disconnected from score-tail selection.
 
-Response: `learned_selection_metrics.csv` uses the CPU NumPy reward and identity-alignment heads to score held-out candidate futures under Best-of-N selection. The reward-only learned selector is reported separately, and the audit requires the identity+reward learned selector to beat raw selection, beat reward-only selection, satisfy paired win-rate thresholds, and pass bootstrap lower-bound checks. This remains controlled synthetic transfer evidence, not a benchmark claim.
+Response: `learned_selection_metrics.csv` uses the CPU NumPy reward and identity-alignment heads to score held-out candidate futures under score-tail selection. The reward-only learned selector is reported separately, and the audit requires the identity+reward learned selector to beat raw selection, beat reward-only selection, satisfy paired win-rate thresholds, and pass bootstrap lower-bound checks. This remains controlled synthetic transfer evidence, not a benchmark claim.
 
 ## Attack: The learned model is disconnected from the repair stack.
 

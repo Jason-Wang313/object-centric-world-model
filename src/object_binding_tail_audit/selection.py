@@ -1,4 +1,4 @@
-"""Best-of-N selectors for object-centric candidates."""
+"""score-tail selectors for object-centric candidates."""
 
 from __future__ import annotations
 

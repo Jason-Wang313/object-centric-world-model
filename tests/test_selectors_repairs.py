@@ -1,6 +1,6 @@
-from object_centric_best_of_n.envs import make_scene
-from object_centric_best_of_n.object_model import ObjectCentricFutureGenerator
-from object_centric_best_of_n.repair import (
+from object_binding_tail_audit.envs import make_scene
+from object_binding_tail_audit.object_model import ObjectCentricFutureGenerator
+from object_binding_tail_audit.repair import (
     GATE_ACTIONS,
     brute_force_slot_alignment,
     conservative_selected_tail_stop_rule,
@@ -10,7 +10,7 @@ from object_centric_best_of_n.repair import (
     property_posterior_update,
     targeted_diagnostic_probe,
 )
-from object_centric_best_of_n.selection import SELECTORS
+from object_binding_tail_audit.selection import SELECTORS
 
 
 def _candidates():

@@ -5,7 +5,7 @@
 - Object scenes expose identities, occlusion, hidden properties, dropout, and merge/split artifacts.
 - Learned CPU artifact writes summary, metrics, identity-alignment evidence, and learning curves.
 - Learned CPU artifact writes held-out dense/occluded/crossing synthetic domain-shift metrics.
-- Learned CPU artifact writes learned Best-of-N selection transfer metrics.
+- Learned CPU artifact writes learned top-score selection transfer metrics.
 - Paired seed gains and high-N stress metrics are generated.
 - Repair ablation and seed-block robustness metrics are generated.
 - Score calibration and score-noise sensitivity metrics are generated.

@@ -2,7 +2,7 @@
   "claims": [
     {
       "id": "C1",
-      "claim": "Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations.",
+      "claim": "Exact finite tie-aware score-tail laws predict selected utility on finite object-candidate populations.",
       "status": "strongly_supported",
       "evidence": "theory tests and exact_law_validation.csv",
       "strength": {
@@ -228,12 +228,12 @@
         "claim_id": "C1",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/theory.md;docs/theory.md",
-        "location_anchor_terms": "best-of-n|tie-aware|selected utility|law",
+        "location_anchor_terms": "score-tail|tie-aware|selected utility|law",
         "coverage_note": "Exact finite tie-aware law is a positive paper claim.",
         "audit_status": "strongly_supported",
         "coverage_status": "covered_strongly",
         "locations_verified": true,
-        "claim_text": "Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations."
+        "claim_text": "Exact finite tie-aware score-tail laws predict selected utility on finite object-candidate populations."
       },
       {
         "claim_id": "C2",

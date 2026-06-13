@@ -1,6 +1,6 @@
 # Differentiation From Prior Projects
 
-This project is not a graph physics benchmark. Graph physics models usually ask whether relational inductive bias improves physical prediction. Here the question is how Best-of-N selection changes the tail of object-centric world-model candidates when slots and identities can lie.
+This project is not a graph physics benchmark. Graph physics models usually ask whether relational inductive bias improves physical prediction. Here the question is how score-tail selection changes the tail of object-centric world-model candidates when slots and identities can lie.
 
 This project is not a latent dynamics benchmark. Latent dynamics projects often evaluate aggregate prediction or control quality in a learned state space. Here the measured failure is object-level: the selected future can bind the wrong object, lose identity through occlusion, or select an impossible hidden-property assumption.
 

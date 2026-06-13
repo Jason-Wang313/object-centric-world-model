@@ -1,6 +1,6 @@
-# When Objects Lie: Best-of-N Inference Laws for Object-Centric World Models
+# Object Slots Under Selection Pressure: A Score-Tail Audit for Object-Centric World Models
 
-This repository is a CPU-first research scaffold for studying how Best-of-N inference behaves when the scored futures are object-centric: slots, identities, occlusion, hidden properties, binding failures, and object-specific repair all matter.
+This repository is a CPU-first research scaffold for studying how score-tail selection behaves when the scored futures are object-centric: slots, identities, occlusion, hidden properties, binding failures, and object-specific repair all matter.
 
 The core thesis is narrow: in controlled object-centric scenes, selecting the highest-scoring imagined future can amplify object binding errors, so selected object score can rise while selected real utility stagnates or falls. The repo also tests simple repairs: temporal identity consistency, hidden-property calibration, targeted probing, an observable-only repair score, and a combined repair stack.
 
@@ -17,7 +17,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 
 ## What This Is
 
-- A finite tie-aware Best-of-N law implementation for real and binary utility.
+- A finite tie-aware score-tail law implementation for real and binary utility.
 - A synthetic 2D object manipulation environment with visually similar target/distractor objects.
 - An object-centric future generator with slots, identities, hidden properties, trajectories, and failure diagnostics.
 - A NumPy semi-learned object-centric model trained on generated slot trajectories.
@@ -49,7 +49,7 @@ The full run writes CSV tables under `results/tables/`, figures under `figures/`
 
 This is not a graph physics benchmark, not a diffusion world-model benchmark, not a latent dynamics benchmark, and not a real-robot evaluation. The evidence is controlled and synthetic unless the artifact explicitly says otherwise.
 
-The project borrows only the abstract finite Best-of-N law pattern and audit discipline from WAM-style work. It does not reuse WAM environments, failure modes, package names, or claims. Here the scientific object is object binding under object-centric world-model inference.
+The project borrows only the abstract finite score-tail law pattern and audit discipline from WAM-style work. It does not reuse WAM environments, failure modes, package names, or claims. Here the scientific object is object binding under object-centric world-model inference.
 
 ## Required Outputs
 

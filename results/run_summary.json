@@ -251,5 +251,5 @@
     "n_test_slots": 480
   },
   "passes_claim_audit": true,
-  "runtime_seconds": 1740.697
+  "runtime_seconds": 1516.492
 }

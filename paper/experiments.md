@@ -50,7 +50,7 @@ Experiment W reports pilot-label budget sensitivity: the pilot utility calibrato
 
 Experiment X reports target-identity sweep stress: the true target is retargeted across six object IDs in 6-object raw-corrupted scenes, testing whether raw collapse and repair recovery depend on a fixed target identity.
 
-Experiment Y reports learned selection transfer: the CPU NumPy reward and identity-alignment heads score held-out candidate futures under Best-of-N selection, with reward-only and identity+reward learned selectors reported separately.
+Experiment Y reports learned selection transfer: the CPU NumPy reward and identity-alignment heads score held-out candidate futures under score-tail selection, with reward-only and identity+reward learned selectors reported separately.
 
 Experiment Z reports a benchmark-style controlled synthetic task suite over dense clutter, retargeted nonzero-object targets, crossing swaps, occlusion corridors, hidden-mass probing, merge/split clutter, and mixed raw scenes.
 

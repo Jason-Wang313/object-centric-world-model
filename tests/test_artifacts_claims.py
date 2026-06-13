@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from object_centric_best_of_n.audit import (
+from object_binding_tail_audit.audit import (
     audit_repair_leakage,
     claim_inventory,
     paper_claim_coverage,
@@ -21,7 +21,7 @@ def test_required_docs_paper_and_readme_exist():
         "README.md",
         "docs/theory.md",
         "docs/claims.md",
-        "docs/differentiation_from_best_of_n_wam.md",
+        "docs/differentiation_from_wam.md",
         "docs/differentiation_from_prior_projects.md",
         "docs/reviewer_attacks.md",
         "docs/final_audit.md",

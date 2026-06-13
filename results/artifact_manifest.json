@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "docs/final_audit.md",
-      "bytes": 15041,
-      "sha256": "9919f197af03cff5935eef18c45dca7c12a6078ee8ede3a1cbf095c6fa9ad958"
+      "bytes": 15032,
+      "sha256": "b608dde5de6d50dfb2de70e1ccc809b4145152d834ea73aaa5d7d26a68b08211"
     },
     {
       "path": "docs/paper_claim_coverage.md",
@@ -13,8 +13,8 @@
     },
     {
       "path": "docs/results_digest.md",
-      "bytes": 4278,
-      "sha256": "b3ddc6aff3c2bdfaf835244862fa7044f3cfa81b1018dc399cbeb29fd7c701b3"
+      "bytes": 4279,
+      "sha256": "89661c7079323d7ead3e4f403f037d29628007f47d8cd272aff1e4f11f77618b"
     },
     {
       "path": "figures/figure10_repair_robustness.png",
@@ -73,8 +73,8 @@
     },
     {
       "path": "figures/figure1_selected_tail_binding_failure.png",
-      "bytes": 60755,
-      "sha256": "b55d827b67972b639b039fc9d30220ce936d42bbfa876e0bd008ed9cfba84f1e"
+      "bytes": 60734,
+      "sha256": "4bc692adbc43b770d22276e9b2edda432d248eee6e9cf1a0e75070100be5e6a1"
     },
     {
       "path": "figures/figure20_pilot_calibration.png",
@@ -128,8 +128,8 @@
     },
     {
       "path": "figures/figure2_repair_comparison.png",
-      "bytes": 127681,
-      "sha256": "c38a8a82bf67c712505e841712175c4de77c7bf47cf20b54a593422603a48605"
+      "bytes": 127668,
+      "sha256": "c40cded19abd6cc45a2d74b974657a9dca53f4248e589abe8b587cf14640012a"
     },
     {
       "path": "figures/figure30_deployment_gate_policy.png",
@@ -143,13 +143,13 @@
     },
     {
       "path": "figures/figure3_tail_diagnostics.png",
-      "bytes": 76357,
-      "sha256": "8482f268cf03196332019c85b24cda2f8f526ddf766f05e2ea5accbfc96bafad"
+      "bytes": 76340,
+      "sha256": "6c7e56781c1ff73acca06e8d37e579c2170a2c8115d8b806a5717e725cc9c0ed"
     },
     {
       "path": "figures/figure4_targeted_probe_before_after.png",
-      "bytes": 63709,
-      "sha256": "40ab48eacd6186aff6527925bf9fe43c97774c217838a294ca6209f6430bce36"
+      "bytes": 63695,
+      "sha256": "09ac43bac25bcc504d087b5dcc1052cd6a080d6370630fa0b4d85169809e17ac"
     },
     {
       "path": "figures/figure5_exact_law_validation.png",
@@ -178,13 +178,13 @@
     },
     {
       "path": "results/claims_status.json",
-      "bytes": 19769,
-      "sha256": "6df3ca6cfd38899d6a6d9fb28d3544c6182be117d6d2ede8f6c309a5448dfd67"
+      "bytes": 19772,
+      "sha256": "c8d4247e29040880bc7b7b1b19a87742306b8c119d25f3e467b427f9553065da"
     },
     {
       "path": "results/claims_status.md",
-      "bytes": 13585,
-      "sha256": "dfc50c45ae43bedaa358f9468ed34bfa3b8a34f1dcc07d94f36f180670990f34"
+      "bytes": 13586,
+      "sha256": "9f8c2e5e67cd2cc63ea2ccd36d00e21dee3c8be4d2ef8af54498c3f087967a07"
     },
     {
       "path": "results/learned_object_model_summary.json",
@@ -203,8 +203,8 @@
     },
     {
       "path": "results/paper_claim_coverage.json",
-      "bytes": 4431,
-      "sha256": "97a416888cc2d52efe71560b352ae3b2ad1da697bb285757bac2f583ccbe6139"
+      "bytes": 4433,
+      "sha256": "5b4a014f46565c8eec419f7b2f01ce6864b135ea515251e3838c074729ecc928"
     },
     {
       "path": "results/pilot_budget_summary.json",
@@ -224,7 +224,7 @@
     {
       "path": "results/run_summary.json",
       "bytes": 11089,
-      "sha256": "e53c5fe260199b04b9ea1f5d7b9a6b0aa046710e6f96445cb838cff1f776dafb"
+      "sha256": "b87786c0623c68207fba96d0ce86837e45b62cab2bdc9ab16c1bcf3bac050303"
     },
     {
       "path": "results/tables/calibration_diagnostics.csv",
@@ -383,8 +383,8 @@
     },
     {
       "path": "results/tables/paper_claim_coverage.csv",
-      "bytes": 2555,
-      "sha256": "1215662fc19edf5422cf82ce27a0c2fec527adc364c05723a702574f9ffd2e7c"
+      "bytes": 2557,
+      "sha256": "852225be4b535c957802b78a2902e3e5dd65ba11a77cef912237c63b40a19f18"
     },
     {
       "path": "results/tables/pilot_budget_metrics.csv",

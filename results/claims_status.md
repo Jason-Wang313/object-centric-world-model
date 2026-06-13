@@ -1,7 +1,7 @@
 # Claims Status
 
 ## C1: strongly_supported
-Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations.
+Exact finite tie-aware score-tail laws predict selected utility on finite object-candidate populations.
 
 Evidence: theory tests and exact_law_validation.csv
 

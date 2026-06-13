@@ -1,4 +1,4 @@
-"""Finite tie-aware Best-of-N selection laws.
+"""Finite tie-aware score-tail selection laws.
 
 The law here is intentionally generic: a finite candidate population is sampled
 with replacement, the candidate with maximal score is selected, and exact ties
@@ -80,10 +80,10 @@ def selected_tie_groups(
     return groups
 
 
-def exact_best_of_n_expected_utility(
+def exact_score_tail_expected_utility(
     utilities: Iterable[float], scores: Iterable[float] | None = None, n: int = 1
 ) -> float:
-    """Return the exact expected real utility selected by Best-of-N."""
+    """Return the exact expected real utility selected by score-tail."""
 
     groups = selected_tie_groups(utilities, scores=scores, n=n)
     return float(sum(group.probability * group.mean_utility for group in groups))
@@ -97,7 +97,7 @@ def exact_binary_expected_success(
     success_arr = _as_1d_float(successes, "successes")
     if not np.all((success_arr == 0.0) | (success_arr == 1.0)):
         raise ValueError("successes must be binary 0/1 values")
-    return exact_best_of_n_expected_utility(success_arr, scores=scores, n=n)
+    return exact_score_tail_expected_utility(success_arr, scores=scores, n=n)
 
 
 def expected_curve(
@@ -107,10 +107,10 @@ def expected_curve(
 ) -> dict[int, float]:
     """Compute exact selected utility for several N values."""
 
-    return {int(n): exact_best_of_n_expected_utility(utilities, scores, int(n)) for n in ns}
+    return {int(n): exact_score_tail_expected_utility(utilities, scores, int(n)) for n in ns}
 
 
-def monte_carlo_best_of_n(
+def monte_carlo_score_tail_selection(
     utilities: Iterable[float],
     scores: Iterable[float] | None = None,
     n: int = 1,
@@ -146,7 +146,7 @@ def oracle_score_check(utilities: Iterable[float], n: int = 8) -> dict[str, floa
 
     utility_arr = _as_1d_float(utilities, "utilities")
     random_mean = float(np.mean(utility_arr))
-    oracle_mean = exact_best_of_n_expected_utility(utility_arr, utility_arr, n=n)
+    oracle_mean = exact_score_tail_expected_utility(utility_arr, utility_arr, n=n)
     return {
         "random_mean": random_mean,
         "oracle_mean": oracle_mean,
@@ -159,7 +159,7 @@ def anti_aligned_score_check(utilities: Iterable[float], n: int = 8) -> dict[str
 
     utility_arr = _as_1d_float(utilities, "utilities")
     random_mean = float(np.mean(utility_arr))
-    anti_mean = exact_best_of_n_expected_utility(utility_arr, -utility_arr, n=n)
+    anti_mean = exact_score_tail_expected_utility(utility_arr, -utility_arr, n=n)
     return {
         "random_mean": random_mean,
         "anti_aligned_mean": anti_mean,
@@ -176,8 +176,8 @@ def law_validation_row(
 ) -> dict[str, float | int]:
     """Return one empirical-vs-exact validation row."""
 
-    predicted = exact_best_of_n_expected_utility(utilities, scores, n)
-    empirical = monte_carlo_best_of_n(utilities, scores, n=n, trials=trials, seed=seed)
+    predicted = exact_score_tail_expected_utility(utilities, scores, n)
+    empirical = monte_carlo_score_tail_selection(utilities, scores, n=n, trials=trials, seed=seed)
     return {
         "N": int(n),
         "predicted_selected_utility": float(predicted),

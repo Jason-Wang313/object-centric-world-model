@@ -992,7 +992,7 @@ def claim_inventory(root: str | Path | None = None) -> list[dict[str, object]]:
     return [
         {
             "id": "C1",
-            "claim": "Exact finite tie-aware Best-of-N laws predict selected utility on finite object-candidate populations.",
+            "claim": "Exact finite tie-aware score-tail laws predict selected utility on finite object-candidate populations.",
             "status": _status(strengths.get("C1", {}).get("passes") if root is not None else None),
             "evidence": "theory tests and exact_law_validation.csv",
             "strength": strengths.get("C1", {}),
@@ -1262,7 +1262,7 @@ PAPER_CLAIM_COVERAGE_ROWS = (
         "claim_id": "C1",
         "claim_role": "positive_paper_claim",
         "paper_locations": "paper/abstract.md;paper/theory.md;docs/theory.md",
-        "location_anchor_terms": ("best-of-n", "tie-aware", "selected utility", "law"),
+        "location_anchor_terms": ("score-tail", "tie-aware", "selected utility", "law"),
         "coverage_note": "Exact finite tie-aware law is a positive paper claim.",
     },
     {
@@ -1739,7 +1739,7 @@ def write_final_audit(root: str | Path, command_results: dict[str, str] | None =
             "and paper_claim_coverage.csv. Positive paper claims map to C1-C4; real-robot and broad-benchmark rows are boundary nonclaims.",
             "",
             "## Differentiation",
-            "The repo reuses the finite Best-of-N law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",
+            "The repo reuses the finite score-tail law pattern only. It changes the scientific object to object-centric slots, identity persistence, occlusion, hidden properties, and object-level repair.",
             "The toy proxy panel is a controlled diagnostic comparison, not a graph-physics benchmark, latent dynamics benchmark, diffusion world-model benchmark, or real-robot evaluation.",
             "",
             "## Remaining Weaknesses",

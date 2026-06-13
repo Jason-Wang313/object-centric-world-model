@@ -2,7 +2,7 @@
 
 The method has four pieces.
 
-First, we compute exact Best-of-N selected utility for a finite scored population with tie-aware selection. The law is independent of the object model.
+First, we compute exact score-tail selected utility for a finite scored population with tie-aware selection. The law is independent of the object model.
 
 Second, we generate controlled object-centric candidates. Each candidate contains predicted slots, object identities, hidden-mass estimates, trajectories, an object score, and measured real utility.
 

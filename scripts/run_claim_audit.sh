@@ -29,4 +29,4 @@ elif command -v cygpath >/dev/null 2>&1; then
 fi
 export PYTHONPATH="$PY_SRC"
 
-"$PYTHON_BIN" src/object_centric_best_of_n/audit.py --root "$PY_ROOT"
+"$PYTHON_BIN" src/object_binding_tail_audit/audit.py --root "$PY_ROOT"
